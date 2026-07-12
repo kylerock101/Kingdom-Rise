@@ -78,6 +78,14 @@
   #progressLabel{display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:var(--dim);margin-bottom:4px;letter-spacing:.04em;}
   #progressBar{height:12px;background:var(--panel);border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 3px rgba(0,0,0,.4);}
   #progressFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--gold-dk),var(--gold));transition:width .45s ease;box-shadow:0 0 10px rgba(255,201,60,.6);}
+  /* ---------- GOAL BAR ---------- */
+  #goalBar{display:flex;align-items:center;gap:9px;margin:8px 14px 0;padding:8px 11px;border-radius:12px;
+    background:linear-gradient(180deg,rgba(255,201,60,.18),rgba(255,201,60,.07));
+    box-shadow:inset 0 0 0 1.5px rgba(255,201,60,.42);}
+  #goalIcon{font-size:19px;}
+  #goalText{flex:1;min-width:0;line-height:1.2;}
+  #goalMain{display:block;font-size:13.5px;font-weight:900;color:var(--gold);}
+  #goalSub{display:block;font-size:10.5px;font-weight:800;color:var(--dim);margin-top:1px;}
   /* ---------- QUEST ---------- */
   #questWrap{margin:6px 14px 0;background:var(--panel);border-radius:12px;padding:7px 10px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}
   #questTop{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-bottom:4px;}
@@ -306,6 +314,18 @@
   #museum{display:none;align-items:flex-end;justify-content:center;gap:5px;margin:10px 0 4px;min-height:70px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.55));}
   .zoomdeep{animation:zoomdeep .6s cubic-bezier(.2,1.4,.4,1) !important;}
   @keyframes zoomdeep{0%{transform:scale(.12);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  /* ---------- ONBOARDING ---------- */
+  #coach{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;}
+  #coach.show{display:block;}
+  #coachVeil{position:absolute;inset:0;background:rgba(8,4,22,.78);pointer-events:auto;}
+  #coachHole{position:absolute;border-radius:24px;box-shadow:0 0 0 9999px rgba(8,4,22,.78),0 0 30px 8px rgba(255,201,60,.55);
+    pointer-events:none;transition:all .3s ease;}
+  #coachMsg{position:absolute;left:50%;transform:translateX(-50%);width:min(86vw,330px);text-align:center;
+    background:linear-gradient(180deg,#3b2c78,var(--night2));border-radius:16px;padding:13px 15px;
+    box-shadow:0 12px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,201,60,.4);pointer-events:auto;}
+  #coachMsg b{display:block;font-size:15px;font-weight:900;margin-bottom:3px;}
+  #coachMsg span{font-size:12px;color:var(--dim);font-weight:800;line-height:1.35;}
+  #coachTap{display:block;margin-top:7px;font-size:11px;font-weight:900;color:var(--gold);letter-spacing:.06em;}
   /* ---------- BUILDER PAGE ---------- */
   #builderOverlay{position:fixed;inset:0;z-index:24;display:none;flex-direction:column;
     background:radial-gradient(120% 90% at 50% 0%, var(--night2) 0%, var(--night) 62%);}
@@ -409,6 +429,12 @@
 </head>
 <body>
 
+<div id="coach">
+  <div id="coachVeil"></div>
+  <div id="coachHole"></div>
+  <div id="coachMsg"><b id="coachTitle"></b><span id="coachBody"></span><span id="coachTap">TAP TO CONTINUE</span></div>
+</div>
+
 <div id="builderOverlay">
   <div id="bHead">
     <button id="bBack">‹ Board</button>
@@ -462,6 +488,14 @@
 <div id="progressWrap">
   <div id="progressLabel"><span id="progName">NEXT: VILLAGE</span><span id="progCount">0 / 5 builds</span></div>
   <div id="progressBar"><div id="progressFill"></div></div>
+</div>
+
+<div id="goalBar">
+  <span id="goalIcon">🎯</span>
+  <div id="goalText">
+    <b id="goalMain">Roll the dice to earn gold</b>
+    <small id="goalSub">Gold builds your kingdom</small>
+  </div>
 </div>
 
 <div id="questWrap">
@@ -576,7 +610,7 @@ const S = {
   rolling: false, dailyClaimed: false, sound: true,
   qi: 0, qp: 0, qDone: false, qReady: false, realm: 1,
   realmCoins: 0, history: [], blessed: false, streak: 0, soldiers: 5,
-  lastRoll: Date.now(), raidStreak: 0,
+  lastRoll: Date.now(), raidStreak: 0, seen: {}, rolled: 0,
 };
 let CURRENT_USER = null;
 const CUR_KEY = "kingsRise.currentUser";
@@ -609,6 +643,7 @@ function saveNow(){
       history:S.history, blessed:S.blessed, soldiers:S.soldiers,
       qi:S.qi, qp:S.qp, qDone:S.qDone, streak:S.streak,
       sound:S.sound, dailyClaimed:S.dailyClaimed, lastDay:today(), lastRoll:S.lastRoll, raidStreak:S.raidStreak,
+      seen:S.seen, rolled:S.rolled,
     });
     localStorage.setItem(saveKeyFor(CURRENT_USER), payload);
     cloudPush(payload);
@@ -635,6 +670,8 @@ function load(){
     if(!S.blessed && S.multi>5) S.multi=5;
     if(typeof S.lastRoll!=="number") S.lastRoll = Date.now();
     if(typeof S.raidStreak!=="number") S.raidStreak = 0;
+    if(!S.seen || typeof S.seen!=="object") S.seen = {};
+    if(typeof S.rolled!=="number") S.rolled = 0;
     accrueRolls();                                    // catch up rolls earned while away
     return true;
   }catch(e){ return false; }
@@ -746,6 +783,7 @@ function refresh(){
   $("progName").textContent = S.tier >= TIERS.length-1 ? "NEXT: NEW REALM 🌍" : "NEXT: "+nxt.toUpperCase();
   $("progCount").textContent = S.builds+" / "+BUILDS_PER_TIER+" builds";
   $("progressFill").style.width = (S.builds/BUILDS_PER_TIER*100)+"%";
+  try{ updateGoal(); }catch(e){}
   save();
 }
 function toast(msg){
@@ -994,6 +1032,7 @@ function resolveTile(){
   } else if(def.t==="bless"){
     S.blessed = true; refreshBless(); refresh();
     sChest(); buzz([40,30,40,30,70]);
+    coach("bless","🔮 Blessing!","Your multiplier can now go to ×10 and ×20 — bet big until you pass this tile again!");
     showCard("🔮",tileName("bless")+"!","The dice ceiling shatters! Tap the × chip up to ×10 or ×20 — until you circle back past this tile.","Blessed!", false, endTurn);
     return;
   } else if(def.t==="wheel"){
@@ -1045,6 +1084,7 @@ function startRaid(scale){
   const scoutGold = Math.round(40*(S.tier+1)*RG());
   const ctx = { rv, army, winners, scale, streakMult, scoutGold, scouted:false, hintIdx:-1 };
 
+  coach("raid","⚔️ War Call!","Pick how many soldiers to send, then choose a tactic. Two of the four tactics win — pick wisely!");
   showCard(rv.a, "War Call — "+rv.n+"!", "", "", false, null);
   $("cardBtn").style.display="none";
   $("battle").style.display="block";
@@ -1208,6 +1248,7 @@ function spinWheelTo(target, done){
 }
 function startWheel(m, t){
   sChest(); buzz([30,30,30]);
+  coach("wheel","🎡 Wheel of Fortune","Spin for a prize — gold, rolls, or the rare jackpot!");
   showCard("🎡",tileName("wheel")+"!","Give it a spin!","SPIN!", false, null);
   $("cardEmoji").style.display="none";
   const wb=$("wheelBox"); wb.style.display="block"; wb.innerHTML=buildWheelSVG();
@@ -1231,6 +1272,7 @@ function startDragon(scale){
   sRaid(); buzz([80,40,80]);
   let taps=0, loot=0, done=false;
   const perTap = Math.round(Math.max(15, 12*scale) * RG());
+  coach("dragon","🐉 Dragon's Hoard","Tap the dragon as fast as you can for 3 seconds — every tap is gold!");
   showCard("🐉","Dragon's Hoard!","Tap the dragon FAST to snatch its gold!","",false,null);
   $("cardBtn").style.display="none";
   const em=$("cardEmoji"); em.style.cursor="pointer";
@@ -1308,6 +1350,7 @@ function startHazard(){
     showReward("💥 "+(loss>0 ? "−"+loss+" 🎲" : "phew!"));
   }
   refresh();
+  coach("hazard","💥 Disaster!","Some tiles hurt — fires, plagues, and bandits cost you gold or rolls. Bad luck happens!");
   showCard(dz.e, dz.t, dz.d+"  "+line, "Rebuild", false, endTurn);
 }
 
@@ -1317,7 +1360,7 @@ function endTurn(){ S.rolling = false; refresh(); maybeQuestReward(); }
 $("die").addEventListener("click", ()=>{
   if(S.rolling || S.rolls < S.multi){ sNo(); return; }
   audio();
-  S.rolling = true; S.rolls -= S.multi; refresh(); questProgress("roll",1);
+  S.rolling = true; S.rolls -= S.multi; S.rolled++; refresh(); questProgress("roll",1);
   const die = $("die"); die.classList.add("rolling");
   let ticks = 0;
   const spin = setInterval(()=>{
@@ -1606,6 +1649,70 @@ setInterval(()=>{
 }, 1000);
 // top up the instant the app regains focus
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ accrueRolls(); refresh(); } });
+
+/* =================================================================
+   ONBOARDING — goal bar + first-encounter coaching
+   ================================================================= */
+let _couldBuild = false;
+function checkBuildUnlock(){
+  const can = S.coins >= buildCost();
+  if(can && !_couldBuild && S.rolled > 0){
+    _couldBuild = true;
+    coach("build","🔨 You can build!","Tap BUILDER to raise your first "+bldFor(S.tier).n+". Five of them grows your camp into a "+TIERS[Math.min(S.tier+1,TIERS.length-1)]+"!", "buildBtn");
+  }
+  if(!can) _couldBuild = false;
+}
+function updateGoal(){
+  const cost = buildCost();
+  const need = TIERS[Math.min(S.tier+1, TIERS.length-1)];
+  let icon="🎯", main="", sub="";
+  if(S.rolled === 0){
+    icon="🎲"; main="Tap the dice to roll"; sub="Land on tiles to collect gold";
+  } else if(S.coins < cost){
+    icon="🪙"; main="Collect "+cost.toLocaleString()+" gold to build";
+    sub="You have "+S.coins.toLocaleString()+" — keep rolling!";
+  } else if(S.tier >= TIERS.length-1 && S.builds >= BUILDS_PER_TIER-1){
+    icon="🌍"; main="Build to found a NEW REALM!"; sub="Your empire is complete";
+  } else {
+    icon="🔨"; main="You can build! Tap BUILDER";
+    sub=(BUILDS_PER_TIER - S.builds)+" more "+bldFor(S.tier).n+"s → "+need;
+  }
+  $("goalIcon").textContent = icon;
+  $("goalMain").textContent = main;
+  $("goalSub").textContent = sub;
+  try{ checkBuildUnlock(); }catch(e){}
+}
+/* one-time coached hints, keyed so each fires only once ever */
+let COACH_Q = [], COACH_ON = false;
+function coach(key, title, body, targetId){
+  if(S.seen[key]) return;
+  S.seen[key] = 1; save();
+  COACH_Q.push({title, body, targetId});
+  if(!COACH_ON) nextCoach();
+}
+function nextCoach(){
+  const c = COACH_Q.shift();
+  if(!c){ COACH_ON=false; $("coach").classList.remove("show"); return; }
+  COACH_ON = true;
+  const el = c.targetId ? $(c.targetId) : null;
+  const hole = $("coachHole"), msg = $("coachMsg");
+  if(el){
+    const r = el.getBoundingClientRect(), pad = 8;
+    hole.style.display="block";
+    hole.style.left=(r.left-pad)+"px"; hole.style.top=(r.top-pad)+"px";
+    hole.style.width=(r.width+pad*2)+"px"; hole.style.height=(r.height+pad*2)+"px";
+    const below = r.bottom + 150 < window.innerHeight;
+    msg.style.top = below ? (r.bottom+16)+"px" : Math.max(12, r.top-140)+"px";
+  } else {
+    hole.style.display="none";
+    msg.style.top = "38%";
+  }
+  $("coachTitle").textContent = c.title;
+  $("coachBody").textContent = c.body;
+  $("coach").classList.add("show");
+  buzz(20);
+}
+$("coach") && $("coach").addEventListener("click", ()=>{ sTick(); nextCoach(); });
 
 /* =================================================================
    SOCIAL LAYER
@@ -1951,6 +2058,13 @@ function initGame(){
   updateGiftDot();
   if(hadSave) toast("👑 Welcome back, "+CURRENT_USER+"!");
   setTimeout(layoutBoard, 120);
+  // first-run onboarding: state the goal, then spotlight the die
+  setTimeout(()=>{
+    if(S.rolled === 0 && !S.seen.intro){
+      coach("intro","👑 Welcome, ruler!","Your goal: roll the dice, collect gold, and build your camp into a mighty empire.");
+      coach("firstroll","🎲 Tap the dice!","Every roll moves you around the board. Land on tiles to collect gold and treasure.", "die");
+    }
+  }, 500);
 }
 (async ()=>{
   const saved = await Auth.restore();
