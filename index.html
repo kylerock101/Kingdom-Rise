@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#191036">
+<title>King's Rise</title>
+<style>
+  :root{
+    --night:#191036; --night2:#241a4d; --panel:#2e2260;
+    --gold:#ffc93c; --gold-dk:#e0a41f; --banner:#ff5c4d;
+    --green:#54d98c; --ink:#f4efff; --dim:#a99cd6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  html,body{height:100%;overflow:hidden;}
+  body{
+    font-family:-apple-system,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(120% 90% at 50% 0%, #2d1f63 0%, var(--night) 60%);
+    color:var(--ink);
+    display:flex;flex-direction:column;
+    max-width:520px;margin:0 auto;
+    touch-action:manipulation;
+  }
+  /* ---------- HEADER ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px 4px;gap:8px;
+  }
+  .pill{
+    background:var(--panel);border-radius:999px;padding:6px 12px;
+    display:flex;align-items:center;gap:6px;font-weight:800;font-size:15px;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.35);
+    min-width:86px;justify-content:center;
+  }
+  .pill small{font-size:11px;color:var(--dim);font-weight:700;}
+  #rollsPill{flex-direction:column;gap:0;line-height:1.05;padding:5px 12px;}
+  #rollsPill > span{display:flex;align-items:center;gap:4px;}
+  #rollTimer{font-size:9.5px;color:var(--gold);font-weight:800;letter-spacing:.02em;min-height:.9em;}
+  #tierBanner{
+    background:linear-gradient(180deg,var(--banner),#d33d2e);
+    border-radius:12px;padding:6px 14px;font-weight:900;font-size:14px;
+    letter-spacing:.08em;text-transform:uppercase;
+    box-shadow:0 3px 0 #8f2418;white-space:nowrap;
+  }
+  /* ---------- KINGDOM ---------- */
+  #kingdom{
+    position:relative;height:118px;margin:6px 12px 0;
+    background:linear-gradient(180deg,#1e1544 0%,#33246e 78%,#3f8f5a 78%,#2f7047 100%);
+    border-radius:16px;overflow:hidden;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);
+  }
+  #stars{position:absolute;inset:0;}
+  .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:.7;animation:twinkle 3s infinite;}
+  @keyframes twinkle{50%{opacity:.15}}
+  #moon{position:absolute;top:8px;right:12px;font-size:20px;}
+  #armyBadge{position:absolute;top:8px;left:10px;background:rgba(0,0,0,.35);border-radius:999px;padding:3px 9px;font-size:13px;font-weight:900;color:#ffd9d0;z-index:2;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+  #buildings{
+    position:absolute;bottom:10px;left:0;right:0;
+    display:flex;align-items:flex-end;justify-content:center;gap:4px;
+    line-height:1;
+  }
+  #villagers{position:absolute;bottom:1px;left:0;right:0;height:16px;pointer-events:none;}
+  .villager{position:absolute;bottom:0;font-size:11px;animation:stroll linear infinite alternate;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
+  @keyframes stroll{from{transform:translateX(-16px)}to{transform:translateX(16px)}}
+  .scaffold{animation:hammering .28s infinite;}
+  @keyframes hammering{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg) translateY(-2px)}}
+  .dust{position:absolute;font-size:13px;pointer-events:none;animation:dustUp .8s ease-out forwards;}
+  @keyframes dustUp{from{opacity:.9;transform:translateY(0) scale(.7)}to{opacity:0;transform:translateY(-24px) scale(1.4)}}
+  .monument{filter:drop-shadow(0 0 7px var(--gold)) !important;}
+  .kglow{position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 20%,rgba(255,201,60,.5),transparent 80%);animation:sweep .9s ease forwards;}
+  @keyframes sweep{from{transform:translateX(-110%)}to{transform:translateX(110%)}}
+  .bld{transform:translateY(60px);transition:transform .5s cubic-bezier(.2,1.6,.4,1);filter:drop-shadow(0 3px 2px rgba(0,0,0,.4));}
+  .bld.up{transform:translateY(0);}
+  .bld.pop{animation:bpop .55s cubic-bezier(.2,1.8,.4,1);}
+  @keyframes bpop{0%{transform:translateY(0) scale(0);}100%{transform:translateY(0) scale(1);}}
+  #progressWrap{margin:8px 14px 0;}
+  #progressLabel{display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:var(--dim);margin-bottom:4px;letter-spacing:.04em;}
+  #progressBar{height:12px;background:var(--panel);border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 3px rgba(0,0,0,.4);}
+  #progressFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--gold-dk),var(--gold));transition:width .45s ease;box-shadow:0 0 10px rgba(255,201,60,.6);}
+  /* ---------- QUEST ---------- */
+  #questWrap{margin:6px 14px 0;background:var(--panel);border-radius:12px;padding:7px 10px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}
+  #questTop{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-bottom:4px;}
+  #questText{color:var(--ink);}
+  #questProg{color:var(--green);font-size:11px;}
+  #questBar{height:7px;background:rgba(0,0,0,.35);border-radius:999px;overflow:hidden;}
+  #questFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#2f9c5e,var(--green));transition:width .4s ease;}
+  @keyframes bshake{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-3px,-1px)}}
+  #board.shake{animation:bshake .3s;}
+  /* ---------- BOARD ---------- */
+  #boardWrap{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 12px;min-height:0;}
+  #board{
+    position:relative;width:100%;max-width:430px;aspect-ratio:1;
+    max-height:100%;
+  }
+  .tile{
+    position:absolute;border-radius:12px;
+    background:var(--panel);
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(13px,4.2vw,20px);
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .tile.corner{background:#3b2c78;}
+  .tile.hazardtile{box-shadow:inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px rgba(255,90,77,.55);}
+  .tile.blessed{box-shadow:0 0 0 2px #b07cff, 0 0 14px rgba(176,124,255,.85);animation:blessPulse 1.3s infinite;}
+  @keyframes blessPulse{50%{box-shadow:0 0 0 2px #b07cff, 0 0 22px rgba(176,124,255,1);}}
+  .tile.active{
+    transform:scale(1.16);
+    box-shadow:0 0 0 3px var(--gold), 0 0 18px rgba(255,201,60,.7);
+    z-index:3;
+  }
+  #token{
+    position:absolute;width:0;height:0;z-index:5;
+    transition:left .18s ease, top .18s ease;
+    pointer-events:none;
+  }
+  #token span{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-58%);
+    font-size:clamp(18px,5.6vw,27px);
+    filter:drop-shadow(0 4px 4px rgba(0,0,0,.5));
+    display:block;
+  }
+  #token.hop span{animation:hop .18s ease;}
+  @keyframes hop{50%{transform:translate(-50%,-95%) scale(1.12);}}
+  #center{
+    position:absolute;left:12.5%;top:12.5%;width:75%;height:75%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+    text-align:center;
+  }
+  #die{
+    width:clamp(88px,27vw,124px);height:clamp(88px,27vw,124px);
+    background:linear-gradient(180deg,#ffe27a,var(--gold) 55%,var(--gold-dk));
+    border-radius:22px;color:#3a2800;
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(46px,15vw,66px);font-weight:900;
+    box-shadow:0 7px 0 #9c6f0a, 0 12px 22px rgba(0,0,0,.45);
+    transition:transform .08s, box-shadow .08s, filter .2s;
+    cursor:pointer;
+  }
+  #die.ready{animation:dieBreathe 1.9s ease-in-out infinite;}
+  @keyframes dieBreathe{50%{box-shadow:0 7px 0 #9c6f0a,0 12px 22px rgba(0,0,0,.45),0 0 24px rgba(255,201,60,.75);}}
+  #die:active{transform:translateY(5px);box-shadow:0 2px 0 #9c6f0a;}
+  #die.cant{filter:grayscale(.6) brightness(.72);cursor:default;}
+  #die.rolling{animation:shake .09s infinite;cursor:default;}
+  #dieHint{
+    font-weight:800;font-size:clamp(10px,3.2vw,13px);color:var(--gold);
+    letter-spacing:.09em;text-shadow:0 1px 3px rgba(0,0,0,.6);
+    transition:opacity .2s;white-space:nowrap;
+  }
+  @keyframes shake{
+    0%{transform:rotate(-8deg) translateY(-2px);}
+    50%{transform:rotate(8deg) translateY(2px);}
+    100%{transform:rotate(-8deg) translateY(-2px);}
+  }
+  #lastReward{
+    font-weight:900;font-size:clamp(13px,4vw,16px);color:var(--gold);
+    min-height:1.4em;text-shadow:0 2px 6px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(6px);transition:.25s;
+  }
+  #lastReward.show{opacity:1;transform:translateY(0);}
+  /* ---------- FOOTER ---------- */
+  footer{padding:8px 14px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:stretch;}
+  #dailyBtn{flex:1;border:none;border-radius:14px;padding:13px;font-weight:900;font-size:15px;
+    background:linear-gradient(180deg,#ff8a5c,#e0592f);color:#fff;box-shadow:0 4px 0 #a83c1c;transition:transform .08s;}
+  #dailyBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #a83c1c;}
+  #dailyBtn.glow{animation:pulse 1.1s infinite;}
+  #gearBtn{flex:0 0 auto;border:none;border-radius:14px;padding:13px 17px;font-size:17px;font-weight:900;
+    background:var(--panel);color:var(--ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .08s;}
+  #gearBtn:active{transform:translateY(2px);}
+  #socialBtn{position:relative;flex:0 0 auto;border:none;border-radius:14px;padding:13px 16px;font-size:17px;font-weight:900;
+    background:var(--panel);color:var(--ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .08s;}
+  #socialBtn:active{transform:translateY(2px);}
+  #giftDot{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+    background:var(--banner);color:#fff;font-size:10px;font-weight:900;line-height:16px;display:none;box-shadow:0 0 0 2px var(--night2);}
+  #giftDot.show{display:block;}
+  /* social overlay */
+  #socOverlay{position:fixed;inset:0;background:rgba(12,7,30,.85);display:none;align-items:center;justify-content:center;z-index:27;backdrop-filter:blur(3px);}
+  #socOverlay.show{display:flex;}
+  #socPanel{position:relative;background:linear-gradient(180deg,#3b2c78,var(--night2));border-radius:22px;padding:18px;width:min(92vw,380px);
+    box-shadow:0 20px 50px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,255,255,.08);display:flex;flex-direction:column;}
+  #socX{position:absolute;top:10px;right:12px;width:30px;height:30px;border:none;border-radius:50%;background:rgba(255,255,255,.1);color:var(--dim);font-size:15px;font-weight:900;}
+  #socX:active{transform:scale(.9);}
+  #socTitle{font-size:20px;font-weight:900;text-align:center;margin-bottom:12px;}
+  #socTabs{display:flex;gap:6px;background:rgba(0,0,0,.3);border-radius:12px;padding:4px;margin-bottom:12px;}
+  .socTab{flex:1;border:none;background:none;color:var(--dim);font-weight:900;font-size:13px;padding:9px;border-radius:9px;}
+  .socTab.active{background:var(--panel);color:var(--ink);box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}
+  #socBody{max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .lbRow{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;margin-bottom:5px;background:var(--panel);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
+  .lbRow.you{box-shadow:0 0 0 2px var(--gold), inset 0 -2px 0 rgba(0,0,0,.25);}
+  .lbRank{font-weight:900;font-size:14px;width:30px;text-align:center;color:var(--gold);}
+  .lbName{flex:1;font-weight:800;font-size:14px;}
+  .lbName small{color:var(--dim);font-weight:700;font-size:11px;}
+  .lbMight{font-weight:900;font-size:13px;color:var(--ink);}
+  .giftSec{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin:6px 2px 8px;}
+  .giftRow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;margin-bottom:6px;background:var(--panel);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
+  .giftRow .gi{font-size:22px;}
+  .giftRow .gt{flex:1;font-weight:800;font-size:13px;}
+  .giftRow .gt small{display:block;color:var(--dim);font-weight:700;font-size:11px;}
+  .giftBtn{border:none;border-radius:10px;padding:8px 14px;font-weight:900;font-size:12px;background:linear-gradient(180deg,#6fe89f,var(--green) 60%,#2f9c5e);color:#08331c;box-shadow:0 3px 0 #1d6b3e;}
+  .giftBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #1d6b3e;}
+  .giftBtn.send{background:linear-gradient(180deg,#ffd95e,var(--gold-dk));color:#3a2800;box-shadow:0 3px 0 #9c6f0a;}
+  .giftBtn:disabled{filter:grayscale(.6) brightness(.85);}
+  .socEmpty{text-align:center;color:var(--dim);font-weight:700;font-size:13px;padding:16px;}
+  #centerControls{display:flex;gap:8px;width:100%;max-width:300px;align-items:stretch;margin-top:2px;}
+  #centerControls #multi{flex:0 0 auto;}
+  #centerControls #buildBtn{flex:1;}
+  #setOverlay{position:fixed;inset:0;background:rgba(12,7,30,.85);display:none;align-items:center;justify-content:center;z-index:26;backdrop-filter:blur(3px);}
+  #setOverlay.show{display:flex;}
+  #setPanel{background:linear-gradient(180deg,#3b2c78,var(--night2));border-radius:22px;padding:18px;width:min(84vw,320px);box-shadow:0 20px 50px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px;}
+  #setPanel .setTitle{font-size:19px;font-weight:900;text-align:center;margin-bottom:2px;}
+  #setPanel .setLabel{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-top:8px;text-align:center;}
+  #setPanel .ghost{background:rgba(255,255,255,.08);border:none;color:var(--ink);border-radius:12px;padding:12px;font-weight:800;font-size:14px;}
+  #setPanel .ghost:active{transform:translateY(2px);}
+  #setClose{border:none;border-radius:14px;padding:13px;margin-top:6px;background:linear-gradient(180deg,#ffd95e,var(--gold-dk));color:#3a2800;font-weight:900;font-size:16px;box-shadow:0 4px 0 #9c6f0a;}
+  #setClose:active{transform:translateY(3px);box-shadow:0 1px 0 #9c6f0a;}
+  #multi{
+    background:var(--panel);border:none;color:var(--ink);
+    border-radius:14px;padding:12px 14px;font-weight:900;font-size:16px;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);
+    flex:0 0 auto;
+  }
+  #multi.hot{color:var(--gold);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 0 12px rgba(255,201,60,.5);}
+  #multi.ultra{color:#d9b3ff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 0 16px rgba(176,124,255,.9);animation:blessPulse 1.3s infinite;}
+  #buildBtn{
+    flex:1;border:none;border-radius:14px;padding:14px 16px;
+    background:linear-gradient(180deg,#6fe89f,var(--green) 60%,#2f9c5e);
+    color:#08331c;font-weight:900;font-size:15px;
+    box-shadow:0 4px 0 #1d6b3e;flex:0 0 auto;
+    transition:transform .08s, filter .2s;
+  }
+  #buildBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #1d6b3e;}
+  #buildBtn:disabled{filter:grayscale(.8) brightness(.6);}
+  #buildBtn.ready{animation:pulse 1s infinite;}
+  @keyframes pulse{50%{transform:scale(1.06);box-shadow:0 4px 0 #1d6b3e,0 0 16px rgba(84,217,140,.8);}}
+  #subRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .ghost{
+    background:rgba(255,255,255,.08);border:none;color:var(--dim);
+    border-radius:10px;padding:7px 12px;font-weight:800;font-size:12px;
+  }
+  .ghost.glow{color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.4);}
+  /* ---------- OVERLAYS ---------- */
+  #overlay{
+    position:fixed;inset:0;background:rgba(12,7,30,.82);
+    display:none;align-items:center;justify-content:center;z-index:20;
+    backdrop-filter:blur(3px);
+  }
+  #overlay.show{display:flex;}
+  #card{
+    background:linear-gradient(180deg,#3b2c78,var(--night2));
+    border-radius:24px;padding:26px 22px;width:min(86vw,340px);
+    text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.08);
+    animation:cardIn .35s cubic-bezier(.2,1.6,.4,1);
+  }
+  @keyframes cardIn{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  #cardEmoji{font-size:64px;display:block;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5));}
+  #cardEmoji.bounce{animation:cbounce .5s cubic-bezier(.2,1.8,.4,1);}
+  #cardEmoji.hit{animation:hit .12s ease;}
+  @keyframes hit{50%{transform:scale(1.28);}}
+  @keyframes cbounce{0%{transform:scale(0) rotate(-20deg);}100%{transform:scale(1) rotate(0);}}
+  #cardTitle{font-size:22px;font-weight:900;margin:10px 0 4px;letter-spacing:.03em;}
+  #cardText{color:var(--dim);font-weight:700;font-size:14px;margin-bottom:16px;min-height:1.2em;}
+  #cardBtn{
+    border:none;border-radius:14px;padding:13px 34px;
+    background:linear-gradient(180deg,#ffd95e,var(--gold-dk));
+    color:#3a2800;font-weight:900;font-size:17px;
+    box-shadow:0 4px 0 #9c6f0a;
+  }
+  #cardBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #9c6f0a;}
+  #raidRow{display:flex;justify-content:center;gap:14px;margin:14px 0 6px;font-size:44px;}
+  .hut{transition:transform .1s;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));}
+  .hut:active{transform:scale(.85);}
+  .hut.smashed{opacity:.35;transform:scale(.8) rotate(12deg);pointer-events:none;}
+  /* ---------- BATTLE ---------- */
+  #wheelBox{display:none;margin:8px auto 12px;width:min(74vw,250px);}
+  #wheelBox svg{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));}
+  #wheelPointer{transform-box:fill-box;transform-origin:center;transition:transform .1s;}
+  #wheelPointer.pulse{animation:ptrPulse .3s ease;}
+  @keyframes ptrPulse{50%{transform:translateY(3px) scale(1.25);}}
+  #battle{display:none;margin:12px 0 4px;}
+  #wheelBox{display:none;margin:8px 0 12px;}
+  #wheelSpin text{pointer-events:none;}
+  #warfield{position:relative;height:74px;background:linear-gradient(180deg,#241a4d 0%,#3a2c6e 55%,#3f8f5a 55%,#2f7047 100%);border-radius:12px;overflow:hidden;margin-bottom:12px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);}
+  #warfield .army{position:absolute;bottom:8px;left:10px;font-size:20px;white-space:nowrap;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5));}
+  #warfield .enemy{position:absolute;bottom:8px;right:12px;font-size:30px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5));}
+  #warfield .proj{position:absolute;bottom:22px;left:20%;font-size:20px;opacity:0;}
+  #warfield .clash{position:absolute;top:44%;left:52%;transform:translate(-50%,-50%) scale(0);font-size:34px;}
+  #warfield .clash.go{animation:clashPop .55s ease;}
+  @keyframes clashPop{0%{transform:translate(-50%,-50%) scale(0)}50%{transform:translate(-50%,-50%) scale(1.5)}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+  #warfield.anim-attack .army{animation:atkMove 1s ease forwards;}
+  @keyframes atkMove{to{transform:translateX(150px)}}
+  #warfield.anim-flank .army{animation:flkMove 1.1s ease forwards;}
+  @keyframes flkMove{0%{transform:translate(0,0)}40%{transform:translate(0,22px)}100%{transform:translate(155px,22px)}}
+  #warfield.anim-defend .army{animation:defMove 1s ease;}
+  @keyframes defMove{0%,100%{transform:scale(1)}45%{transform:scale(1.3)}}
+  #warfield.anim-defend .enemy{animation:enemyPush 1s ease;}
+  @keyframes enemyPush{0%{transform:translateX(0)}45%{transform:translateX(-46px)}100%{transform:translateX(0)}}
+  #warfield.anim-siege .proj{animation:projFly .85s ease .05s forwards;}
+  @keyframes projFly{0%{opacity:0;left:20%}20%{opacity:1}100%{opacity:1;left:72%}}
+  #tactics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .tactic{border:none;border-radius:12px;padding:11px 6px;background:var(--panel);color:var(--ink);font-weight:800;font-size:13px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .08s;}
+  .tactic:active{transform:translateY(2px);}
+  .tactic:disabled{opacity:.5;}
+  .tactic .te{font-size:22px;display:block;margin-bottom:1px;}
+  #museum{display:none;align-items:flex-end;justify-content:center;gap:5px;margin:10px 0 4px;min-height:70px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.55));}
+  .zoomdeep{animation:zoomdeep .6s cubic-bezier(.2,1.4,.4,1) !important;}
+  @keyframes zoomdeep{0%{transform:scale(.12);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  /* ---------- BUILDER PAGE ---------- */
+  #builderOverlay{position:fixed;inset:0;z-index:24;display:none;flex-direction:column;
+    background:radial-gradient(120% 90% at 50% 0%, var(--night2) 0%, var(--night) 62%);}
+  #builderOverlay.show{display:flex;}
+  #bHead{display:flex;align-items:center;gap:10px;padding:14px 14px 8px;}
+  #bBack{border:none;border-radius:12px;padding:10px 14px;font-size:15px;font-weight:900;
+    background:var(--panel);color:var(--ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);}
+  #bBack:active{transform:translateY(2px);}
+  #bTitle{flex:1;font-size:18px;font-weight:900;letter-spacing:.02em;}
+  #bTitle small{display:block;font-size:11px;color:var(--dim);font-weight:800;}
+  #bScene{position:relative;height:130px;margin:4px 14px 8px;border-radius:18px;overflow:hidden;
+    background:linear-gradient(180deg,#1e1544 0%,#33246e 74%,#3f8f5a 74%,#2f7047 100%);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.07);}
+  #bStats{display:flex;gap:8px;margin:0 14px 8px;}
+  .bStat{flex:1;background:var(--panel);border-radius:12px;padding:8px;text-align:center;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}
+  .bStat .v{font-weight:900;font-size:15px;}
+  .bStat .l{font-size:9.5px;color:var(--dim);font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+  #bTrack{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 14px calc(16px + env(safe-area-inset-bottom));}
+  .bRow{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:14px;padding:11px 12px;margin-bottom:8px;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.3);}
+  .bRow .be{font-size:30px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));width:38px;text-align:center;}
+  .bRow .bi{flex:1;min-width:0;}
+  .bRow .bn{font-weight:900;font-size:15px;}
+  .bRow .bs{font-size:11px;color:var(--dim);font-weight:800;}
+  .bRow .dots{display:flex;gap:4px;margin-top:4px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.4);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+  .dot.on{background:var(--gold);box-shadow:0 0 6px rgba(255,201,60,.7);}
+  .bBuy{border:none;border-radius:12px;padding:11px 14px;font-weight:900;font-size:13px;min-width:96px;
+    background:linear-gradient(180deg,#6fe89f,var(--green) 60%,#2f9c5e);color:#08331c;box-shadow:0 3px 0 #1d6b3e;}
+  .bBuy:active{transform:translateY(2px);box-shadow:0 1px 0 #1d6b3e;}
+  .bBuy:disabled{filter:grayscale(.75) brightness(.65);}
+  .bBuy small{display:block;font-size:10.5px;}
+  .bRow.done{opacity:.62;}
+  .bRow.done .bBuy{background:var(--panel);color:var(--green);box-shadow:inset 0 0 0 2px rgba(84,217,140,.4);}
+  .bRow.locked{opacity:.45;filter:grayscale(.5);}
+  /* ---------- AUTH ---------- */
+  #authOverlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:22px;
+    background:radial-gradient(120% 90% at 50% 0%, #2d1f63 0%, var(--night) 62%);}
+  #authOverlay.hidden{display:none;}
+  #authCard{width:min(90vw,340px);text-align:center;}
+  #authLogo{font-size:56px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));}
+  #authTitle{font-size:30px;font-weight:900;letter-spacing:.04em;margin:2px 0 4px;
+    background:linear-gradient(180deg,#ffe27a,var(--gold-dk));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  #authSub{font-size:12px;color:var(--dim);font-weight:700;margin-bottom:18px;}
+  #authTabs{display:flex;gap:6px;background:rgba(0,0,0,.3);border-radius:12px;padding:4px;margin-bottom:14px;}
+  .authTab{flex:1;border:none;background:none;color:var(--dim);font-weight:900;font-size:14px;padding:9px;border-radius:9px;}
+  .authTab.active{background:var(--panel);color:var(--ink);box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}
+  #authCard input{width:100%;border:none;border-radius:12px;padding:13px 14px;margin-bottom:10px;
+    background:var(--panel);color:var(--ink);font-size:15px;font-weight:700;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}
+  #authCard input::placeholder{color:var(--dim);}
+  #authErr{color:#ff8a7a;font-size:12px;font-weight:800;min-height:1.2em;margin-bottom:6px;}
+  #authSubmit{width:100%;border:none;border-radius:14px;padding:15px;font-size:17px;font-weight:900;
+    background:linear-gradient(180deg,#ffd95e,var(--gold) 55%,var(--gold-dk));color:#3a2800;box-shadow:0 5px 0 #9c6f0a;}
+  #authSubmit:active{transform:translateY(3px);box-shadow:0 2px 0 #9c6f0a;}
+  #authGuest{width:100%;background:none;border:none;color:var(--dim);font-weight:800;font-size:13px;padding:12px;margin-top:4px;}
+  #authGuest:active{color:var(--ink);}
+  #authNote{font-size:10.5px;color:var(--dim);font-weight:700;margin-top:8px;line-height:1.4;}
+  /* ---------- DAILY CALENDAR ---------- */
+  #calOverlay{position:fixed;inset:0;background:rgba(12,7,30,.85);display:none;align-items:center;justify-content:center;z-index:25;backdrop-filter:blur(3px);}
+  #calOverlay.show{display:flex;}
+  #calPanel{background:linear-gradient(180deg,#3b2c78,var(--night2));border-radius:24px;padding:20px 18px calc(18px + env(safe-area-inset-bottom));width:min(92vw,370px);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,255,255,.08);animation:cardIn .35s cubic-bezier(.2,1.6,.4,1);}
+  #calPanel{position:relative;}
+  #calX{position:absolute;top:10px;right:12px;width:30px;height:30px;border:none;border-radius:50%;
+    background:rgba(255,255,255,.1);color:var(--dim);font-size:15px;font-weight:900;line-height:1;cursor:pointer;}
+  #calX:active{transform:scale(.9);}
+  #calTitle{font-size:21px;font-weight:900;letter-spacing:.02em;}
+  #calSub{font-size:12px;color:var(--dim);font-weight:700;margin:4px 0 14px;min-height:1.2em;}
+  #calGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+  .calCell{background:var(--panel);border-radius:14px;padding:9px 4px 8px;position:relative;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);overflow:hidden;}
+  .calCell .d{font-size:9px;font-weight:800;color:var(--dim);letter-spacing:.06em;}
+  .calCell .ic{font-size:26px;line-height:1.25;}
+  .calCell .rw{font-size:10.5px;font-weight:800;color:var(--ink);}
+  .calCell.claimed{opacity:.45;}
+  .calCell.claimed::after{content:"✓";position:absolute;top:4px;right:7px;color:var(--green);font-weight:900;font-size:14px;}
+  .calCell.future{filter:grayscale(.9);opacity:.5;}
+  .calCell.future::after{content:"🔒";position:absolute;top:4px;right:5px;font-size:11px;}
+  .calCell.current{box-shadow:0 0 0 2px var(--gold),0 0 15px rgba(255,201,60,.7);animation:calpulse 1.3s infinite;}
+  @keyframes calpulse{50%{box-shadow:0 0 0 2px var(--gold),0 0 24px rgba(255,201,60,1);}}
+  .calCell.grand{grid-column:1 / -1;background:linear-gradient(180deg,#5a3fa0,#3b2c78);display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;}
+  .calCell.grand .d{position:absolute;top:5px;left:8px;}
+  .calCell.grand .ic{font-size:34px;}
+  .calCell.grand .rw{font-size:13px;}
+  #calBtn{border:none;border-radius:14px;padding:13px 30px;background:linear-gradient(180deg,#ffd95e,var(--gold-dk));color:#3a2800;font-weight:900;font-size:17px;box-shadow:0 4px 0 #9c6f0a;width:100%;margin-bottom:8px;}
+  #calBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #9c6f0a;}
+  #calBtn:disabled{filter:grayscale(.6) brightness(.8);}
+  #calClose{background:none;border:none;color:var(--dim);font-weight:800;font-size:13px;padding:4px;}
+  /* coin fly + confetti */
+  .flycoin{position:fixed;font-size:22px;z-index:30;pointer-events:none;transition:all .7s cubic-bezier(.4,0,.7,1);}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:40;}
+  #toast{
+    position:fixed;top:14px;left:50%;transform:translate(-50%,-80px);
+    background:var(--gold);color:#3a2800;font-weight:900;font-size:14px;
+    padding:10px 18px;border-radius:999px;z-index:50;transition:transform .35s cubic-bezier(.2,1.4,.4,1);
+    box-shadow:0 6px 16px rgba(0,0,0,.4);white-space:nowrap;
+  }
+  #toast.show{transform:translate(-50%,0);}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="builderOverlay">
+  <div id="bHead">
+    <button id="bBack">‹ Board</button>
+    <div id="bTitle">Kingdom Builder<small id="bRealmName"></small></div>
+  </div>
+  <div id="bScene">
+    <div id="bStars"></div>
+    <div id="bMoon" style="position:absolute;top:8px;right:12px;font-size:20px;">🌙</div>
+    <div id="bBuildings" style="position:absolute;bottom:12px;left:0;right:0;display:flex;align-items:flex-end;justify-content:center;gap:5px;line-height:1;"></div>
+  </div>
+  <div id="bStats">
+    <div class="bStat"><div class="v" id="bCoins">0</div><div class="l">🪙 Gold</div></div>
+    <div class="bStat"><div class="v" id="bArmy">0</div><div class="l">⚔️ Army</div></div>
+    <div class="bStat"><div class="v" id="bProg">0/5</div><div class="l">🔨 Tier</div></div>
+  </div>
+  <div id="bTrack"></div>
+</div>
+
+<div id="authOverlay">
+  <div id="authCard">
+    <div id="authLogo">👑</div>
+    <div id="authTitle">KING'S RISE</div>
+    <div id="authSub">Sign in or create your kingdom</div>
+    <div id="authTabs">
+      <button class="authTab active" id="tabLogin">Log In</button>
+      <button class="authTab" id="tabReg">Register</button>
+    </div>
+    <input id="authUser" placeholder="Kingdom name" autocomplete="username" autocapitalize="off" spellcheck="false">
+    <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
+    <div id="authErr"></div>
+    <button id="authSubmit">Enter Kingdom</button>
+    <button id="authGuest">Play as Guest</button>
+    <div id="authNote">New name? We'll create it. Returning? Use your password. Saved on this device — cross-device accounts come with the server build.</div>
+  </div>
+</div>
+
+<header>
+  <div class="pill">🪙 <span id="coins">0</span></div>
+  <div id="tierBanner">Camp</div>
+  <div class="pill" id="rollsPill">🎲 <span id="rolls">30</span><small id="rollTimer"></small></div>
+</header>
+
+<div id="kingdom">
+  <div id="stars"></div>
+  <div id="moon">🌙</div>
+  <div id="armyBadge">⚔️ <span id="soldiers">5</span></div>
+  <div id="villagers"></div>
+  <div id="buildings"></div>
+</div>
+
+<div id="progressWrap">
+  <div id="progressLabel"><span id="progName">NEXT: VILLAGE</span><span id="progCount">0 / 5 builds</span></div>
+  <div id="progressBar"><div id="progressFill"></div></div>
+</div>
+
+<div id="questWrap">
+  <div id="questTop"><span id="questText"></span><span id="questProg"></span></div>
+  <div id="questBar"><div id="questFill"></div></div>
+</div>
+
+<div id="boardWrap"><div id="board">
+  <div id="center">
+    <div id="die">🎲</div>
+    <div id="dieHint">TAP TO ROLL</div>
+    <div id="centerControls">
+      <button id="multi">x1</button>
+      <button id="buildBtn">🏗️ Builder<br><small id="buildCost">100</small></button>
+    </div>
+    <div id="lastReward"></div>
+  </div>
+  <div id="token"><span>👑</span></div>
+</div></div>
+
+<footer>
+  <button class="glow" id="dailyBtn">🎁 Daily Rewards</button>
+  <button id="socialBtn">🏆<span id="giftDot"></span></button>
+  <button id="gearBtn">⚙️</button>
+</footer>
+
+<div id="overlay"><div id="card">
+  <span id="cardEmoji">🎉</span>
+  <div id="museum"></div>
+  <div id="wheelBox"></div>
+  <div id="cardTitle"></div>
+  <div id="cardText"></div>
+  <div id="raidRow" style="display:none">
+    <span class="hut">🛖</span><span class="hut">🛖</span><span class="hut">🛖</span><span class="hut">🛖</span>
+  </div>
+  <div id="battle">
+    <div id="warfield"></div>
+    <div id="tactics"></div>
+  </div>
+  <div id="wheelBox"></div>
+  <button id="cardBtn">Collect</button>
+</div></div>
+
+<div id="calOverlay"><div id="calPanel">
+  <button id="calX" aria-label="Close">✕</button>
+  <div id="calTitle">👑 Daily Rewards</div>
+  <div id="calSub"></div>
+  <div id="calGrid"></div>
+  <button id="calBtn">Claim</button>
+</div></div>
+
+<div id="setOverlay"><div id="setPanel">
+  <div class="setTitle">⚙️ Settings</div>
+  <button class="ghost" id="soundBtn">🔊 Sound</button>
+  <div class="setLabel" id="setUser"></div>
+  <button class="ghost" id="signOutBtn">🚪 Sign Out</button>
+  <div id="devTools" style="display:none">
+    <div class="setLabel">Dev Tools</div>
+    <button class="ghost" id="refillBtn">＋ Free Rolls</button>
+    <button class="ghost" id="nextDayBtn">⏭️ Simulate Next Day</button>
+    <button class="ghost" id="resetBtn">♻️ Reset Kingdom</button>
+  </div>
+  <button id="setClose">Done</button>
+  <div id="verRow" style="text-align:center;font-size:10px;color:var(--dim);font-weight:700;padding:6px 0 0;">King's Rise · v0.9</div>
+</div></div>
+
+<div id="socOverlay"><div id="socPanel">
+  <button id="socX" aria-label="Close">✕</button>
+  <div id="socTitle">🏰 Kingdoms</div>
+  <div id="socTabs">
+    <button class="socTab active" id="tabBoard">🏆 Leaderboard</button>
+    <button class="socTab" id="tabGifts">🎁 Gifts</button>
+  </div>
+  <div id="socBody"></div>
+</div></div>
+
+<canvas id="confetti"></canvas>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =================================================================
+   FIREBASE CONFIG — paste yours here
+   ---------------------------------------------------------------
+   Firebase Console → Project settings → Your apps → Web app → Config.
+   Replace the placeholder object below with YOUR firebaseConfig.
+   While apiKey is "PASTE_ME", the game runs in local-device mode.
+   ================================================================= */
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD270zTZyroRhGFS94wtSLvLIP_JiW3E1A",
+  authDomain: "kingdom-rise-8e21e.firebaseapp.com",
+  projectId: "kingdom-rise-8e21e",
+  storageBucket: "kingdom-rise-8e21e.firebasestorage.app",
+  messagingSenderId: "18178986781",
+  appId: "1:18178986781:web:4659c69d6e2fc308af07f4",
+  measurementId: "G-4BMFK5DYQF"
+};
+
+window.__fbReady = new Promise(res=>{ window.__fbReadyRes = res; });
+if(!window.FIREBASE_CONFIG || window.FIREBASE_CONFIG.apiKey === "PASTE_ME"){
+  window.__fbReadyRes();                       // no config → local mode instantly
+} else {
+  setTimeout(()=>{ try{ window.__fbReadyRes(); }catch(e){} }, 6000);   // network fallback
+}
+function fbOn(){ return !!(window.FB && window.FB.auth); }
+let FB_UID = null;
+
+/* ================= STATE ================= */
+const S = {
+  coins: 0, rolls: 30, multi: 1,
+  pos: 0, tier: 0, builds: 0,
+  rolling: false, dailyClaimed: false, sound: true,
+  qi: 0, qp: 0, qDone: false, qReady: false, realm: 1,
+  realmCoins: 0, history: [], blessed: false, streak: 0, soldiers: 5,
+  lastRoll: Date.now(), raidStreak: 0,
+};
+let CURRENT_USER = null;
+const CUR_KEY = "kingsRise.currentUser";
+const ACCT_KEY = "kingsRise.accounts";
+const saveKeyFor = u => "kingsRise.save."+u;
+const ROLL_CAP = 50;
+const ROLL_MS = Math.round(3*60*60*1000 / 50);   // full 50-roll tank in ~3h (one roll ≈ every 3.6 min)
+function hashPw(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h.toString(16); }
+function getAccounts(){ try{ return JSON.parse(localStorage.getItem(ACCT_KEY)||"{}"); }catch(e){ return {}; } }
+function setAccounts(a){ try{ localStorage.setItem(ACCT_KEY, JSON.stringify(a)); }catch(e){} }
+const today = () => new Date().toISOString().slice(0,10);
+let _lastCloudPush = 0;
+function cloudPush(payload){
+  if(!fbOn() || !FB_UID || CURRENT_USER === "Guest") return;
+  const now = Date.now();
+  if(now - _lastCloudPush < 5000) return;              // throttle writes
+  _lastCloudPush = now;
+  try{
+    window.FB.setDoc(window.FB.doc(window.FB.db, "players", FB_UID),
+      { name: CURRENT_USER, might: myMight(), save: payload, updatedAt: now }, { merge: true })
+      .catch(e=>console.warn("cloud save failed", e));
+  }catch(e){}
+}
+function saveNow(){
+  if(!CURRENT_USER) return;
+  try{
+    const payload = JSON.stringify({
+      coins:S.coins, rolls:S.rolls, multi:S.multi, pos:S.pos,
+      tier:S.tier, builds:S.builds, realm:S.realm, realmCoins:S.realmCoins,
+      history:S.history, blessed:S.blessed, soldiers:S.soldiers,
+      qi:S.qi, qp:S.qp, qDone:S.qDone, streak:S.streak,
+      sound:S.sound, dailyClaimed:S.dailyClaimed, lastDay:today(), lastRoll:S.lastRoll, raidStreak:S.raidStreak,
+    });
+    localStorage.setItem(saveKeyFor(CURRENT_USER), payload);
+    cloudPush(payload);
+  }catch(e){}
+}
+let _saveT=null;
+function save(){ clearTimeout(_saveT); _saveT=setTimeout(saveNow,250); }
+function load(){
+  if(!CURRENT_USER) return false;
+  try{
+    const raw = localStorage.getItem(saveKeyFor(CURRENT_USER));
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    Object.assign(S, d);
+    S.rolling=false; S.qReady=false;
+    if(!Array.isArray(S.history)) S.history=[];
+    if(typeof S.streak!=="number") S.streak=0;
+    if(typeof S.soldiers!=="number") S.soldiers=5;
+    if(d.lastDay){
+      const gap = Math.round((Date.parse(today()) - Date.parse(d.lastDay)) / 86400000);
+      if(gap > 1) S.streak = 0;                        // missed a day → streak resets
+    }
+    if(d.lastDay !== today()) S.dailyClaimed=false;   // new calendar day → daily reward returns
+    if(!S.blessed && S.multi>5) S.multi=5;
+    if(typeof S.lastRoll!=="number") S.lastRoll = Date.now();
+    if(typeof S.raidStreak!=="number") S.raidStreak = 0;
+    accrueRolls();                                    // catch up rolls earned while away
+    return true;
+  }catch(e){ return false; }
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden) saveNow(); });
+window.addEventListener("pagehide", saveNow);
+
+const TIERS = ["Camp","Village","Town","City","Kingdom","Empire"];
+const TIER_BLD = ["⛺","🛖","🏠","🏘️","🏰","👑🏯"]; // legacy fallback
+function bldFor(tier, r){ const th=realmTheme(r); return (th.blds&&th.blds[tier]) ? th.blds[tier] : {e:TIER_BLD[tier]||"🏠", n:TIERS[tier]}; }
+const BUILDS_PER_TIER = 5;
+const REALM_SPAN = TIERS.length * BUILDS_PER_TIER;   // builds in one full realm (30)
+// One shared realm-growth factor drives BOTH costs and gold income, so they stay balanced.
+// Each realm multiplies the economy by 1.18^(30*0.85) ≈ 68×, so a new realm resumes almost
+// where the last left off (a slight breather), and numbers climb into millions then billions.
+function RG(){ return Math.pow(1.18, REALM_SPAN * 0.85 * (S.realm-1)); }
+const buildCost = () => Math.round(80 * Math.pow(1.18, S.tier*BUILDS_PER_TIER + S.builds) * RG());
+const MULTIS = [1,2,3,5];
+const BLESS_MULTIS = [1,2,3,5,10,20];
+
+/* ================= SOUND (WebAudio, no assets) ================= */
+let AC = null;
+function audio(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); return AC; }
+function tone(f, t, dur, type="sine", vol=.18){
+  if(!S.sound) return;
+  try{
+    const ac = audio(), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, ac.currentTime + t);
+    g.gain.setValueAtTime(0, ac.currentTime + t);
+    g.gain.linearRampToValueAtTime(vol, ac.currentTime + t + .01);
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + t + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(ac.currentTime + t); o.stop(ac.currentTime + t + dur + .05);
+  }catch(e){}
+}
+const sTick   = () => tone(880 + Math.random()*220, 0, .05, "square", .07);
+const sCoin   = () => { tone(1046,0,.09,"sine",.2); tone(1568,.07,.14,"sine",.2); };
+const sChest  = () => [523,659,784,1046].forEach((f,i)=>tone(f,i*.08,.18,"triangle",.22));
+const sRaid   = () => { tone(160,0,.15,"sawtooth",.25); tone(110,.06,.2,"sawtooth",.25); };
+const sFanfare= () => [523,659,784,1046,1318,1568].forEach((f,i)=>tone(f,i*.1,.3,"triangle",.25));
+const sBuild  = () => { tone(300,0,.06,"square",.15); tone(300,.12,.06,"square",.15); tone(420,.24,.12,"square",.18); };
+const sNo     = () => tone(180,0,.2,"sawtooth",.15);
+const buzz = p => { try{ navigator.vibrate && navigator.vibrate(p);}catch(e){} };
+
+/* ================= BOARD ================= */
+const N = 8; // 8x8 perimeter = 28 tiles
+const board = document.getElementById("board");
+const path = [];
+for(let c=0;c<N;c++) path.push([c, N-1]);          // bottom row →
+for(let r=N-2;r>=0;r--) path.push([N-1, r]);        // right col ↑
+for(let c=N-2;c>=0;c--) path.push([c, 0]);          // top row ←
+for(let r=1;r<=N-2;r++) path.push([0, r]);          // left col ↓
+const TILE_DEFS = [
+  {t:"go",    e:"🏁"}, {t:"coin",   e:"🪙"}, {t:"wheel",  e:"🎡"}, {t:"fortune",e:"🃏"},
+  {t:"chest", e:"🎁"}, {t:"coin",   e:"🪙"}, {t:"raid",   e:"⚔️"}, {t:"hazard", e:"🔥"},
+  {t:"dragon",e:"🐉"}, {t:"bonus",  e:"⭐"}, {t:"recruit",e:"🛡️"}, {t:"gem",   e:"💎"},
+  {t:"sprint",e:"🏇"}, {t:"fortune",e:"🃏"}, {t:"raid",   e:"⚔️"}, {t:"chest", e:"🎁"},
+  {t:"coin",  e:"🪙"}, {t:"wheel",  e:"🎡"}, {t:"dragon", e:"🐉"}, {t:"recruit",e:"🛡️"},
+  {t:"bless", e:"🔮"}, {t:"hazard", e:"🦠"}, {t:"raid",   e:"⚔️"}, {t:"fortune",e:"🃏"},
+  {t:"gem",   e:"💎"}, {t:"bonus",  e:"⭐"}, {t:"chest",  e:"🎁"}, {t:"coin",  e:"🪙"},
+];
+const BLESS_IDX = TILE_DEFS.findIndex(d=>d.t==="bless");
+const tileEls = [];
+function layoutBoard(){
+  const w = board.clientWidth, cell = w/N, pad = 3;
+  path.forEach(([cx,cy], i)=>{
+    let el = tileEls[i];
+    if(!el){
+      el = document.createElement("div");
+      el.className = "tile" + ((cx===0||cx===N-1)&&(cy===0||cy===N-1) ? " corner":"") + (TILE_DEFS[i].t==="hazard" ? " hazardtile":"");
+      el.textContent = TILE_DEFS[i].e;
+      board.appendChild(el); tileEls.push(el);
+    }
+    el.style.left = (cx*cell+pad)+"px"; el.style.top = (cy*cell+pad)+"px";
+    el.style.width = (cell-pad*2)+"px"; el.style.height = (cell-pad*2)+"px";
+  });
+  placeToken(false);
+}
+const token = document.getElementById("token");
+function placeToken(hop=true){
+  const w = board.clientWidth, cell = w/N;
+  const [cx,cy] = path[S.pos];
+  token.style.left = (cx*cell + cell/2)+"px";
+  token.style.top  = (cy*cell + cell/2)+"px";
+  if(hop){ token.classList.remove("hop"); void token.offsetWidth; token.classList.add("hop"); }
+}
+window.addEventListener("resize", layoutBoard);
+
+/* ================= UI HELPERS ================= */
+const $ = id => document.getElementById(id);
+function refresh(){
+  $("coins").textContent = S.coins.toLocaleString();
+  $("rolls").textContent = S.rolls + (S.blessed ? " 🔮" : "");
+  updateRollTimer();
+  $("soldiers").textContent = S.soldiers;
+  $("tierBanner").textContent = TIERS[S.tier] + " · " + realmTheme().name;
+  $("buildCost").textContent = buildCost().toLocaleString();
+  const canBuild = S.coins >= buildCost();
+  $("buildBtn").disabled = !canBuild;
+  $("buildBtn").classList.toggle("ready", canBuild);
+  const canRoll = !S.rolling && S.rolls >= S.multi;
+  $("die").classList.toggle("ready", canRoll);
+  $("die").classList.toggle("cant", !S.rolling && S.rolls < S.multi);
+  $("dieHint").textContent = S.rolling ? "ROLLING…" : (S.rolls < S.multi ? "NEED "+S.multi+" 🎲" : "TAP TO ROLL  ·  −"+S.multi+" 🎲");
+  $("multi").textContent = "x"+S.multi;
+  $("multi").classList.toggle("hot", S.multi>1);
+  $("multi").classList.toggle("ultra", S.multi>5);
+  const nxt = TIERS[Math.min(S.tier+1, TIERS.length-1)];
+  $("progName").textContent = S.tier >= TIERS.length-1 ? "NEXT: NEW REALM 🌍" : "NEXT: "+nxt.toUpperCase();
+  $("progCount").textContent = S.builds+" / "+BUILDS_PER_TIER+" builds";
+  $("progressFill").style.width = (S.builds/BUILDS_PER_TIER*100)+"%";
+  save();
+}
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._x); t._x = setTimeout(()=>t.classList.remove("show"), 1700);
+}
+function showReward(txt){
+  const r = $("lastReward"); r.textContent = txt; r.classList.add("show");
+  clearTimeout(r._x); r._x = setTimeout(()=>r.classList.remove("show"), 1800);
+}
+function flyCoins(n, fromEl){
+  const src = (fromEl||$("die")).getBoundingClientRect();
+  const dst = $("coins").getBoundingClientRect();
+  for(let i=0;i<Math.min(n,8);i++){
+    const c = document.createElement("div");
+    c.className = "flycoin"; c.textContent = "🪙";
+    c.style.left = (src.left+src.width/2 + (Math.random()*40-20))+"px";
+    c.style.top  = (src.top+src.height/2 + (Math.random()*30-15))+"px";
+    document.body.appendChild(c);
+    setTimeout(()=>{ c.style.left = dst.left+"px"; c.style.top = dst.top+"px"; c.style.opacity = ".2"; c.style.fontSize = "12px"; }, 30+i*60);
+    setTimeout(()=>c.remove(), 900+i*60);
+  }
+}
+
+/* ================= KINGDOM SCENE ================= */
+function initStars(){
+  const s = $("stars");
+  for(let i=0;i<26;i++){
+    const d = document.createElement("div"); d.className = "star";
+    d.style.left = Math.random()*100+"%"; d.style.top = Math.random()*55+"%";
+    d.style.animationDelay = (Math.random()*3)+"s"; s.appendChild(d);
+  }
+}
+function redrawKingdom(newBuild=false){
+  const b = $("buildings"); b.innerHTML = "";
+  for(let r=1;r<S.realm;r++){                       // monuments from past realms survive
+    const m = document.createElement("span");
+    m.className = "bld up monument"; m.textContent = "🏛️";
+    m.style.fontSize = "26px"; m.style.cursor = "pointer";
+    m.onclick = ()=>showMuseum(r);
+    b.appendChild(m);
+  }
+  for(let t=0;t<=S.tier;t++){
+    const count = t < S.tier ? 3 : S.builds;        // condense finished tiers
+    for(let i=0;i<count;i++){
+      const d = document.createElement("span");
+      d.className = "bld up"; d.textContent = bldFor(t).e;
+      d.style.fontSize = (19 + t*3) + "px";         // buildings grow taller by tier
+      b.appendChild(d);
+    }
+  }
+  const ws = Math.max(.6, 1 - (S.realm-1)*.07);   // camera pulls back each realm
+  b.style.transform = "scale("+ws+")";
+  b.style.transformOrigin = "bottom center";
+  updateVillagers();
+  if(newBuild && b.lastChild) constructAnim(b.lastChild);
+}
+function constructAnim(el){
+  const bld = el.textContent;
+  el.textContent = "🏗️"; el.classList.add("scaffold");
+  dust(el);
+  setTimeout(()=>{
+    el.classList.remove("scaffold"); el.textContent = bld;
+    el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+    dust(el);
+  }, 650);
+}
+function dust(el){
+  const k = $("kingdom"), kr = k.getBoundingClientRect(), er = el.getBoundingClientRect();
+  for(let i=0;i<3;i++){
+    const pf = document.createElement("span");
+    pf.className = "dust"; pf.textContent = "💨";
+    pf.style.left = (er.left - kr.left + Math.random()*24 - 8) + "px";
+    pf.style.bottom = "12px";
+    k.appendChild(pf);
+    setTimeout(()=>pf.remove(), 850);
+  }
+}
+function updateVillagers(){
+  const layer = $("villagers"); layer.innerHTML = "";
+  const n = Math.min(2 + (S.tier*2) + Math.floor(S.builds/2) + (S.realm-1)*2, 12);
+  for(let i=0;i<n;i++){
+    const v = document.createElement("span");
+    v.className = "villager"; v.textContent = Math.random()<.5 ? "🚶" : "🧍";
+    v.style.left = (6 + Math.random()*84) + "%";
+    v.style.animationDuration = (3 + Math.random()*4) + "s";
+    v.style.animationDelay = (-Math.random()*4) + "s";
+    layer.appendChild(v);
+  }
+}
+function glowKingdom(){
+  const g = document.createElement("div");
+  g.className = "kglow"; $("kingdom").appendChild(g);
+  setTimeout(()=>g.remove(), 950);
+}
+
+function showMuseum(r){
+  const snap = S.history[r-1]; if(!snap) return;
+  sChest(); buzz(30);
+  const card = $("card");
+  card.style.background = "linear-gradient(180deg,"+snap.theme.panel+" 0%,"+snap.theme.night+" 100%)";
+  $("cardEmoji").style.display = "none";
+  $("raidRow").style.display = "none";
+  const mus = $("museum"); mus.style.display = "flex"; mus.innerHTML = "";
+  for(let t=0;t<TIERS.length;t++){
+    const n = t === TIERS.length-1 ? 1 : 2;
+    for(let i=0;i<n;i++){
+      const d = document.createElement("span");
+      d.textContent = bldFor(t, r).e;
+      d.style.fontSize = (15 + t*4) + "px";
+      mus.appendChild(d);
+    }
+  }
+  $("cardTitle").textContent = (snap.theme.name||("Realm "+r))+" — The Old Empire";
+  $("cardText").textContent = "🪙 "+snap.coins.toLocaleString()+" earned in this age · preserved forever";
+  $("cardBtn").textContent = "Return"; $("cardBtn").style.display = "";
+  cardCb = null;
+  $("overlay").classList.add("show");
+  card.classList.add("zoomdeep");
+  setTimeout(()=>card.classList.remove("zoomdeep"), 650);
+}
+
+/* ================= CONFETTI ================= */
+const cv = $("confetti"), cx2 = cv.getContext("2d");
+let parts = [], confAnim = null;
+function confetti(big=false){
+  cv.width = innerWidth; cv.height = innerHeight;
+  const n = big?140:60, cols = ["#ffc93c","#ff5c4d","#54d98c","#6fb1ff","#d98cff","#ffffff"];
+  for(let i=0;i<n;i++) parts.push({
+    x:Math.random()*cv.width, y:-20-Math.random()*160,
+    vx:(Math.random()-.5)*3, vy:2+Math.random()*4,
+    s:5+Math.random()*6, r:Math.random()*Math.PI, vr:(Math.random()-.5)*.3,
+    c:cols[(Math.random()*cols.length)|0],
+  });
+  if(!confAnim) confAnim = requestAnimationFrame(confStep);
+}
+function confStep(){
+  cx2.clearRect(0,0,cv.width,cv.height);
+  parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.r+=p.vr;
+    cx2.save(); cx2.translate(p.x,p.y); cx2.rotate(p.r);
+    cx2.fillStyle = p.c; cx2.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6); cx2.restore();
+  });
+  parts = parts.filter(p=>p.y < cv.height+30);
+  confAnim = parts.length ? requestAnimationFrame(confStep) : (cx2.clearRect(0,0,cv.width,cv.height), null);
+}
+
+/* ================= OVERLAY / CARD ================= */
+let cardCb = null;
+function showCard(emoji, title, text, btn="Collect", raid=false, cb=null){
+  $("museum").style.display = "none";
+  { const _b=document.getElementById("battle"); if(_b) _b.style.display="none"; }
+  { const _w=document.getElementById("wheelBox"); if(_w) _w.style.display="none"; }
+  { const _w=document.getElementById("wheelBox"); if(_w) _w.style.display="none"; }
+  $("cardEmoji").style.display = "";
+  $("cardEmoji").onclick = null; $("cardEmoji").onpointerdown = null; $("cardEmoji").style.cursor = "";
+  $("card").style.background = "";
+  $("cardEmoji").textContent = emoji;
+  $("cardEmoji").classList.remove("bounce"); void $("cardEmoji").offsetWidth;
+  $("cardEmoji").classList.add("bounce");
+  $("cardTitle").textContent = title;
+  $("cardText").textContent = text;
+  $("cardBtn").textContent = btn;
+  $("cardBtn").style.display = raid ? "none" : "";
+  $("raidRow").style.display = raid ? "flex" : "none";
+  cardCb = cb;
+  $("overlay").classList.add("show");
+}
+$("cardBtn").addEventListener("click", ()=>{
+  $("overlay").classList.remove("show");
+  const cb = cardCb; cardCb = null; if(cb) cb();
+  S.rolling = false; refresh(); // failsafe: closing a card always frees the turn
+});
+
+/* ================= QUESTS ================= */
+const QUESTS = [
+  {type:"roll",  goal:8,    desc:"Roll the dice 8 times",   r:{coins:400}},
+  {type:"chest", goal:2,    desc:"Open 2 Royal Chests",     r:{rolls:8}},
+  {type:"raid",  goal:2,    desc:"Raid 2 rival villages",   r:{coins:600}},
+  {type:"build", goal:3,    desc:"Build 3 structures",      r:{rolls:10}},
+  {type:"gem",   goal:2,    desc:"Collect 2 gems",          r:{coins:500}},
+  {type:"coins", goal:1500, desc:"Collect 1,500 coins",     r:{rolls:12}},
+];
+function updateQuest(){
+  const q = QUESTS[S.qi];
+  const fmt = v => q.type==="coins" ? v.toLocaleString() : v;
+  $("questText").textContent = "🎯 " + q.desc;
+  $("questProg").textContent = S.qDone ? "DONE!" : fmt(S.qp)+" / "+fmt(q.goal);
+  $("questFill").style.width = Math.min(100, S.qp/q.goal*100)+"%";
+}
+function questProgress(type, amt){
+  const q = QUESTS[S.qi];
+  if(S.qDone || q.type !== type) return;
+  S.qp += amt;
+  if(S.qp >= q.goal){ S.qp = q.goal; S.qDone = true; S.qReady = true; maybeQuestReward(); }
+  updateQuest();
+}
+function maybeQuestReward(){
+  if(!S.qReady || S.rolling) return;
+  S.qReady = false;
+  const q = QUESTS[S.qi], parts = [];
+  if(q.r.coins) parts.push("+"+q.r.coins.toLocaleString()+" 🪙");
+  if(q.r.rolls) parts.push("+"+q.r.rolls+" 🎲");
+  sChest(); confetti(); buzz([60,50,90]);
+  showCard("🎯","Quest Complete!", q.desc+"  →  "+parts.join("  "), "Claim", false, ()=>{
+    if(q.r.coins){ S.coins += q.r.coins; flyCoins(6); sCoin(); }
+    if(q.r.rolls) S.rolls += q.r.rolls;
+    S.qi = (S.qi+1) % QUESTS.length; S.qp = 0; S.qDone = false;
+    refresh(); updateQuest();
+    toast("🎯 New quest: "+QUESTS[S.qi].desc);
+  });
+}
+
+/* ================= REWARD RESOLUTION ================= */
+function gain(n, fromEl){
+  S.coins += n; S.realmCoins += n;
+  flyCoins(Math.ceil(n/40) + (S.multi>1 ? S.multi : 0), fromEl);
+  sCoin();
+  if(S.multi>=3){ board.classList.remove("shake"); void board.offsetWidth; board.classList.add("shake"); }
+  questProgress("coins", n);
+  refresh();
+}
+function resolveTile(){
+  const def = TILE_DEFS[S.pos], m = S.multi, t = S.tier+1;
+  const tag = m>1 ? "  ×"+m+"!" : "";
+  const el = tileEls[S.pos];
+  if(def.t==="coin"){
+    const n = Math.round((20 + ((Math.random()*4)|0)*10) * m * t * RG());
+    gain(n, el); showReward("+"+n.toLocaleString()+" 🪙"+tag); buzz(30);
+  } else if(def.t==="gem"){
+    const n = Math.round(80 * m * t * RG());
+    gain(n, el); showReward("💎 +"+n.toLocaleString()+" 🪙"+tag); buzz([30,40,30]); questProgress("gem",1);
+  } else if(def.t==="bonus"){
+    const extra = 2*m;
+    S.rolls += extra; refresh();
+    showReward("⭐ +"+extra+" rolls!"+tag); sChest(); buzz([30,40,30]);
+  } else if(def.t==="recruit"){
+    const n = 3 + S.tier*2;
+    S.soldiers += n; showReward("🛡️ +"+n+" soldiers"); sBuild(); buzz([20,30,40]);
+  } else if(def.t==="go"){
+    const n = Math.round(50*m*t*RG()); gain(n, el); showReward("🏁 +"+n.toLocaleString()+" 🪙"+tag);
+  } else if(def.t==="sprint"){
+    const hop = 1 + ((Math.random()*3)|0);
+    showReward("🏇 Sprint! +"+hop+" tiles"); sTick(); buzz([20,20,40]);
+    setTimeout(()=>moveToken(hop), 550);
+    return;
+  } else if(def.t==="bless"){
+    S.blessed = true; refreshBless(); refresh();
+    sChest(); buzz([40,30,40,30,70]);
+    showCard("🔮",tileName("bless")+"!","The dice ceiling shatters! Tap the × chip up to ×10 or ×20 — until you circle back past this tile.","Blessed!", false, endTurn);
+    return;
+  } else if(def.t==="wheel"){
+    startWheel(m, t);
+    return;
+  } else if(def.t==="dragon"){
+    startDragon(m*t);
+    return;
+  } else if(def.t==="fortune"){
+    startFortune(m, t);
+    return;
+  } else if(def.t==="hazard"){
+    startHazard();
+    return;
+  } else if(def.t==="chest"){
+    sChest(); buzz([40,60,40]);
+    const n = Math.round((150 + ((Math.random()*6)|0)*25) * m * t * RG());
+    showCard("🎁",tileName("chest")+"!", m>1 ? "×"+m+" multiplier boost!" : "", "Open", false, ()=>{
+      gain(n); showReward("+"+n+" 🪙"); confetti(); questProgress("chest",1);
+      showCard("👑","+"+n.toLocaleString()+" Coins!","The kingdom grows richer.","Collect", false, endTurn);
+    });
+    return;
+  } else if(def.t==="raid"){
+    startRaid(m*t);
+    return;
+  }
+  endTurn();
+}
+const RIVALS = [
+  {n:"King Alaric",  a:"👑"}, {n:"Lady Morwen",  a:"🧝‍♀️"},
+  {n:"Baron Grimble",a:"🧔"}, {n:"Queen Sable",  a:"👸"},
+  {n:"Chief Rokka",  a:"🪓"}, {n:"Duke Fenwick", a:"🦊"},
+];
+const TACTICS = [
+  {key:"attack", e:"⚔️", label:"Attack"},
+  {key:"flank",  e:"🏇", label:"Flank"},
+  {key:"defend", e:"🛡️", label:"Hold Line"},
+  {key:"siege",  e:"🏰", label:"Siege"},
+];
+function sClash(){ tone(210,0,.06,"square",.2); tone(150,.05,.09,"sawtooth",.2); tone(90,.11,.13,"sawtooth",.18); }
+function startRaid(scale){
+  sRaid(); buzz([60,40,60]);
+  const rv = RIVALS[(Math.random()*RIVALS.length)|0];
+  const army = Math.max(1, S.soldiers);
+  const order=[0,1,2,3];
+  for(let i=3;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
+  const winners = order.slice(0,2);                 // 2 of 4 tactics win → honest 50%
+  const streakMult = 1 + Math.min(S.raidStreak,5)*0.2;
+  const scoutGold = Math.round(40*(S.tier+1)*RG());
+  const ctx = { rv, army, winners, scale, streakMult, scoutGold, scouted:false, hintIdx:-1 };
+
+  showCard(rv.a, "War Call — "+rv.n+"!", "", "", false, null);
+  $("cardBtn").style.display="none";
+  $("battle").style.display="block";
+  const wf=$("warfield"); wf.className="";
+  const troops = "🪖".repeat(Math.min(7, Math.max(2, Math.round(army/6))));
+  wf.innerHTML = '<span class="army">'+troops+'</span><span class="enemy">🏰</span><span class="proj">💥</span><span class="clash">💥</span>';
+  renderCouncil(ctx);
+}
+function lootPreview(ctx, committed){
+  return Math.round((60 + committed*8) * ctx.scale * RG() * ctx.streakMult);
+}
+function renderCouncil(ctx){
+  const streakLine = S.raidStreak>0 ? '<div style="color:#ff8a5c;font-weight:900;margin-bottom:4px">🔥 Win streak: '+S.raidStreak+'  (+'+Math.round((ctx.streakMult-1)*100)+'% loot)</div>' : '';
+  const hintLine = ctx.scouted ? '<div style="color:#b78cff;font-weight:800;margin-bottom:4px">🔍 Scouts whisper: <b>'+TACTICS[ctx.hintIdx].label+'</b> may catch them off guard…</div>' : '';
+  $("cardText").innerHTML = streakLine + hintLine +
+    '<div style="font-weight:800">Your army: ⚔️'+ctx.army+'  ·  choose your assault</div>';
+  const box=$("tactics"); box.innerHTML="";
+  const commits = [
+    {label:"Small Party", frac:0.25},
+    {label:"Raiding Force", frac:0.5},
+    {label:"Full Assault", frac:1.0},
+  ];
+  commits.forEach(c=>{
+    const committed = Math.max(1, Math.round(ctx.army*c.frac));
+    const loot = lootPreview(ctx, committed);
+    const b=document.createElement("button"); b.className="tactic";
+    b.innerHTML='<span class="te">⚔️'+committed+'</span>'+c.label+'<br><small style="color:var(--gold)">~'+loot.toLocaleString()+' 🪙</small>';
+    b.onclick=()=>{ sTick(); buzz(20); ctx.committed=committed; renderTactics(ctx); };
+    box.appendChild(b);
+  });
+  const scout=document.createElement("button"); scout.className="tactic"; scout.style.gridColumn="1 / -1";
+  scout.style.background="rgba(183,124,255,.18)";
+  if(ctx.scouted){ scout.disabled=true; scout.innerHTML='🔍 Scouted'; }
+  else scout.innerHTML='<span class="te">🔍</span>Scout — '+ctx.scoutGold.toLocaleString()+' 🪙 + 2 ⚔️ <small>(vague intel)</small>';
+  scout.onclick=()=>{
+    if(ctx.scouted) return;
+    if(S.coins < ctx.scoutGold || S.soldiers < 2){ sNo(); toast("Not enough to scout (need gold + 2 soldiers)"); return; }
+    S.coins -= ctx.scoutGold; S.soldiers -= 2; ctx.army = Math.max(1, S.soldiers);
+    ctx.scouted = true;
+    // 60% point to a real winning tactic, 40% mislead
+    ctx.hintIdx = (Math.random()<0.6)
+      ? ctx.winners[(Math.random()*ctx.winners.length)|0]
+      : [0,1,2,3].filter(k=>!ctx.winners.includes(k))[(Math.random()*2)|0];
+    sChest(); buzz(30); refresh(); renderCouncil(ctx);
+  };
+  box.appendChild(scout);
+}
+function renderTactics(ctx){
+  const hintLine = ctx.scouted ? '<div style="color:#b78cff;font-weight:800;margin-bottom:4px">🔍 Intel: try <b>'+TACTICS[ctx.hintIdx].label+'</b>?</div>' : '';
+  $("cardText").innerHTML = hintLine + '<div style="font-weight:800">Committed: ⚔️'+ctx.committed+'  ·  pick your tactic!</div>';
+  const box=$("tactics"); box.innerHTML="";
+  let done=false;
+  TACTICS.forEach((tac,idx)=>{
+    const b=document.createElement("button");
+    b.className="tactic"; b.innerHTML='<span class="te">'+tac.e+'</span>'+tac.label;
+    b.onclick=()=>{
+      if(done) return; done=true;
+      Array.from(box.children).forEach(c=>{ c.disabled=true; });
+      b.style.boxShadow="0 0 0 2px var(--gold), inset 0 -3px 0 rgba(0,0,0,.35)";
+      sTick(); buzz(20);
+      resolveBattle(idx, tac, ctx);
+    };
+    box.appendChild(b);
+  });
+}
+function resolveBattle(idx, tac, ctx){
+  const wf=$("warfield");
+  wf.classList.add("anim-"+tac.key);
+  setTimeout(()=>{ const c=wf.querySelector(".clash"); if(c) c.classList.add("go"); sClash(); buzz([50,40,80]); }, 950);
+  setTimeout(()=>{
+    const win = ctx.winners.includes(idx);
+    if(win){
+      const loot = lootPreview(ctx, ctx.committed);
+      const captured = 2 + S.tier + Math.round(ctx.committed*0.1);
+      gain(loot); S.soldiers += captured; S.raidStreak++;
+      const streakNote = S.raidStreak>=2 ? "  🔥 "+S.raidStreak+" in a row!" : "";
+      showReward("⚔️ Victory! +"+loot.toLocaleString()+" 🪙");
+      confetti(); sFanfare(); buzz([80,50,80,50,120]); refresh(); questProgress("raid",1);
+      showCard("🏆","Victory over "+ctx.rv.n+"!",
+        "The "+tac.label+" broke their line!  +"+loot.toLocaleString()+" 🪙  ·  +"+captured+" ⚔️ captured"+streakNote,
+        "Collect", false, endTurn);
+    }else{
+      const maxLoss = Math.max(0, S.soldiers - Math.max(1, Math.ceil(S.soldiers*0.4)));
+      const cas = Math.min(Math.round(ctx.committed*0.4) + 1, maxLoss);
+      S.soldiers -= cas; S.raidStreak = 0;
+      sNo(); buzz([120,60,120]);
+      showReward(cas>0 ? "💥 Defeat! −"+cas+" ⚔️" : "💥 Defeat! Line held.");
+      refresh(); questProgress("raid",1);
+      showCard("🩸","Defeat at "+ctx.rv.n+"'s gate",
+        (cas>0 ? "The "+tac.label+" was countered — you lost "+cas+" soldiers. " : "Your line barely held. ")+"Your win streak resets. Regroup and strike again.",
+        "Retreat", false, endTurn);
+    }
+  }, 1350);
+}
+
+function refreshBless(){ tileEls[BLESS_IDX] && tileEls[BLESS_IDX].classList.toggle("blessed", S.blessed); }
+
+const WHEEL = [
+  {e:"🪙", d:"Coins",     f:(m,t)=>({coins:150*m*t})},
+  {e:"💰", d:"Big Coins", f:(m,t)=>({coins:400*m*t})},
+  {e:"🎲", d:"Rolls",     f:(m,t)=>({rolls:4*m})},
+  {e:"💎", d:"Gem Prize", f:(m,t)=>({coins:250*m*t})},
+  {e:"👑", d:"JACKPOT",   f:(m,t)=>({coins:800*Math.min(m,10)*t})},
+];
+const WHEEL_W = [30,24,24,20,6];
+function weightedWheelIndex(){
+  const total = WHEEL_W.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let k=0;k<WHEEL.length;k++){ if((r-=WHEEL_W[k])<0) return k; }
+  return 0;
+}
+function buildWheelSVG(){
+  const R=94, cx=100, cy=100, LR=58, N=WHEEL.length, seg=360/N;
+  const COLORS=["#ffcf5c","#ff9a5c","#6fb1ff","#b78cff","#ff6b6b","#54d98c"];
+  let wedges="", labels="";
+  for(let k=0;k<N;k++){
+    const c=-90 + k*seg;
+    const a0=(c-seg/2)*Math.PI/180, a1=(c+seg/2)*Math.PI/180, cr=c*Math.PI/180;
+    const x0=cx+R*Math.cos(a0), y0=cy+R*Math.sin(a0);
+    const x1=cx+R*Math.cos(a1), y1=cy+R*Math.sin(a1);
+    wedges+='<path d="M'+cx+' '+cy+' L'+x0.toFixed(1)+' '+y0.toFixed(1)+' A'+R+' '+R+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)+' Z" fill="'+COLORS[k%COLORS.length]+'" stroke="#241a4d" stroke-width="2"/>';
+    const lx=cx+LR*Math.cos(cr), ly=cy+LR*Math.sin(cr);
+    labels+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" font-size="26" text-anchor="middle" dominant-baseline="central">'+WHEEL[k].e+'</text>';
+  }
+  return '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="100" r="97" fill="#241a4d"/>'+
+    '<g id="wheelG" transform="rotate(0 100 100)">'+wedges+labels+
+    '<circle cx="100" cy="100" r="15" fill="#241a4d" stroke="#ffd95e" stroke-width="3"/></g>'+
+    '<polygon id="wheelPointer" points="100,32 87,5 113,5" fill="#ffd95e" stroke="#241a4d" stroke-width="2"/>'+
+    '</svg>';
+}
+function pulsePointer(){
+  const pt=$("wheelBox").querySelector("#wheelPointer");
+  if(!pt) return;
+  pt.classList.remove("pulse"); setTimeout(()=>pt.classList.add("pulse"),0);
+  setTimeout(()=>pt.classList.remove("pulse"),320);
+}
+function spinWheelTo(target, done){
+  const g=$("wheelBox").querySelector("#wheelG");
+  const N=WHEEL.length, seg=360/N;
+  const finalRot = 360*4 - target*seg;
+  const dur=3200, start=performance.now();
+  const JIDX=WHEEL.findIndex(w=>w.d==="JACKPOT");
+  const ease=t=>1-Math.pow(1-t,5);
+  let lastTop=-1;
+  function frame(now){
+    let pr=(now-start)/dur; if(pr>1)pr=1;
+    const rot=finalRot*ease(pr);
+    g.setAttribute("transform","rotate("+rot.toFixed(2)+" 100 100)");
+    const top=Math.round((((-rot/seg)%N)+N)%N)%N;
+    if(top!==lastTop){
+      lastTop=top;
+      if(pr>0.5){
+        if(top===JIDX){ tone(1046,0,.13,"triangle",.22); pulsePointer(); buzz(30); }
+        else sTick();
+      }
+    }
+    if(pr<1) requestAnimationFrame(frame); else done();
+  }
+  requestAnimationFrame(frame);
+}
+function startWheel(m, t){
+  sChest(); buzz([30,30,30]);
+  showCard("🎡",tileName("wheel")+"!","Give it a spin!","SPIN!", false, null);
+  $("cardEmoji").style.display="none";
+  const wb=$("wheelBox"); wb.style.display="block"; wb.innerHTML=buildWheelSVG();
+  cardCb = ()=>{
+    $("overlay").classList.add("show");
+    $("cardBtn").style.display="none";
+    const target = weightedWheelIndex();
+    spinWheelTo(target, ()=>landWheel(WHEEL[target], m, t));
+  };
+}
+function landWheel(w, m, t){
+  const prize = w.f(m, t), parts = [];
+  if(prize.coins){ prize.coins=Math.round(prize.coins*RG()); gain(prize.coins); parts.push("+"+prize.coins.toLocaleString()+" 🪙"); }
+  if(prize.rolls){ S.rolls += prize.rolls; parts.push("+"+prize.rolls+" 🎲"); }
+  if(w.d==="JACKPOT"){ sFanfare(); confetti(); buzz([80,50,80,50,120]); }
+  else { sCoin(); buzz(40); }
+  refresh();
+  showCard(w.e, w.d + "!", parts.join("  "), "Collect", false, endTurn);
+}
+function startDragon(scale){
+  sRaid(); buzz([80,40,80]);
+  let taps=0, loot=0, done=false;
+  const perTap = Math.round(Math.max(15, 12*scale) * RG());
+  showCard("🐉","Dragon's Hoard!","Tap the dragon FAST to snatch its gold!","",false,null);
+  $("cardBtn").style.display="none";
+  const em=$("cardEmoji"); em.style.cursor="pointer";
+  em.onpointerdown=()=>{
+    if(done) return;
+    taps++; loot+=perTap; sCoin(); buzz(10);
+    em.classList.remove("hit"); void em.offsetWidth; em.classList.add("hit");
+    $("cardText").textContent="🪙 "+loot.toLocaleString()+"  ·  keep tapping!";
+  };
+  let t=3.0;
+  const timer=setInterval(()=>{
+    t-=0.1;
+    if(t<=0){
+      clearInterval(timer); done=true; em.onpointerdown=null; em.style.cursor="";
+      $("overlay").classList.remove("show");
+      if(loot>0){ gain(loot); showReward("🐉 +"+loot.toLocaleString()+" 🪙"); confetti(); }
+      showCard("🐉", taps>=20?"Hoard Plundered!":"Dragon Loot!",
+        "You grabbed "+loot.toLocaleString()+" 🪙 in "+taps+" taps!","Collect",false,endTurn);
+    }
+  },100);
+}
+const FORTUNE = [
+  {w:20, e:"🪙", t:"Merchant's Gift",  good:true, f:(m,tt)=>({coins:150*m*tt, msg:"A trader shares the wealth!"})},
+  {w:16, e:"🎲", t:"Hidden Cache",     good:true, f:(m,tt)=>({rolls:4,        msg:"You found a stash of dice!"})},
+  {w:14, e:"🎉", t:"Village Festival", good:true, f:(m,tt)=>({coins:110*m*tt, msg:"The people celebrate you!"})},
+  {w:12, e:"👑", t:"Royal Favor",      good:true, f:(m,tt)=>({coins:220*m*tt, rolls:2, msg:"The crown rewards loyalty!"})},
+  {w:8,  e:"🛡️", t:"Sellswords",       good:true, f:(m,tt)=>({soldiers:3+tt,  msg:"Mercenaries join your banner!"})},
+  {w:7,  e:"🔮", t:"Mystic Scroll",    good:true, f:(m,tt)=>({bless:true,      msg:"The dice ceiling shatters — ×10/×20!"})},
+  {w:5,  e:"💎", t:"Buried Treasure",  good:true, f:(m,tt)=>({coins:600*m*tt, jackpot:true, msg:"A legendary hoard!"})},
+  {w:8,  e:"💸", t:"Tax Collector",    good:false, f:(m,tt)=>({loseCoins:0.15, msg:"The collectors take their cut."})},
+  {w:6,  e:"🗡️", t:"Desertion",        good:false, f:(m,tt)=>({loseSoldiers:2+tt, msg:"Soldiers slip away in the night."})},
+  {w:5,  e:"🌫️", t:"Ill Omen",         good:false, f:(m,tt)=>({loseRolls:2,   msg:"A dark cloud steals your luck."})},
+];
+function startFortune(m, t){
+  sTick(); buzz(20);
+  showCard("🃏",tileName("fortune"),"Tap DRAW to reveal your fate!","Draw",false,()=>{
+    const total=FORTUNE.reduce((a,f)=>a+f.w,0);
+    let r=Math.random()*total, pick=FORTUNE[0];
+    for(const f of FORTUNE){ if((r-=f.w)<0){ pick=f; break; } }
+    const o=pick.f(m,t), parts=[];
+    if(o.coins){ o.coins=Math.round(o.coins*RG()); gain(o.coins); parts.push("+"+o.coins.toLocaleString()+" 🪙"); }
+    if(o.rolls){ S.rolls+=o.rolls; parts.push("+"+o.rolls+" 🎲"); }
+    if(o.soldiers){ S.soldiers+=o.soldiers; parts.push("+"+o.soldiers+" ⚔️"); }
+    if(o.bless){ S.blessed=true; refreshBless(); }
+    if(o.loseCoins){ const L=Math.round(S.coins*o.loseCoins); S.coins=Math.max(0,S.coins-L); parts.push("−"+L.toLocaleString()+" 🪙"); }
+    if(o.loseSoldiers){ const L=Math.min(S.soldiers,o.loseSoldiers); S.soldiers-=L; parts.push("−"+L+" ⚔️"); }
+    if(o.loseRolls){ const L=Math.min(S.rolls,o.loseRolls); S.rolls-=L; parts.push("−"+L+" 🎲"); }
+    if(o.jackpot){ sFanfare(); confetti(); buzz([80,50,120]); }
+    else if(pick.good){ sCoin(); }
+    else { sNo(); buzz([100,50,100]); board.classList.remove("shake"); void board.offsetWidth; board.classList.add("shake"); }
+    refresh();
+    showCard(pick.e, pick.t+(pick.good?"!":"..."), o.msg+(parts.length?"  "+parts.join("  "):""), pick.good?"Collect":"Endure", false, endTurn);
+  });
+}
+const DISASTERS = [
+  {e:"🔥", t:"Fire!",    d:"A blaze sweeps through your village.", kind:"coins"},
+  {e:"🦠", t:"Plague!",  d:"Sickness spreads among the people.",   kind:"rolls"},
+  {e:"🌊", t:"Flood!",   d:"The river bursts and floods the fields.", kind:"coins"},
+  {e:"🐀", t:"Bandits!", d:"Thieves slip past the gates at night.", kind:"coins"},
+];
+function startHazard(){
+  const dz = DISASTERS[(Math.random()*DISASTERS.length)|0];
+  sNo(); buzz([120,40,120]);
+  board.classList.remove("shake"); void board.offsetWidth; board.classList.add("shake");
+  let line;
+  if(dz.kind==="coins"){
+    const loss = Math.min(Math.round(S.coins*0.12), Math.round(300*(S.tier+1)*RG()));
+    S.coins = Math.max(0, S.coins - loss);
+    line = loss>0 ? "−"+loss.toLocaleString()+" 🪙" : "The treasury held strong!";
+    showReward("💥 "+(loss>0 ? "−"+loss+" 🪙" : "phew!"));
+  } else {
+    const loss = Math.min(S.rolls, 2 + ((Math.random()*2)|0));
+    S.rolls -= loss;
+    line = loss>0 ? "−"+loss+" 🎲" : "No rolls lost!";
+    showReward("💥 "+(loss>0 ? "−"+loss+" 🎲" : "phew!"));
+  }
+  refresh();
+  showCard(dz.e, dz.t, dz.d+"  "+line, "Rebuild", false, endTurn);
+}
+
+function endTurn(){ S.rolling = false; refresh(); maybeQuestReward(); }
+
+/* ================= ROLL ================= */
+$("die").addEventListener("click", ()=>{
+  if(S.rolling || S.rolls < S.multi){ sNo(); return; }
+  audio();
+  S.rolling = true; S.rolls -= S.multi; refresh(); questProgress("roll",1);
+  const die = $("die"); die.classList.add("rolling");
+  let ticks = 0;
+  const spin = setInterval(()=>{
+    die.textContent = 1 + ((Math.random()*6)|0); sTick(); ticks++;
+    if(ticks>=8){
+      clearInterval(spin); die.classList.remove("rolling");
+      const n = 1 + ((Math.random()*6)|0);
+      die.textContent = n; buzz(40);
+      moveToken(n);
+    }
+  }, 80);
+});
+function moveToken(steps){
+  let i = 0;
+  const step = ()=>{
+    tileEls[S.pos].classList.remove("active");
+    const prev = S.pos;
+    S.pos = (S.pos+1) % path.length;
+    if(S.blessed && S.pos === BLESS_IDX){
+      S.blessed = false; refreshBless();
+      if(S.multi > 5){ S.multi = 5; toast("🔮 Blessing fades — multiplier returns to ×5"); }
+      else { toast("🔮 The blessing fades..."); }
+      refresh();
+    }
+    if(S.pos === 0 && prev !== 0){ // passed GO
+      const n = Math.round(40*S.multi*(S.tier+1)*RG());
+      gain(n); toast("🏁 Passed the gate! +"+n+" 🪙" + (S.multi>1?" ×"+S.multi:""));
+    }
+    placeToken(); sTick(); buzz(15); i++;
+    if(i < steps){ setTimeout(step, 190); }
+    else{
+      tileEls[S.pos].classList.add("active");
+      setTimeout(resolveTile, 260);
+    }
+  };
+  step();
+}
+
+/* ================= BUILD / TIERS ================= */
+const REALM_THEMES = [
+  {name:"Highland Realm", night:"#191036", night2:"#241a4d", panel:"#2e2260",
+   blds:[{e:"⛺",n:"Tent"},{e:"🛖",n:"Hut"},{e:"🏠",n:"House"},{e:"🏘️",n:"Hamlet"},{e:"🏰",n:"Keep"},{e:"🏯",n:"Citadel"}],
+   tiles:{coin:"Toll Road",gem:"Crystal Vein",chest:"Royal Chest",raid:"War Camp",wheel:"Fair Wheel",fortune:"Wanderer's Card",dragon:"Dragon Roost",hazard:"Wild Lands",recruit:"Barracks",bonus:"Lucky Star",sprint:"King's Road",bless:"Ancient Shrine",go:"Castle Gate"}},
+  {name:"Merchant Realm", night:"#0e2430", night2:"#143647", panel:"#1b4257",
+   blds:[{e:"🛒",n:"Stall"},{e:"⛺",n:"Bazaar Tent"},{e:"🏪",n:"Shop"},{e:"🏬",n:"Emporium"},{e:"🏦",n:"Bank"},{e:"🏛️",n:"Exchange"}],
+   tiles:{coin:"Market Row",gem:"Gem Trader",chest:"Vault Chest",raid:"Rival Caravan",wheel:"Auction Wheel",fortune:"Trader's Card",dragon:"Hoard Vault",hazard:"Market Crash",recruit:"Guard Post",bonus:"Golden Scale",sprint:"Trade Route",bless:"Merchant's Idol",go:"City Gate"}},
+  {name:"Temple Realm", night:"#2b1020", night2:"#3d1830", panel:"#4a1f3c",
+   blds:[{e:"🕯️",n:"Shrine"},{e:"⛩️",n:"Gate Shrine"},{e:"🛕",n:"Temple"},{e:"⛪",n:"Cathedral"},{e:"🕌",n:"Grand Dome"},{e:"🏯",n:"Sky Sanctum"}],
+   tiles:{coin:"Offering Bowl",gem:"Sacred Relic",chest:"Reliquary",raid:"Heretic Camp",wheel:"Fate Wheel",fortune:"Oracle Card",dragon:"Guardian's Hoard",hazard:"Cursed Ground",recruit:"Temple Guard",bonus:"Blessed Star",sprint:"Pilgrim Path",bless:"High Altar",go:"Sacred Gate"}},
+  {name:"Frost Realm", night:"#101f12", night2:"#18301c", panel:"#204427",
+   blds:[{e:"🏕️",n:"Ice Camp"},{e:"🛖",n:"Longhouse"},{e:"🏚️",n:"Frost Hall"},{e:"🏘️",n:"Snow Village"},{e:"🏰",n:"Ice Fortress"},{e:"🗻",n:"Glacier Throne"}],
+   tiles:{coin:"Fur Trade",gem:"Ice Crystal",chest:"Frozen Cache",raid:"Raider Camp",wheel:"Aurora Wheel",fortune:"Rune Card",dragon:"Wyrm's Hoard",hazard:"Blizzard",recruit:"War Lodge",bonus:"North Star",sprint:"Sled Run",bless:"Elder Stone",go:"Frost Gate"}},
+];
+function realmTheme(r){ return REALM_THEMES[((r||S.realm)-1) % REALM_THEMES.length]; }
+function tileName(t){ return (realmTheme().tiles||{})[t] || t; }
+function applyRealmTheme(){
+  const th = REALM_THEMES[(S.realm-1) % REALM_THEMES.length];
+  const r = document.documentElement.style;
+  r.setProperty("--night", th.night); r.setProperty("--night2", th.night2); r.setProperty("--panel", th.panel);
+  document.body.style.background = "radial-gradient(120% 90% at 50% 0%, "+th.night2+" 0%, "+th.night+" 60%)";
+}
+function ascend(){
+  S.history.push({ realm: S.realm, theme: REALM_THEMES[(S.realm-1)%REALM_THEMES.length], coins: S.realmCoins });
+  S.realmCoins = 0;
+  S.realm++; S.tier = 0; S.builds = 0;
+  const bonus = 2000 * (S.realm-1);
+  sFanfare(); confetti(true); buzz([100,60,100,60,160]);
+  const b = $("buildings");
+  b.style.transition = "transform .85s ease, opacity .85s ease";
+  b.style.transform += " scale(.4)"; b.style.opacity = ".25";      // the camera pulls back
+  setTimeout(()=>{
+    b.style.transition = ""; b.style.opacity = "1";
+    applyRealmTheme(); redrawKingdom(); glowKingdom();
+    showCard("🌍",realmTheme().name+" Founded!","The world widens — your old empire stands as a 🏛️ monument. Tap it anytime to walk its streets again. +"+bonus.toLocaleString()+" 🪙  +15 🎲","Ascend!", false, ()=>{
+      S.coins += bonus; S.rolls += 15; refresh(); updateQuest();
+    });
+    refresh();
+  }, 900);
+  refresh();
+}
+
+function doBuild(){
+  const cost = buildCost();
+  if(S.coins < cost) { sNo(); return false; }
+  S.coins -= cost; S.builds++; S.soldiers += 2 + S.tier; questProgress("build",1);
+  sBuild(); buzz([30,30,60]);
+  redrawKingdom(true);
+  if(S.builds >= BUILDS_PER_TIER){
+    if(S.tier < TIERS.length-1){
+      S.builds = 0; S.tier++;
+      refresh(); redrawKingdom(true); glowKingdom();
+      sFanfare(); confetti(true); buzz([80,60,80,60,120]);
+      const bonus = 500 * S.tier, sBonus = 6 * S.tier;
+      showCard(bldFor(S.tier).e, TIERS[S.tier]+" Unlocked!","Your people cheer! +"+bonus.toLocaleString()+" 🪙  +5 🎲  +"+sBonus+" ⚔️","Rise!", false, ()=>{
+        S.coins += bonus; S.rolls += 5; S.soldiers += sBonus; refresh();
+      });
+    } else {
+      $("builderOverlay").classList.remove("show");   // ascend cinematics happen on the board
+      ascend();
+    }
+  } else {
+    toast("🔨 "+bldFor(S.tier).n+" built! "+S.builds+"/"+BUILDS_PER_TIER);
+  }
+  refresh();
+  return true;
+}
+/* ---- Builder page ---- */
+function renderBuilder(){
+  const th = realmTheme();
+  $("bRealmName").textContent = th.name+" · Realm "+S.realm;
+  $("bCoins").textContent = S.coins.toLocaleString();
+  $("bArmy").textContent = S.soldiers;
+  $("bProg").textContent = S.builds+"/"+BUILDS_PER_TIER;
+  // scene: mirror of the kingdom strip, slightly larger
+  const bb = $("bBuildings"); bb.innerHTML = "";
+  for(let r=1;r<S.realm;r++){
+    const m=document.createElement("span"); m.textContent="🏛️"; m.style.fontSize="30px";
+    m.style.filter="drop-shadow(0 0 7px var(--gold))"; bb.appendChild(m);
+  }
+  for(let t=0;t<=S.tier;t++){
+    const count = t < S.tier ? 3 : S.builds;
+    for(let i=0;i<count;i++){
+      const d=document.createElement("span"); d.textContent = bldFor(t).e;
+      d.style.fontSize = (23 + t*3.5) + "px";
+      d.style.filter="drop-shadow(0 3px 3px rgba(0,0,0,.45))";
+      bb.appendChild(d);
+    }
+  }
+  // build track: one card per tier of this realm
+  const tr = $("bTrack"); tr.innerHTML = "";
+  for(let t=0;t<TIERS.length;t++){
+    const b = bldFor(t);
+    const row = document.createElement("div");
+    const done = t < S.tier, current = t === S.tier, locked = t > S.tier;
+    row.className = "bRow"+(done?" done":"")+(locked?" locked":"");
+    const dots = Array.from({length:BUILDS_PER_TIER},(_,i)=>{
+      const on = done || (current && i < S.builds);
+      return '<span class="dot'+(on?" on":"")+'"></span>';
+    }).join("");
+    row.innerHTML = '<div class="be">'+b.e+'</div>'+
+      '<div class="bi"><div class="bn">'+b.n+'</div>'+
+      '<div class="bs">'+TIERS[t]+' tier'+(locked?' · locked':'')+'</div>'+
+      '<div class="dots">'+dots+'</div></div>';
+    const btn = document.createElement("button"); btn.className="bBuy";
+    if(done){ btn.textContent="Complete ✓"; btn.disabled=true; }
+    else if(locked){ btn.textContent="Locked 🔒"; btn.disabled=true; }
+    else {
+      const cost = buildCost();
+      btn.innerHTML = 'Build<small>'+cost.toLocaleString()+' 🪙</small>';
+      btn.disabled = S.coins < cost;
+      btn.onclick = ()=>{ if(doBuild()) renderBuilder(); };
+    }
+    row.appendChild(btn); tr.appendChild(row);
+  }
+}
+$("buildBtn").addEventListener("click", ()=>{
+  sTick(); buzz(15);
+  renderBuilder();
+  $("builderOverlay").classList.add("show");
+});
+$("bBack").addEventListener("click", ()=>{ $("builderOverlay").classList.remove("show"); sTick(); });
+
+/* ================= META BUTTONS ================= */
+$("multi").addEventListener("click", ()=>{
+  const list = S.blessed ? BLESS_MULTIS : MULTIS;
+  const i = list.indexOf(S.multi);
+  S.multi = list[(i+1) % list.length];
+  sTick(); buzz(20); refresh();
+});
+const STREAK = [
+  {e:"🪙", coins:200},
+  {e:"🎲", rolls:8},
+  {e:"🪙", coins:500},
+  {e:"🎁", coins:400, rolls:5},
+  {e:"🎲", rolls:12},
+  {e:"🔮", bless:true, rolls:6},
+  {e:"👑", coins:1500, rolls:15, jackpot:true},
+];
+function rewardText(it, t){
+  const parts=[];
+  if(it.coins) parts.push(Math.round(it.coins*t*RG()).toLocaleString());
+  if(it.rolls) parts.push(it.rolls+"🎲");
+  if(it.bless) parts.push("Bless");
+  return parts.join(" · ");
+}
+function renderCalendar(){
+  const grid=$("calGrid"); grid.innerHTML="";
+  const t=S.tier+1;
+  STREAK.forEach((it,i)=>{
+    const cell=document.createElement("div");
+    let state = i < S.streak ? "claimed" : (i===S.streak && !S.dailyClaimed) ? "current" : "future";
+    cell.className="calCell"+(i===STREAK.length-1?" grand":"")+" "+state;
+    cell.innerHTML='<div class="d">DAY '+(i+1)+'</div><div class="ic">'+it.e+'</div><div class="rw">'+rewardText(it,t)+'</div>';
+    grid.appendChild(cell);
+  });
+  if(S.dailyClaimed){
+    $("calBtn").style.display="none";
+    $("calSub").textContent="✓ Claimed today — come back tomorrow for Day "+(S.streak+1)+"!";
+  }else{
+    $("calBtn").style.display="";
+    $("calBtn").textContent="Claim Day "+(S.streak+1);
+    $("calSub").textContent="Keep your streak alive — each day is bigger!";
+  }
+}
+function claimDaily(){
+  if(S.dailyClaimed) return;
+  const t=S.tier+1, it=STREAK[S.streak];
+  S.dailyClaimed=true;
+  S.streak=(S.streak+1)%STREAK.length;
+  $("dailyBtn").classList.remove("glow");
+  if(it.jackpot){ sFanfare(); confetti(true); buzz([90,60,120]); } else { sChest(); confetti(); }
+  if(it.coins){ S.coins+=Math.round(it.coins*t*RG()); flyCoins(6); }
+  if(it.rolls) S.rolls+=it.rolls;
+  if(it.bless){ S.blessed=true; refreshBless(); }
+  refresh(); renderCalendar();
+}
+$("dailyBtn").addEventListener("click", ()=>{ renderCalendar(); $("calOverlay").classList.add("show"); });
+$("calBtn").addEventListener("click", claimDaily);
+$("calX").addEventListener("click", ()=>$("calOverlay").classList.remove("show"));
+const DEV_KEY = "kingsRise.dev";
+function devEnabled(){ try{ return localStorage.getItem(DEV_KEY)==="1"; }catch(e){ return false; } }
+function applyDevVisibility(){ $("devTools").style.display = devEnabled() ? "block" : "none"; }
+let _devTaps = 0, _devTapT = null;
+$("verRow").addEventListener("click", ()=>{
+  _devTaps++;
+  clearTimeout(_devTapT); _devTapT = setTimeout(()=>{ _devTaps = 0; }, 1600);
+  if(_devTaps >= 5){
+    _devTaps = 0;
+    const on = !devEnabled();
+    try{ localStorage.setItem(DEV_KEY, on ? "1" : "0"); }catch(e){}
+    applyDevVisibility();
+    toast(on ? "🛠️ Dev tools unlocked" : "🛠️ Dev tools hidden");
+    buzz(40);
+  }
+});
+$("gearBtn").addEventListener("click", ()=>{ applyDevVisibility(); $("setOverlay").classList.add("show"); });
+$("setClose").addEventListener("click", ()=>{ $("setOverlay").classList.remove("show"); });
+$("nextDayBtn").addEventListener("click", ()=>{
+  S.dailyClaimed=false; S.lastDay=null;
+  $("dailyBtn").classList.add("glow");
+  saveNow(); toast("⏭️ A new day dawns — claim your reward!");
+  $("setOverlay").classList.remove("show");
+});
+$("resetBtn").addEventListener("click", ()=>{
+  if(!confirm("Wipe your kingdom and start fresh?")) return;
+  try{ localStorage.removeItem(saveKeyFor(CURRENT_USER)); }catch(e){}
+  location.reload();
+});
+$("refillBtn").addEventListener("click", ()=>{
+  S.rolls += 20; sCoin(); toast("+20 test rolls 🎲"); refresh();
+  $("setOverlay").classList.remove("show");
+});
+$("soundBtn").addEventListener("click", ()=>{
+  S.sound = !S.sound;
+  $("soundBtn").textContent = S.sound ? "🔊 Sound" : "🔇 Muted";
+  if(S.sound){ audio(); sCoin(); }
+});
+
+/* ---- roll recharge: offline-aware, capped, with visible countdown ---- */
+function accrueRolls(){
+  if(S.rolls >= ROLL_CAP){ S.lastRoll = Date.now(); return; }
+  const elapsed = Date.now() - S.lastRoll;
+  const gained = Math.floor(elapsed / ROLL_MS);
+  if(gained > 0){
+    const room = ROLL_CAP - S.rolls;
+    const add = Math.min(gained, room);
+    S.rolls += add;
+    S.lastRoll += add * ROLL_MS;                 // keep remainder toward the next roll
+    if(S.rolls >= ROLL_CAP) S.lastRoll = Date.now();
+  }
+}
+function updateRollTimer(){
+  const el = $("rollTimer"); if(!el) return;
+  if(S.rolls >= ROLL_CAP){ el.textContent = S.rolls>ROLL_CAP ? "MAX +"+(S.rolls-ROLL_CAP)+" banked" : "FULL"; return; }
+  const toNext = ROLL_MS - ((Date.now() - S.lastRoll) % ROLL_MS);
+  const m = Math.floor(toNext/60000), sec = Math.floor((toNext%60000)/1000);
+  const toFull = (ROLL_CAP - S.rolls - 1) * ROLL_MS + toNext;
+  const fh = Math.floor(toFull/3600000), fm = Math.floor((toFull%3600000)/60000);
+  const full = fh>0 ? (fh+"h "+fm+"m") : (fm+"m");
+  el.textContent = "+1 in "+m+":"+String(sec).padStart(2,"0")+" · full "+full;
+}
+setInterval(()=>{
+  const before = S.rolls;
+  accrueRolls();
+  if(S.rolls !== before) refresh(); else updateRollTimer();
+}, 1000);
+// top up the instant the app regains focus
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ accrueRolls(); refresh(); } });
+
+/* =================================================================
+   SOCIAL LAYER
+   ---------------------------------------------------------------
+   All access goes through the async `Social` provider below.
+   It is backed by localStorage + bot data for this prototype.
+   To go live: replace each method body with a Firebase/Firestore
+   call (they already return Promises with the same shapes), and the
+   UI code (renderBoard / renderGifts) needs ZERO changes.
+   ================================================================= */
+const BOTS = [
+  {name:"Aldwyn", might:2400},  {name:"Brunhild", might:5200}, {name:"Cedric", might:8800},
+  {name:"Dagny", might:14500},  {name:"Eowyn", might:21000},   {name:"Fenwyn", might:30000},
+  {name:"Godric", might:42000}, {name:"Hilda", might:56000},   {name:"Ivar", might:72000},
+  {name:"Jorunn", might:95000},
+];
+function myMight(){
+  return Math.round(S.coins + S.soldiers*40 + (S.realm-1)*6000 + S.tier*1200 + S.builds*200 + 500);
+}
+function socKey(){ return "kingsRise.social."+CURRENT_USER; }
+function socialData(){
+  try{
+    const raw = localStorage.getItem(socKey());
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const seed = { inbox:[
+    {id:"seed1", from:"Brunhild", type:"rolls", amount:5},
+    {id:"seed2", from:"Eowyn",    type:"coins", amount:300},
+  ], sent:[] };
+  saveSocial(seed); return seed;
+}
+function saveSocial(d){ try{ localStorage.setItem(socKey(), JSON.stringify(d)); }catch(e){} }
+
+/* Dual-mode Social: Firestore when live, bots+localStorage otherwise.
+   Firestore layout:
+     players/{uid}: { name, might, save, updatedAt }
+     gifts/{autoId}: { to, from, type, amount, ts, claimed } */
+const Social = {
+  async leaderboard(){
+    if(fbOn()){
+      try{
+        const q = window.FB.query(window.FB.collection(window.FB.db,"players"),
+          window.FB.orderBy("might","desc"), window.FB.limit(50));
+        const snap = await window.FB.getDocs(q);
+        const rows = [];
+        snap.forEach(d=>{ const v=d.data(); rows.push({ name:v.name||"?", might:v.might||0, you:d.id===FB_UID }); });
+        if(!rows.some(r=>r.you)) rows.push({ name:CURRENT_USER, might:myMight(), you:true });
+        rows.sort((a,b)=>b.might-a.might);
+        return rows.map((r,i)=>({ rank:i+1, ...r }));
+      }catch(e){ console.warn("leaderboard failed", e); }
+    }
+    const rows = BOTS.map(b=>({ name:b.name, might:b.might, you:false }));
+    rows.push({ name:CURRENT_USER, might:myMight(), you:true });
+    rows.sort((a,b)=>b.might-a.might);
+    return rows.map((r,i)=>({ rank:i+1, ...r }));
+  },
+  async inbox(){
+    if(fbOn()){
+      try{
+        const q = window.FB.query(window.FB.collection(window.FB.db,"gifts"),
+          window.FB.where("to","==",CURRENT_USER));
+        const snap = await window.FB.getDocs(q);
+        const out = [];
+        snap.forEach(d=>{ const v=d.data(); if(!v.claimed) out.push({ id:d.id, from:v.from, type:v.type, amount:v.amount }); });
+        return out;
+      }catch(e){ console.warn("inbox failed", e); return []; }
+    }
+    return socialData().inbox.slice();
+  },
+  async friends(){
+    if(fbOn()){
+      try{
+        const rows = await Social.leaderboard();
+        return rows.filter(r=>!r.you).map(r=>({ name:r.name, might:r.might }));
+      }catch(e){}
+    }
+    return BOTS.map(b=>({ name:b.name, might:b.might }));
+  },
+  async giftedToday(to){
+    const d = socialData();
+    return (d.giftLog && d.giftLog[to]) === today();
+  },
+  async sendGift(to){
+    const d = socialData();
+    if(!d.giftLog) d.giftLog = {};
+    if(d.giftLog[to] === today()) return false;          // one gift per friend per day
+    d.giftLog[to] = today();
+    if(fbOn()){
+      try{
+        await window.FB.addDoc(window.FB.collection(window.FB.db,"gifts"),
+          { to, from:CURRENT_USER, type:"rolls", amount:2+((Math.random()*3)|0), ts:Date.now(), claimed:false });
+        saveSocial(d); return true;
+      }catch(e){ console.warn("sendGift failed", e); delete d.giftLog[to]; saveSocial(d); return false; }
+    }
+    d.sent.push({ to, type:"rolls", ts:Date.now() });
+    if(Math.random() < 0.7){                             // bot often gifts back (local mode)
+      d.inbox.push({ id:"g"+Date.now(), from:to, type:"rolls", amount:2+((Math.random()*3)|0) });
+    }
+    saveSocial(d); return true;
+  },
+  async claim(id){
+    if(fbOn()){
+      try{
+        const ref = window.FB.doc(window.FB.db,"gifts",id);
+        const snap = await window.FB.getDoc(ref);
+        if(!snap.exists() || snap.data().claimed) return null;
+        await window.FB.updateDoc(ref, { claimed:true });
+        const v = snap.data();
+        return { id, from:v.from, type:v.type, amount:v.amount };
+      }catch(e){ console.warn("claim failed", e); return null; }
+    }
+    const d = socialData();
+    const idx = d.inbox.findIndex(g=>g.id===id);
+    if(idx<0) return null;
+    const g = d.inbox.splice(idx,1)[0];
+    saveSocial(d); return g;
+  },
+};
+
+/* ---- social UI ---- */
+function fmtMight(n){ return n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+"k" : ""+n; }
+async function updateGiftDot(){
+  const inbox = await Social.inbox();
+  const dot = $("giftDot");
+  if(inbox.length){ dot.textContent = inbox.length; dot.classList.add("show"); }
+  else dot.classList.remove("show");
+}
+let SOC_TAB = "board";
+function socTab(t){
+  SOC_TAB = t;
+  $("tabBoard").classList.toggle("active", t==="board");
+  $("tabGifts").classList.toggle("active", t==="gifts");
+  t==="board" ? renderBoard() : renderGifts();
+}
+async function renderBoard(){
+  const rows = await Social.leaderboard();
+  const body = $("socBody"); body.innerHTML = "";
+  rows.forEach(r=>{
+    const div = document.createElement("div");
+    div.className = "lbRow" + (r.you ? " you" : "");
+    const medal = r.rank===1?"👑":r.rank===2?"🥈":r.rank===3?"🥉":"#"+r.rank;
+    div.innerHTML = '<div class="lbRank">'+medal+'</div>'+
+      '<div class="lbName">'+r.name+(r.you?' <small>(you)</small>':'')+'</div>'+
+      '<div class="lbMight">'+fmtMight(r.might)+' ⚔️</div>';
+    body.appendChild(div);
+  });
+}
+async function renderGifts(){
+  const body = $("socBody"); body.innerHTML = "";
+  const inbox = await Social.inbox();
+  const inSec = document.createElement("div");
+  inSec.className = "giftSec"; inSec.textContent = "Your Inbox";
+  body.appendChild(inSec);
+  if(!inbox.length){
+    const e = document.createElement("div"); e.className="socEmpty"; e.textContent="No gifts right now — send some to get some!";
+    body.appendChild(e);
+  } else {
+    inbox.forEach(g=>{
+      const row = document.createElement("div"); row.className="giftRow";
+      const icon = g.type==="rolls" ? "🎲" : "🪙";
+      const amt = g.type==="rolls" ? g.amount+" rolls" : g.amount.toLocaleString()+" coins";
+      row.innerHTML = '<span class="gi">'+icon+'</span><div class="gt">'+amt+'<small>from '+g.from+'</small></div>';
+      const b = document.createElement("button"); b.className="giftBtn"; b.textContent="Claim";
+      b.onclick = async ()=>{
+        const claimed = await Social.claim(g.id);
+        if(!claimed) return;
+        if(claimed.type==="rolls"){ S.rolls += claimed.amount; sCoin(); }
+        else { S.coins += claimed.amount; flyCoins(5); sCoin(); }
+        buzz(30); refresh(); renderGifts(); updateGiftDot();
+        toast("🎁 Claimed "+(claimed.type==="rolls"?claimed.amount+" rolls":claimed.amount+" coins")+"!");
+      };
+      row.appendChild(b); body.appendChild(row);
+    });
+  }
+  const frSec = document.createElement("div");
+  frSec.className = "giftSec"; frSec.textContent = "Send a Gift";
+  body.appendChild(frSec);
+  const friends = await Social.friends();
+  for(const f of friends.slice(0,6)){
+    const row = document.createElement("div"); row.className="giftRow";
+    row.innerHTML = '<span class="gi">🏰</span><div class="gt">'+f.name+'<small>'+fmtMight(f.might)+' ⚔️ might</small></div>';
+    const b = document.createElement("button"); b.className="giftBtn send";
+    const already = await Social.giftedToday(f.name);
+    if(already){ b.disabled=true; b.textContent="Sent today"; }
+    else b.textContent="Send 🎲";
+    b.onclick = async ()=>{
+      b.disabled = true;
+      const ok = await Social.sendGift(f.name);
+      if(!ok){ b.textContent="Sent today"; return; }
+      b.textContent = "Sent ✓";
+      buzz(20); toast("🎁 Gift sent to "+f.name+"!");
+      setTimeout(()=>{ renderGifts(); updateGiftDot(); }, 500);
+    };
+    row.appendChild(b); body.appendChild(row);
+  }
+}
+$("socialBtn").addEventListener("click", ()=>{ $("socOverlay").classList.add("show"); socTab("board"); });
+$("socX").addEventListener("click", ()=>$("socOverlay").classList.remove("show"));
+$("tabBoard").addEventListener("click", ()=>socTab("board"));
+$("tabGifts").addEventListener("click", ()=>socTab("gifts"));
+
+/* ================= AUTH ================= */
+/* =================================================================
+   AUTH PROVIDER — Firebase-ready
+   ---------------------------------------------------------------
+   All sign-in goes through this async `Auth` object. It is backed by
+   localStorage for the prototype. To go live with Firebase Auth:
+     register(name,pw) -> createUserWithEmailAndPassword(auth, email, pw)
+     login(name,pw)    -> signInWithEmailAndPassword(auth, email, pw)
+     signOut()         -> signOut(auth)
+     restore()         -> wrap onAuthStateChanged in a Promise
+   Note: Firebase requires an email. Either add an email field to the
+   form, or map kingdom names to synthetic emails (name@kings-rise.app)
+   and keep this exact UI. Errors must throw with a `.message` — the UI
+   displays err.message directly, matching Firebase error objects.
+   ================================================================= */
+function nameToEmail(name){
+  return name.toLowerCase().replace(/[^a-z0-9]/g,"_").slice(0,40) + "@kings-rise.app";
+}
+function fbErrMsg(e){
+  const c = (e && e.code) || "";
+  if(c.includes("email-already-in-use")) return "That name is taken — tap Log In.";
+  if(c.includes("user-not-found")) return "No kingdom by that name — tap Register.";
+  if(c.includes("wrong-password") || c.includes("invalid-credential")) return "Wrong password.";
+  if(c.includes("weak-password")) return "Password must be at least 6 characters.";
+  if(c.includes("too-many-requests")) return "Too many tries — wait a moment.";
+  if(c.includes("network")) return "Network error — check your connection.";
+  return e && e.message ? e.message : "Something went wrong.";
+}
+const Auth = {
+  async register(name, pw){
+    if(fbOn()){
+      try{
+        const cred = await window.FB.createUserWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
+        FB_UID = cred.user.uid;
+        try{ await window.FB.updateProfile(cred.user, { displayName: name }); }catch(e){}
+        try{ await window.FB.setDoc(window.FB.doc(window.FB.db, "players", FB_UID),
+              { name, might: 500, updatedAt: Date.now() }, { merge: true }); }catch(e){}
+        return { user: name };
+      }catch(e){ throw new Error(fbErrMsg(e)); }
+    }
+    let accts = {}; try{ accts = getAccounts(); }catch(e){}
+    if(accts[name]) throw new Error("That name is taken — tap Log In.");
+    accts[name] = { pw: hashPw(pw) };
+    try{ setAccounts(accts); }catch(e){}
+    return { user: name };
+  },
+  async login(name, pw){
+    if(fbOn()){
+      try{
+        const cred = await window.FB.signInWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
+        FB_UID = cred.user.uid;
+        return { user: cred.user.displayName || name };
+      }catch(e){ throw new Error(fbErrMsg(e)); }
+    }
+    let accts = {}; try{ accts = getAccounts(); }catch(e){}
+    if(!accts[name]) throw new Error("No kingdom by that name — tap Register.");
+    if(accts[name].pw !== hashPw(pw)) throw new Error("Wrong password.");
+    return { user: name };
+  },
+  async signOut(){
+    if(fbOn()){ try{ await window.FB.fbSignOut(window.FB.auth); }catch(e){} FB_UID = null; }
+    try{ localStorage.removeItem(CUR_KEY); }catch(e){}
+  },
+  async restore(){
+    await window.__fbReady;
+    if(fbOn()){
+      return new Promise(res=>{
+        const un = window.FB.onAuthStateChanged(window.FB.auth, user=>{
+          try{ un(); }catch(e){}
+          if(user){ FB_UID = user.uid; res(user.displayName || null); }
+          else res(null);
+        });
+      });
+    }
+    try{ return localStorage.getItem(CUR_KEY) || null; }catch(e){ return null; }
+  },
+};
+
+function authErr(m){ $("authErr").textContent = m || ""; }
+async function enterGame(u){
+  CURRENT_USER = u;
+  try{ localStorage.setItem(CUR_KEY, u); }catch(e){}   // best-effort; play continues even if blocked
+  // live mode: pull the cloud save down before the game reads local storage
+  if(fbOn() && FB_UID && u !== "Guest"){
+    try{
+      const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, "players", FB_UID));
+      if(snap.exists() && snap.data().save){
+        try{ localStorage.setItem(saveKeyFor(u), snap.data().save); }catch(e){}
+      }
+    }catch(e){ console.warn("cloud load failed, using local", e); }
+  }
+  $("authOverlay").classList.add("hidden");
+  try{ initGame(); }
+  catch(e){ /* never leave the player stuck on a blank screen */ }
+}
+let AUTH_MODE = "login";
+function setMode(m){
+  AUTH_MODE = m;
+  $("tabLogin").classList.toggle("active", m==="login");
+  $("tabReg").classList.toggle("active", m==="register");
+  $("authSubmit").textContent = m==="login" ? "Log In" : "Create Kingdom";
+  $("authPass").setAttribute("autocomplete", m==="login" ? "current-password" : "new-password");
+  authErr("");
+}
+$("tabLogin").addEventListener("click", ()=>setMode("login"));
+$("tabReg").addEventListener("click", ()=>setMode("register"));
+async function submitAuth(){
+  const u = $("authUser").value.trim(), pw = $("authPass").value;
+  if(u.length < 2){ authErr("Enter a kingdom name (2+ characters)."); return; }
+  if(pw.length < (fbOn() ? 6 : 1)){ authErr(fbOn() ? "Password must be at least 6 characters." : "Enter a password."); return; }
+  $("authSubmit").disabled = true;
+  try{
+    const res = AUTH_MODE==="login" ? await Auth.login(u, pw) : await Auth.register(u, pw);
+    enterGame(res.user);
+  }catch(err){
+    authErr(err.message || "Something went wrong — try again.");
+  }finally{
+    $("authSubmit").disabled = false;
+  }
+}
+$("authSubmit").addEventListener("click", submitAuth);
+$("authGuest").addEventListener("click", ()=>enterGame("Guest"));
+$("authPass").addEventListener("keydown", e=>{ if(e.key==="Enter") submitAuth(); });
+$("authUser").addEventListener("keydown", e=>{ if(e.key==="Enter") $("authPass").focus(); });
+$("signOutBtn").addEventListener("click", async ()=>{
+  saveNow();
+  await Auth.signOut();
+  location.reload();
+});
+
+/* ================= INIT ================= */
+function initGame(){
+  const hadSave = load();
+  initStars();
+  applyRealmTheme();
+  redrawKingdom(); layoutBoard(); refresh(); updateQuest(); refreshBless();
+  placeToken(false);
+  if(tileEls[S.pos]) tileEls[S.pos].classList.add("active");
+  $("dailyBtn").classList.toggle("glow", !S.dailyClaimed);
+  $("soundBtn").textContent = S.sound ? "🔊 Sound" : "🔇 Muted";
+  $("setUser").textContent = "Signed in as "+CURRENT_USER;
+  updateGiftDot();
+  if(hadSave) toast("👑 Welcome back, "+CURRENT_USER+"!");
+  setTimeout(layoutBoard, 120);
+}
+(async ()=>{
+  const saved = await Auth.restore();
+  if(saved){
+    enterGame(saved);
+  } else {
+    let hasAccounts = false;
+    try{ hasAccounts = Object.keys(getAccounts()).length > 0; }catch(e){}
+    setMode(hasAccounts ? "login" : "register");   // fresh device → start on Register
+    try{ $("authUser").focus(); }catch(e){}
+  }
+})();
+</script>
+<script type="module">
+/* Loads Firebase v12 (modular CDN) only when a real config is pasted above. */
+(async ()=>{
+  const cfg = window.FIREBASE_CONFIG;
+  if(!cfg || cfg.apiKey === "PASTE_ME") return;
+  try{
+    const V = "12.15.0";
+    const [appM, authM, fsM] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/"+V+"/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/"+V+"/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/"+V+"/firebase-firestore.js"),
+    ]);
+    const app = appM.initializeApp(cfg);
+    window.FB = {
+      auth: authM.getAuth(app), db: fsM.getFirestore(app),
+      createUserWithEmailAndPassword: authM.createUserWithEmailAndPassword,
+      signInWithEmailAndPassword: authM.signInWithEmailAndPassword,
+      fbSignOut: authM.signOut, onAuthStateChanged: authM.onAuthStateChanged,
+      updateProfile: authM.updateProfile,
+      doc: fsM.doc, getDoc: fsM.getDoc, setDoc: fsM.setDoc, updateDoc: fsM.updateDoc,
+      collection: fsM.collection, addDoc: fsM.addDoc, getDocs: fsM.getDocs,
+      query: fsM.query, where: fsM.where, orderBy: fsM.orderBy, limit: fsM.limit,
+      serverTimestamp: fsM.serverTimestamp,
+    };
+  }catch(e){ console.warn("Firebase failed to load — running local:", e); }
+  finally{ try{ window.__fbReadyRes(); }catch(e){} }
+})();
+</script>
+</body>
+</html>
