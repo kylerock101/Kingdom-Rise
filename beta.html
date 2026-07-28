@@ -891,6 +891,9 @@ const backupPrefixFor = u => "kingsRise3d.backup."+u+".";
 const rejectedKeyFor = u => "kingsRise3d.rejected."+u;
 const importPendingKeyFor = u => "kingsRise3d.importPending."+u;
 let LAST_CLOUD_SAVE_RAW=null, LAST_CLOUD_STRUCTURED_SAVE=null, LAST_CLOUD_REVISION=0, LAST_CLOUD_CLIENT_UPDATED_AT=0, LAST_CLOUD_SERVER_UPDATED_AT=0, LAST_CLOUD_LOAD_RESULT=null, LAST_LOCAL_LOAD_RESULT=null, PENDING_IMPORT_PAYLOAD=null, _suppressCloudPush=false;
+const CLOUD_SAVE_THROTTLE_MS=5000;
+let CLOUD_WRITE_IN_PROGRESS=false, CLOUD_PENDING_PAYLOAD=null, CLOUD_PENDING_TIMER=null, CLOUD_LATEST_REQUESTED_PAYLOAD=null;
+let CLOUD_LATEST_SUCCESS_REVISION=0, CLOUD_LAST_WRITE_STARTED_AT=0, CLOUD_WRITE_SEQUENCE=0, CLOUD_LATEST_COMPLETED_SEQUENCE=0;
 function hashPw(x){ let h=5381; for(let i=0;i<x.length;i++){ h=((h<<5)+h+x.charCodeAt(i))>>>0; } return h.toString(16); }
 function getAccounts(){ try{ return JSON.parse(localStorage.getItem(ACCT_KEY)||"{}"); }catch(e){ return {}; } }
 function setAccounts(a){ try{ localStorage.setItem(ACCT_KEY, JSON.stringify(a)); }catch(e){} }
@@ -958,6 +961,7 @@ function validateSavePayload(raw, source){
 function cloneSaveValue(v){ return v===undefined ? undefined : JSON.parse(JSON.stringify(v)); }
 function legacySaveObjectFromState(){
   return {
+    clientUpdatedAt:Date.now(), revision:LAST_CLOUD_REVISION,
     coins:S.coins, rolls:S.rolls, multi:S.multi, pos:S.pos, tier:S.tier, builds:S.builds,
     realm:S.realm, soldiers:S.soldiers, blessed:S.blessed, raidStreak:S.raidStreak,
     realmCoins:S.realmCoins, sound:S.sound, lastRoll:S.lastRoll,
@@ -986,7 +990,7 @@ function sectionsFromLegacyState(d, meta){
     legacyState:cloneSaveValue(d)
   };
 }
-function structuredSaveFromLegacyState(d, meta){ meta=meta||{}; const clientUpdatedAt=Number.isSafeInteger(meta.clientUpdatedAt)?meta.clientUpdatedAt:Date.now(); const revision=Number.isSafeInteger(meta.revision)?meta.revision:0; return {schemaVersion:STRUCTURED_SAVE_VERSION, gameVersion:SAVE_GAME_VERSION, revision, clientUpdatedAt, updatedAt:meta.updatedAt||null, data:sectionsFromLegacyState(d, meta)}; }
+function structuredSaveFromLegacyState(d, meta){ meta=meta||{}; const clientUpdatedAt=Number.isSafeInteger(meta.clientUpdatedAt)?meta.clientUpdatedAt:(Number.isSafeInteger(d&&d.clientUpdatedAt)?d.clientUpdatedAt:Date.now()); const revision=Number.isSafeInteger(meta.revision)?meta.revision:0; return {schemaVersion:STRUCTURED_SAVE_VERSION, gameVersion:SAVE_GAME_VERSION, revision, clientUpdatedAt, updatedAt:meta.updatedAt||null, data:sectionsFromLegacyState(d, meta)}; }
 function structuredSaveFromCurrentState(meta){ return structuredSaveFromLegacyState(legacySaveObjectFromState(), meta); }
 function legacyStateFromStructuredSave(env){
   const data=env&&env.data||{};
@@ -1020,7 +1024,11 @@ function validateStructuredSavePayload(env, source){
 }
 function cloudFreshnessFromStructured(env){ return {revision:env&&Number.isSafeInteger(env.revision)?env.revision:0, clientUpdatedAt:env&&Number.isSafeInteger(env.clientUpdatedAt)?env.clientUpdatedAt:0, serverUpdatedAt:firestoreMillis(env&&env.updatedAt)}; }
 function cloudMetaFromPlayerData(p){ return {revision:Number.isSafeInteger(p&&p.revision)?p.revision:0, clientUpdatedAt:Number.isSafeInteger(p&&p.clientUpdatedAt)?p.clientUpdatedAt:0, serverUpdatedAt:firestoreMillis(p&&p.updatedAt)}; }
-function setCloudTrackingFromEnvelope(env){ const f=cloudFreshnessFromStructured(env); LAST_CLOUD_REVISION=f.revision; LAST_CLOUD_CLIENT_UPDATED_AT=f.clientUpdatedAt; LAST_CLOUD_SERVER_UPDATED_AT=f.serverUpdatedAt; LAST_CLOUD_STRUCTURED_SAVE=env; }
+function setCloudTrackingFromEnvelope(env){ const f=cloudFreshnessFromStructured(env); LAST_CLOUD_REVISION=f.revision; LAST_CLOUD_CLIENT_UPDATED_AT=f.clientUpdatedAt; LAST_CLOUD_SERVER_UPDATED_AT=f.serverUpdatedAt; LAST_CLOUD_STRUCTURED_SAVE=env; if(f.revision>CLOUD_LATEST_SUCCESS_REVISION) CLOUD_LATEST_SUCCESS_REVISION=f.revision; }
+function legacyPayloadUpdatedAt(raw){ try{ const d=JSON.parse(raw); return Number.isSafeInteger(d&&d.clientUpdatedAt)?d.clientUpdatedAt:(Number.isSafeInteger(d&&d.lastRoll)?d.lastRoll:0); }catch(e){ return 0; } }
+function localSaveFreshness(raw){ const valid=validateSavePayload(raw,"local-freshness"); if(!valid.ok) return {ok:false, reason:valid.reason, clientUpdatedAt:0, revision:0}; return {ok:true, data:valid.data, clientUpdatedAt:Number.isSafeInteger(valid.data.clientUpdatedAt)?valid.data.clientUpdatedAt:(Number.isSafeInteger(valid.data.lastRoll)?valid.data.lastRoll:0), revision:Number.isSafeInteger(valid.data.revision)?valid.data.revision:0}; }
+function cloudRawFreshness(raw, env){ const structured=cloudFreshnessFromStructured(env); return {revision:structured.revision, clientUpdatedAt:structured.clientUpdatedAt||legacyPayloadUpdatedAt(raw), serverUpdatedAt:structured.serverUpdatedAt}; }
+function isLocalNewerThanCloud(localRaw, cloudRaw, cloudEnv){ const local=localSaveFreshness(localRaw); if(!local.ok) return {newer:false, reason:local.reason}; const cloud=cloudRawFreshness(cloudRaw, cloudEnv); if(local.revision>cloud.revision) return {newer:true, local, cloud, reason:"revision"}; if(local.revision===cloud.revision && local.clientUpdatedAt>cloud.clientUpdatedAt) return {newer:true, local, cloud, reason:"clientUpdatedAt"}; return {newer:false, local, cloud}; }
 function backupExistingLocalSave(user, reason){
   if(!user) return;
   try{
@@ -1140,35 +1148,83 @@ const Auth = {
     try{ return localStorage.getItem(CUR_KEY)||null; }catch(e){ return null; }
   },
 };
-let _lastCloudPush=0;
-async function cloudPush(payload){
+function clearCloudPendingTimer(){ if(CLOUD_PENDING_TIMER){ clearTimeout(CLOUD_PENDING_TIMER); CLOUD_PENDING_TIMER=null; } }
+function queueTrailingCloudSave(payload, reason){
+  const replacing=!!CLOUD_PENDING_PAYLOAD && CLOUD_PENDING_PAYLOAD!==payload;
+  CLOUD_PENDING_PAYLOAD=payload;
+  saveDiag(replacing?"queued payload replaced by newer state":"save queued", {reason, pendingClientUpdatedAt:legacyPayloadUpdatedAt(payload), uid:FB_UID||null});
+  scheduleTrailingCloudSave();
+}
+function scheduleTrailingCloudSave(){
+  clearCloudPendingTimer();
+  if(!CLOUD_PENDING_PAYLOAD || CLOUD_WRITE_IN_PROGRESS) return;
+  const wait=Math.max(0, CLOUD_SAVE_THROTTLE_MS-(Date.now()-CLOUD_LAST_WRITE_STARTED_AT));
+  CLOUD_PENDING_TIMER=setTimeout(()=>{ CLOUD_PENDING_TIMER=null; flushCloudSaveQueue("trailing"); }, wait);
+}
+async function flushCloudSaveQueue(reason){
+  if(!CLOUD_PENDING_PAYLOAD) return;
+  if(CLOUD_WRITE_IN_PROGRESS){ scheduleTrailingCloudSave(); return; }
+  const payload=CLOUD_PENDING_PAYLOAD;
+  CLOUD_PENDING_PAYLOAD=null;
+  await startCloudWrite(payload, reason||"trailing");
+}
+async function startCloudWrite(payload, reason){
   if(_suppressCloudPush){ saveDiag("cloud write skipped", {reason:"suppressed"}); return; }
   if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ saveDiag("cloud write skipped", {reason:"not-authenticated-or-guest", uid:FB_UID||null}); return; }
   const valid=validateSavePayload(payload,"cloud-push");
   if(!valid.ok){ rememberRejectedPayload(payload, valid.reason, "cloud-push"); return; }
-  const now=Date.now();
-  if(now-_lastCloudPush<5000) return;
-  _lastCloudPush=now;
+  if(CLOUD_WRITE_IN_PROGRESS){ queueTrailingCloudSave(payload,"write-in-progress"); return; }
+  CLOUD_WRITE_IN_PROGRESS=true;
+  const seq=++CLOUD_WRITE_SEQUENCE;
+  const startedAt=Date.now();
+  CLOUD_LAST_WRITE_STARTED_AT=startedAt;
+  saveDiag(reason==="trailing"?"trailing write started":"immediate write started", {uid:FB_UID, sequence:seq, clientUpdatedAt:legacyPayloadUpdatedAt(payload)});
   try{
     const ref=window.FB.doc(window.FB.db,"players",FB_UID);
     const snap=await window.FB.getDoc(ref);
     const remote=snap.exists()?snap.data():null;
     const remoteMeta=cloudMetaFromPlayerData(remote);
-    if(remote && remoteMeta.revision>LAST_CLOUD_REVISION){
+    const payloadUpdatedAt=legacyPayloadUpdatedAt(payload);
+    if(remote && remoteMeta.revision>LAST_CLOUD_REVISION && remoteMeta.clientUpdatedAt>=payloadUpdatedAt){
       saveDiag("cloud write conflict", {reason:"remote-newer", localRevision:LAST_CLOUD_REVISION, remoteRevision:remoteMeta.revision, uid:FB_UID});
       return;
     }
-    const nextRevision=Math.max(LAST_CLOUD_REVISION, remoteMeta.revision||0)+1;
-    const env=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:CURRENT_USER, revision:nextRevision, clientUpdatedAt:now});
+    const nextRevision=Math.max(LAST_CLOUD_REVISION, CLOUD_LATEST_SUCCESS_REVISION, remoteMeta.revision||0)+1;
+    const env=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:CURRENT_USER, revision:nextRevision, clientUpdatedAt:payloadUpdatedAt||startedAt});
     const structuredValid=validateStructuredSavePayload(env,"cloud-push-structured");
     if(!structuredValid.ok){ rememberRejectedPayload(JSON.stringify(env), structuredValid.reason, "cloud-push-structured"); return; }
-    const update=Object.assign({name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:window.FB.serverTimestamp?window.FB.serverTimestamp():now}, flattenStructuredSaveForFirestore(env));
+    const update=Object.assign({name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:window.FB.serverTimestamp?window.FB.serverTimestamp():startedAt}, flattenStructuredSaveForFirestore(env));
     await window.FB.setDoc(ref, update,{merge:true});
-    setCloudTrackingFromEnvelope(env);
-    saveDiag("cloud write success", {uid:FB_UID, path:"players/"+FB_UID, revision:nextRevision, schemaVersion:STRUCTURED_SAVE_VERSION});
-  }catch(e){ console.warn("cloud save failed",e); saveDiag("cloud write failure", {uid:FB_UID, message:e&&e.message}); }
+    if(seq>CLOUD_LATEST_COMPLETED_SEQUENCE){
+      CLOUD_LATEST_COMPLETED_SEQUENCE=seq;
+      setCloudTrackingFromEnvelope(env);
+      LAST_CLOUD_SAVE_RAW=payload;
+      saveDiag(reason==="trailing"?"trailing write succeeded":"write succeeded", {uid:FB_UID, path:"players/"+FB_UID, revision:nextRevision, sequence:seq, schemaVersion:STRUCTURED_SAVE_VERSION});
+    }else{
+      saveDiag("stale write completion ignored", {uid:FB_UID, revision:nextRevision, sequence:seq, latestCompleted:CLOUD_LATEST_COMPLETED_SEQUENCE});
+    }
+  }catch(e){ console.warn("cloud save failed",e); saveDiag(reason==="trailing"?"trailing write failed":"cloud write failure", {uid:FB_UID, sequence:seq, message:e&&e.message}); }
+  finally{
+    CLOUD_WRITE_IN_PROGRESS=false;
+    if(CLOUD_PENDING_PAYLOAD) scheduleTrailingCloudSave();
+  }
 }
-function saveNow(){
+function cloudPush(payload){
+  saveDiag("cloud save requested", {uid:FB_UID||null, clientUpdatedAt:legacyPayloadUpdatedAt(payload), inProgress:CLOUD_WRITE_IN_PROGRESS, hasPending:!!CLOUD_PENDING_PAYLOAD});
+  CLOUD_LATEST_REQUESTED_PAYLOAD=payload;
+  const valid=validateSavePayload(payload,"cloud-push-request");
+  if(!valid.ok){ rememberRejectedPayload(payload, valid.reason, "cloud-push-request"); return; }
+  if(_suppressCloudPush||!fbOn()||!FB_UID||CURRENT_USER==="Guest") return startCloudWrite(payload,"immediate");
+  const elapsed=Date.now()-CLOUD_LAST_WRITE_STARTED_AT;
+  if(!CLOUD_WRITE_IN_PROGRESS && elapsed>=CLOUD_SAVE_THROTTLE_MS){ startCloudWrite(payload,"immediate"); return; }
+  queueTrailingCloudSave(payload, CLOUD_WRITE_IN_PROGRESS?"write-in-progress":"throttle-window");
+}
+function flushNewestSaveForExit(){
+  saveNow({flushCloud:true});
+  if(CLOUD_PENDING_PAYLOAD && !CLOUD_WRITE_IN_PROGRESS) flushCloudSaveQueue("trailing");
+}
+function saveNow(opts){
+  opts=opts||{};
   if(!CURRENT_USER) return;
   try{
     const payload = JSON.stringify(legacySaveObjectFromState());
@@ -1177,6 +1233,7 @@ function saveNow(){
     try{ const prev=localStorage.getItem(saveKeyFor(CURRENT_USER)); if(prev && prev!==payload) backupExistingLocalSave(CURRENT_USER,"saveNow"); }catch(e){}
     localStorage.setItem(saveKeyFor(CURRENT_USER), payload);
     cloudPush(payload);
+    if(opts.flushCloud && CLOUD_PENDING_PAYLOAD && !CLOUD_WRITE_IN_PROGRESS) flushCloudSaveQueue("trailing");
   }catch(e){}
 }
 let _saveT=null;
@@ -1228,8 +1285,9 @@ function load(){
     return true;
   }catch(e){ return false; }
 }
-document.addEventListener("visibilitychange",()=>{ if(document.hidden) saveNow(); else { accrueRolls(); refresh(); } });
-window.addEventListener("pagehide", saveNow);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) flushNewestSaveForExit(); else { accrueRolls(); refresh(); } });
+window.addEventListener("pagehide", flushNewestSaveForExit);
+window.addEventListener("beforeunload", flushNewestSaveForExit);
 
 /* ================= WEEKLY GOAL ================= */
 function rolloverWeek(){
@@ -5771,21 +5829,31 @@ async function enterGame(u){
       const env=structuredEnvelopeFromPlayerDoc(player);
       if(env){
         const structuredValid=validateStructuredSavePayload(env,"cloud-load-structured");
-        if(structuredValid.ok){ selectedRaw=JSON.stringify(structuredValid.legacy); selectedSource="structured-cloud"; selectedRevision=env.revision; setCloudTrackingFromEnvelope(env); }
+        if(structuredValid.ok){ structuredValid.legacy.revision=env.revision; structuredValid.legacy.clientUpdatedAt=env.clientUpdatedAt; selectedRaw=JSON.stringify(structuredValid.legacy); selectedSource="structured-cloud"; selectedRevision=env.revision; setCloudTrackingFromEnvelope(env); }
         else rememberRejectedPayload(JSON.stringify(env), structuredValid.reason, "cloud-load-structured");
       }
       if(!selectedRaw && cloudRaw){
         const valid=validateSavePayload(cloudRaw,"cloud-load-legacy");
         if(valid.ok){
           const migrated=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:u, revision:cloudMetaFromPlayerData(player).revision||0, clientUpdatedAt:valid.data.lastRoll||Date.now(), updatedAt:player&&player.updatedAt});
-          selectedRaw=cloudRaw; selectedSource="legacy-cloud"; selectedRevision=migrated.revision; setCloudTrackingFromEnvelope(migrated);
+          valid.data.revision=migrated.revision; valid.data.clientUpdatedAt=migrated.clientUpdatedAt; selectedRaw=JSON.stringify(valid.data); selectedSource="legacy-cloud"; selectedRevision=migrated.revision; setCloudTrackingFromEnvelope(migrated);
           saveDiag("migration prepared", {state:"dual-write", source:"save3d", uid:FB_UID});
         }else rememberRejectedPayload(cloudRaw, valid.reason, "cloud-load-legacy");
       }
       if(selectedRaw){
-        LAST_CLOUD_LOAD_RESULT={ok:true, source:selectedSource, reason:null, ts:Date.now(), uid:FB_UID, revision:selectedRevision};
-        saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
-        replaceLocalSave(u,selectedRaw,selectedSource);
+        let localRaw=null; try{ localRaw=localStorage.getItem(saveKeyFor(u)); }catch(e){}
+        const localFresh=localRaw?isLocalNewerThanCloud(localRaw, selectedRaw, env):{newer:false};
+        if(localFresh.newer){
+          selectedRaw=localRaw; selectedSource="local-newer-than-cloud"; selectedRevision=localFresh.local.revision||selectedRevision;
+          LAST_CLOUD_LOAD_RESULT={ok:true, source:selectedSource, reason:localFresh.reason, ts:Date.now(), uid:FB_UID, revision:selectedRevision};
+          saveDiag("local-newer-than-cloud reconciliation", {uid:FB_UID, reason:localFresh.reason, localClientUpdatedAt:localFresh.local.clientUpdatedAt, cloudClientUpdatedAt:localFresh.cloud.clientUpdatedAt, localRevision:localFresh.local.revision, cloudRevision:localFresh.cloud.revision});
+          saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
+          cloudPush(selectedRaw);
+        }else{
+          LAST_CLOUD_LOAD_RESULT={ok:true, source:selectedSource, reason:null, ts:Date.now(), uid:FB_UID, revision:selectedRevision};
+          saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
+          replaceLocalSave(u,selectedRaw,selectedSource);
+        }
       }else{
         LAST_CLOUD_LOAD_RESULT={ok:false, reason:"missing", ts:Date.now(), uid:FB_UID};
         saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
