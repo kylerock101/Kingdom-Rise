@@ -35,10 +35,6 @@
     transition:transform .3s cubic-bezier(.2,1.8,.4,1);pointer-events:none;}
   #rolled.show{transform:translate(-50%,-50%) scale(1);}
   /* ---------- NON-BLOCKING REWARD TOAST ---------- */
-  #rtoast.epic{background:linear-gradient(180deg,rgba(120,72,20,.98),rgba(70,38,8,.98));
-    box-shadow:0 0 0 2px #ffc93c, 0 0 26px rgba(255,201,60,.75), 0 10px 30px rgba(0,0,0,.5);}
-  #rtoast.epic #rtR{color:#ffe9a8;text-shadow:0 0 12px rgba(255,201,60,.9);}
-  #rtoast.epic #rtT{color:#ffd76a;}
   #rtoast{position:absolute;top:27%;left:50%;transform:translate(-50%,-14px) scale(.9);
     display:flex;align-items:center;gap:13px;pointer-events:none;opacity:0;z-index:22;
     background:linear-gradient(180deg,rgba(59,44,120,.97),rgba(36,26,77,.97));
@@ -46,22 +42,15 @@
     box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(255,201,60,.4);
     transition:opacity .3s ease, transform .35s cubic-bezier(.2,1.5,.4,1);}
   #rtoast.show{opacity:1;transform:translate(-50%,0) scale(1);}
-  #rtoast #rtE{font-size:36px;line-height:1;flex:0 0 auto;}
-  #rtBody{text-align:left;line-height:1.34;flex:1;min-width:0;}
-  #rtT{display:block;font-size:15px;font-weight:900;color:#f4efff;letter-spacing:.01em;}
-  #rtR{display:block;font-size:17px;font-weight:900;color:#ffc93c;margin-top:3px;}
-  #rtHint{display:none;font-size:11px;font-weight:800;color:#b9aee6;margin-top:7px;letter-spacing:.04em;}
-  #rtoast.hold #rtHint{display:block;}
-  #rtX{display:none;flex:0 0 auto;border:none;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;
-    width:30px;height:30px;border-radius:50%;font-size:14px;font-weight:900;line-height:1;padding:0;align-self:flex-start;}
-  #rtX:active{transform:scale(.9);}
-  #rtoast.hold{pointer-events:auto;cursor:pointer;}
-  #rtoast.hold #rtX{display:block;}
-  #rtoast.big{padding:18px 22px;gap:15px;
+  #rtoast #rtE{font-size:34px;line-height:1;flex:0 0 auto;}
+  #rtBody{text-align:left;line-height:1.2;flex:1;min-width:0;}
+  #rtT{display:block;font-size:13.5px;font-weight:900;color:#f4efff;}
+  #rtR{display:block;font-size:15px;font-weight:900;color:#ffc93c;margin-top:1px;}
+  #rtoast.big{padding:15px 24px;gap:14px;
     box-shadow:0 16px 42px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,201,60,.7), 0 0 30px rgba(255,201,60,.4);}
-  #rtoast.big #rtE{font-size:50px;}
-  #rtoast.big #rtT{font-size:19px;}
-  #rtoast.big #rtR{font-size:22px;line-height:1.3;}
+  #rtoast.big #rtE{font-size:48px;}
+  #rtoast.big #rtT{font-size:17px;}
+  #rtoast.big #rtR{font-size:20px;}
   #rtoast.bad{box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(255,120,90,.5);}
   #rtoast.bad #rtR{color:#ff8a7a;}
   #tapHint{position:absolute;bottom:27%;left:50%;transform:translateX(-50%);
@@ -74,21 +63,6 @@
   #frenzyLoot{font-size:clamp(24px,7.5vw,36px);font-weight:900;color:#ffc93c;text-shadow:0 3px 12px rgba(0,0,0,.85);}
   #frenzyTime{width:min(54vw,210px);height:9px;border-radius:999px;background:rgba(0,0,0,.5);margin:7px auto 0;overflow:hidden;}
   #frenzyFill{height:100%;width:100%;border-radius:999px;background:linear-gradient(90deg,#ff5c4d,#ffc93c);}
-  #dragonHP{position:absolute;top:16%;left:50%;transform:translateX(-50%);text-align:center;display:none;pointer-events:none;width:min(78vw,320px);}
-  #dragonHP.show{display:block;}
-  #dragonName{font-size:clamp(13px,3.6vw,16px);font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.85);margin-bottom:5px;
-    letter-spacing:.02em;text-transform:uppercase;}
-  #dragonHPTrack{width:100%;height:16px;border-radius:999px;background:rgba(0,0,0,.55);box-shadow:inset 0 2px 4px rgba(0,0,0,.6);overflow:hidden;
-    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18), inset 0 2px 4px rgba(0,0,0,.6);}
-  #dragonHPFill{height:100%;border-radius:999px;width:100%;background:linear-gradient(90deg,#e8433a,#ff8a3c);transition:width .12s ease-out;}
-  #dragonHPNum{margin-top:4px;font-size:12px;font-weight:900;color:#ffe3b0;text-shadow:0 2px 6px rgba(0,0,0,.85);}
-  #dragonTimeTrack{width:100%;height:7px;border-radius:999px;background:rgba(0,0,0,.5);margin-top:8px;overflow:hidden;}
-  #dragonTimeFill{height:100%;width:100%;border-radius:999px;background:linear-gradient(90deg,#6fb1ff,#8f7bff);transition:width .1s linear;}
-  #dragonNoSoldiers{position:absolute;top:38%;left:50%;transform:translateX(-50%);text-align:center;display:none;pointer-events:none;
-    background:rgba(139,30,30,.92);color:#fff;font-weight:900;font-size:14px;padding:10px 18px;border-radius:12px;
-    box-shadow:0 6px 18px rgba(0,0,0,.5);}
-  #dragonNoSoldiers.show{display:block;}
-  #dragonNoSoldiers{pointer-events:auto;cursor:pointer;}
   /* ---------- BOTTOM BAR ---------- */
   #bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;
     padding:6px 14px calc(10px + env(safe-area-inset-bottom));pointer-events:none;}
@@ -290,9 +264,6 @@
     background:linear-gradient(180deg,rgba(59,44,120,.96),rgba(36,26,77,.96));}
   #createOv .pText{margin-bottom:10px;}
   .crRow{text-align:left;margin-bottom:10px;}
-  .crLockedNote{background:#241d47;border-radius:11px;padding:10px 12px;}
-  .crLockedNote .crLabel{margin-bottom:2px;}
-  .crNote{font-size:12px;color:#8f82c4;font-weight:700;}
   .crLabel{font-size:11px;font-weight:900;letter-spacing:.05em;color:#a99cd6;text-transform:uppercase;margin-bottom:5px;}
   .crChips{display:flex;flex-wrap:wrap;gap:7px;}
   .crChip{border:none;border-radius:11px;padding:9px 13px;font-weight:900;font-size:13px;
@@ -300,10 +271,6 @@
   .crChip.on{box-shadow:0 0 0 2px #ffc93c, inset 0 -3px 0 rgba(0,0,0,.35);}
   .crSwatch{width:34px;height:34px;border-radius:50%;border:none;padding:0;position:relative;box-shadow:inset 0 -3px 0 rgba(0,0,0,.3);}
   .crSwatch.on{box-shadow:0 0 0 3px #ffc93c;}
-  .crChip.locked{opacity:.6;}
-  .crSwatch.locked{opacity:.55;}
-  .crLock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;
-    background:rgba(0,0,0,.35);border-radius:50%;}
   #devPin{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:none;align-items:center;justify-content:center;}
   #devPin.show{display:flex;}
   #devPinBox{background:#1a1630;border-radius:18px;padding:28px 24px;width:min(320px,88vw);text-align:center;}
@@ -330,25 +297,6 @@
   .skinTag.active{background:#2f9c5e;}
   .skinTag.use{background:#3f6db0;}
   .skinTag.lock{background:#4a4260;}
-  #storeFronts{display:flex;gap:6px;margin:2px 0 12px;}
-  .storeFrontBtn{flex:1;border:none;border-radius:11px;padding:9px 6px;font-weight:900;font-size:12px;
-    background:#241d47;color:#a99cd6;cursor:pointer;}
-  .storeFrontBtn.on{background:#5a3fa0;color:#fff;}
-  .storeCoinBar{display:flex;align-items:center;justify-content:center;gap:6px;font-weight:900;font-size:14px;
-    color:#ffc93c;margin-bottom:10px;background:#241d47;border-radius:11px;padding:8px;}
-  .storeCard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:none;cursor:pointer;
-    border-radius:14px;padding:12px 14px;margin:8px 0;background:#2a2350;color:#fff;position:relative;
-    box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .06s;}
-  .storeCard:active{transform:scale(.98);}
-  .storeCard.owned{opacity:.55;}
-  .storeIcon{font-size:26px;flex:0 0 auto;width:34px;text-align:center;}
-  .storeInfo{flex:1;min-width:0;}
-  .storeName{font-weight:900;font-size:14.5px;}
-  .storeBlurb{font-size:11.5px;opacity:.78;margin-top:2px;line-height:1.25;}
-  .storeTag{font-size:12px;font-weight:900;padding:6px 11px;border-radius:9px;flex:0 0 auto;white-space:nowrap;}
-  .storeTag.buy{background:#2f9c5e;}
-  .storeTag.cant{background:#4a4260;color:#b9aee6;}
-  .storeTag.owned{background:#3a3460;color:#9086b8;}
   /* quest pill */
   #questPill{position:absolute;top:calc(52px + env(safe-area-inset-top));right:10px;font-size:11px;max-width:52vw;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -370,7 +318,6 @@
   .lbRank{font-weight:900;font-size:14px;width:30px;text-align:center;color:#ffc93c;}
   .lbName{flex:1;font-weight:800;font-size:14px;}
   .lbName small{color:#a99cd6;font-weight:700;font-size:11px;}
-  .lbRealm{color:#8f82c4;font-weight:700;font-size:10.5px;margin-top:1px;}
   .lbMight{font-weight:900;font-size:13px;}
   .giftSec{font-size:11px;font-weight:800;letter-spacing:.08em;color:#a99cd6;text-transform:uppercase;margin:6px 2px 8px;}
   .giftRow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;margin-bottom:6px;background:#2e2260;}
@@ -411,15 +358,9 @@
   <div class="pill" id="realmPill">📜 <span id="taxN">20</span>% · 🗡️ <span id="crimeN">10%</span></div>
   <div class="pill" id="questPill">🎯 …</div>
   <div id="msg"></div>
-  <div id="rtoast"><span id="rtE"></span><div id="rtBody"><b id="rtT"></b><span id="rtR"></span>
-    <span id="rtHint">Tap to dismiss</span></div><button id="rtX" aria-label="Close">✕</button></div>
+  <div id="rtoast"><span id="rtE"></span><div id="rtBody"><b id="rtT"></b><span id="rtR"></span></div></div>
   <div id="rolled"></div>
   <div id="tapHint">🐉 TAP FAST!</div>
-  <div id="dragonHP"><div id="dragonName">Dragon</div>
-    <div id="dragonHPTrack"><div id="dragonHPFill"></div></div>
-    <div id="dragonHPNum">100 / 100</div>
-    <div id="dragonTimeTrack"><div id="dragonTimeFill"></div></div></div>
-  <div id="dragonNoSoldiers">⚔️ No soldiers left — tap here to retreat</div>
   <div id="frenzy"><div id="frenzyLoot">🪙 0</div><div id="frenzyTime"><div id="frenzyFill"></div></div></div>
   <div id="goalBar">
     <span id="goalIcon">🎲</span>
@@ -435,7 +376,6 @@
     </div>
     <div id="dieDock"><canvas id="dieCv"></canvas><div id="dieLabel">TAP TO ROLL</div><button id="multi">x1</button></div>
     <div class="barSide">
-      <button class="tabBtn" id="storeBtn">🛒<small>Store</small></button>
       <button class="tabBtn" id="socialBtn">👥<small>Social</small><span id="giftDot"></span></button>
     </div>
   </div>
@@ -545,17 +485,6 @@
   <div id="verRow">King's Rise 3D · Beta v0.1</div>
 </div></div>
 
-<div class="ov" id="storeOv"><div class="panel">
-  <button class="pX" id="storeX">✕</button>
-  <div class="pTitle">🛒 The Store</div>
-  <div class="storeCoinBar">🪙 <span id="storeCoinN">0</span></div>
-  <div id="storeFronts">
-    <button class="storeFrontBtn" id="frontCharacter">👑 Character</button>
-    <button class="storeFrontBtn" id="frontRealm">🏰 Realm</button>
-    <button class="storeFrontBtn" id="frontCitizens">🎭 Citizens</button>
-  </div>
-  <div id="storeList"></div>
-</div></div>
 <div class="ov" id="skinOv"><div class="panel">
   <button class="pX" id="skinX">✕</button>
   <div class="pTitle">🏰 Board Theme</div>
@@ -716,46 +645,23 @@ const S = {
   defences:["wall","redoubt"], vault:0, defLog:[], lastDefSim:0,
   appearance:null,
   ownedSkins:["default"], activeSkin:"default",
-  slayerTurns:0, dragonSlain:0,   // dragon-slayer buff (turns left) + how many dragons felled (picks the next colour)
-  ownedItems:[],                  // every store purchase across all fronts (Character, Realm, Citizens)
-  dragonHP:0, dragonHPMax:0,       // the CURRENT dragon's remaining health — carries over if it flees
 };
 /* ---- monarch customization palettes ---- */
-const SKINS   = [0xf6d3b0,0xf0c8a0,0xe0a878,0xc68642,0x8d5524,0x5c3a21, 0xffe0a3];
-const SKINS_LOCKED = {0xffe0a3:"skin_gilded"};   // hex -> store item id; locked until owned
+const SKINS   = [0xf6d3b0,0xf0c8a0,0xe0a878,0xc68642,0x8d5524,0x5c3a21];
 const HAIRS   = [0x2b1d14,0x5a3a22,0x8a5a2b,0xd9b877,0xe8d09a,0xb0413e,0xcfcfd6,0xf4efff];
-const ROBES   = [0xb0413e,0x3f6db0,0x5a3fa0,0x2f9c5e,0xe0a41f,0x2b2440,0x8a2b6b,0x0e7a6e, 0x1a1a2e,0x0e6b4f];
-const ROBES_LOCKED = {0x1a1a2e:"robe_midnight", 0x0e6b4f:"robe_emerald"};
+const ROBES   = [0xb0413e,0x3f6db0,0x5a3fa0,0x2f9c5e,0xe0a41f,0x2b2440,0x8a2b6b,0x0e7a6e];
 const ACCENTS = [0xffc93c,0xf4efff,0x4a3358,0xe0a41f,0x9c2b2b,0x2b2440];
 const HAIRSTYLES = ["short","long","bun","none"];
-const CROWNS = ["crown","tiara","laurel","circlet","diadem"];
-const CROWNS_LOCKED = {circlet:"crown_iron", diadem:"crown_gilded"};
+const CROWNS = ["crown","tiara","laurel"];
 const SIZES = ["small","medium","large"];
-const KING_DEFAULT = {gender:"king", size:"medium", skin:0xf0c8a0, hair:0x5a3a22, hairStyle:"short", robe:0xb0413e, accent:0xffc93c, crown:"crown", cape:false};
+const KING_DEFAULT = {gender:"king", size:"medium", skin:0xf0c8a0, hair:0x5a3a22, hairStyle:"short", robe:0xb0413e, accent:0xffc93c, crown:"crown"};
 let KING_APP = Object.assign({}, KING_DEFAULT);
 const today = () => new Date().toISOString().slice(0,10);
 const WEEK_GOAL = 60;      // rolls to spend in a week for the big payout
 const WEEK_REWARD = 50;    // rolls granted when the weekly goal is met
 const TIERS = ["Camp","Village","Town","City","Kingdom","Empire"];
 const BUILDS_PER_TIER = 5, REALM_SPAN = TIERS.length*BUILDS_PER_TIER;
-/* Realm-gold multiplier. Grows the same ~6.6x/realm through realm 6 (unchanged from
-   before), then EASES toward a ceiling so numbers stay legible at any realm — a
-   long-lived kingdom should still feel richer at realm 20 than realm 10, just not
-   by a factor of quadrillions. This is what actually fixes runaway inflation; a
-   store alone can't, since prices tied to buildCost() would inflate at the same
-   uncapped rate. */
-const RG_TAPER_REALM = 6;              // grows exactly as before through this realm
-const RG_STEP = 1.55, RG_DECAY = 0.82; // then ~1.55x/realm, shrinking further each realm
-function RG(){
-  const r=S.realm;
-  const raw=()=>Math.pow(1.18, REALM_SPAN*0.38*(r-1));
-  if(r<=RG_TAPER_REALM) return raw();
-  const rAtTaper=RG_TAPER_REALM;
-  const base=Math.pow(1.18, REALM_SPAN*0.38*(rAtTaper-1));
-  let mult=1, step=RG_STEP;
-  for(let i=0;i<r-RG_TAPER_REALM;i++){ mult*=step; step=1+(step-1)*RG_DECAY; }
-  return base*mult;
-}
+function RG(){ return Math.pow(1.18, REALM_SPAN*0.38*(S.realm-1)); }   // ~6.6x per realm — billions arrive around realm 8, not realm 4
 /* lifetime building progress — carries across realms so the kingdom never shrinks */
 function legacy(){ return (S.realm-1)*REALM_SPAN + S.tier*BUILDS_PER_TIER + S.builds; }
 /* how advanced the newest structures are: tier within realm, plus a step per realm */
@@ -771,68 +677,6 @@ const MULTIS=[1,2,3,5], BLESS_MULTIS=[1,2,3,5,10,20];
    selected. Add a new seasonal skin later = add ONE entry here, nothing else.
    - locked:true   -> must be granted (store purchase / special reward) before use
    - any field omitted falls back to the game's normal colours                    */
-/* ================= THE STORE =================
-   Three fronts, fully data-driven — a new item is just one entry, no engine
-   changes. Prices are set relative to buildCost() at the player's CURRENT
-   realm, so they scale with progress instead of becoming trivial or absurd —
-   this only works because RG() itself is now capped (see above); a store
-   priced against an uncapped curve would inflate right alongside it.
-   Everything here spends coins. Real-money packs (coins/rolls) are a
-   separate, later front — this file only defines the cosmetic catalog. */
-/* Store prices are a genuine stretch goal, not pocket change. An item costs several
-   buildings' worth of gold — the STRETCH factor — on top of its own rarity multiplier,
-   so unlocking anything means consciously saving past a few building purchases rather
-   than affording it after a single roll. This only holds together because RG() itself
-   is capped now; the same formula against the old uncapped curve would spiral. */
-const STORE_STRETCH = 3.5;
-function priceFor(mult){ return Math.max(300, Math.round(buildCost()*mult*STORE_STRETCH)); }
-
-const STORE_CHARACTER = [
-  {id:"robe_midnight",  name:"Midnight Robe",     icon:"👑", mult:1.0,  blurb:"A robe as dark as a moonless siege."},
-  {id:"robe_emerald",   name:"Emerald Mantle",     icon:"👑", mult:1.0,  blurb:"Court colours for a prosperous reign."},
-  {id:"crown_iron",     name:"Iron Circlet",       icon:"👑", mult:0.8,  blurb:"Plain, unbending, a warlord's crown."},
-  {id:"crown_gilded",   name:"Gilded Diadem",      icon:"👑", mult:2.2,  blurb:"Gold enough to make the treasury nervous."},
-  {id:"skin_gilded",    name:"Sun-Kissed Skin Tone", icon:"👑", mult:0.6, blurb:"An extra shade for the monarch creator."},
-  {id:"aura_royal",     name:"Royal Aura",         icon:"✨", mult:3.0,  blurb:"A faint golden shimmer follows your every step."},
-  {id:"cape_ermine",    name:"Ermine-Trimmed Cape", icon:"👑", mult:1.6, blurb:"White fur, a favourite of old dynasties."},
-  {id:"scepter_dragon", name:"Dragonbone Scepter", icon:"🔱", mult:2.6,  blurb:"Carved from a trophy no smith could melt."},
-];
-
-const STORE_REALM = [
-  {id:"skin_christmas",  skinId:"christmas", name:"Winter's Feast",  icon:"❄️", mult:4.0, blurb:"Snow-dusted rooftops and evergreen cheer."},
-  {id:"skin_autumn",     skinId:"autumn",    name:"Harvest Crown",   icon:"🍂", mult:4.0, blurb:"Amber and rust across a golden realm."},
-  {id:"castle_obsidian", name:"Obsidian Keep",      icon:"🏰", mult:5.0,  blurb:"Black stone towers that drink the torchlight."},
-  {id:"castle_marble",   name:"White Marble Keep",  icon:"🏰", mult:5.0,  blurb:"A castle carved for a coronation."},
-  {id:"banner_dragon",   name:"Dragon Banners",     icon:"🚩", mult:1.4,  blurb:"Flown from every tower after your first slaying."},
-  {id:"road_cobalt",     name:"Cobalt-Paved Roads", icon:"🛣️", mult:2.0,  blurb:"Roads that gleam blue after rain."},
-  {id:"fountain_gold",   name:"Golden Fountain",    icon:"⛲", mult:2.4,  blurb:"A centrepiece for the castle square."},
-  {id:"garden_royal",    name:"Royal Gardens",      icon:"🌷", mult:1.8,  blurb:"Hedgerows trimmed into the crown's sigil."},
-];
-
-const STORE_CITIZENS = [
-  {id:"folk_festival",   name:"Festival Attire",    icon:"🎭", mult:1.2,  blurb:"Your townsfolk dress for a holiday year-round."},
-  {id:"folk_noble",      name:"Noble Finery",       icon:"🎩", mult:1.8,  blurb:"A wealthier look for the market crowd."},
-  {id:"guard_ceremonial",name:"Ceremonial Guard",    icon:"🛡️", mult:2.0,  blurb:"Gleaming parade armour for your sentries."},
-  {id:"pets_hounds",     name:"Royal Hounds",       icon:"🐕", mult:1.0,  blurb:"A pair of hunting hounds trot the roads."},
-  {id:"criers_gold",     name:"Golden Town Criers", icon:"📯", mult:1.4,  blurb:"Announcements dressed in cloth-of-gold."},
-  {id:"market_awnings",  name:"Striped Awnings",    icon:"⛺", mult:1.0,  blurb:"Market stalls get a splash of colour."},
-  {id:"lanterns_warm",   name:"Warm Lanterns",      icon:"🏮", mult:1.6,  blurb:"Every doorway glows at dusk."},
-  {id:"minstrels",       name:"Wandering Minstrels",icon:"🎻", mult:1.2,  blurb:"Music drifts through the streets."},
-];
-function storeFronts(){ return {character:STORE_CHARACTER, realm:STORE_REALM, citizens:STORE_CITIZENS}; }
-function storeItemPrice(item){ return priceFor(item.mult); }
-function storeOwns(id){ return S.ownedItems.includes(id); }
-function storeBuy(front, item){
-  if(storeOwns(item.id)) return false;
-  const price=storeItemPrice(item);
-  if(S.coins<price) return false;
-  S.coins-=price;
-  S.ownedItems.push(item.id);
-  if(item.skinId && !S.ownedSkins.includes(item.skinId)) S.ownedSkins.push(item.skinId);
-  save(); refresh();
-  return true;
-}
-
 const BOARD_SKINS = {
   default: {
     name:"Realm Default", blurb:"The kingdom's natural look, shifting with each realm.",
@@ -947,7 +791,7 @@ function cloudPush(payload){
   _lastCloudPush=now;
   try{
     window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),
-      {name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:now},{merge:true})
+      {name:CURRENT_USER, might:myMight(), save3d:payload, updatedAt:now},{merge:true})
       .catch(e=>console.warn("cloud save failed",e));
   }catch(e){}
 }
@@ -966,9 +810,6 @@ function saveNow(){
       log:LOG.slice(0,LOG_MAX),
       appearance:S.appearance,
       ownedSkins:S.ownedSkins, activeSkin:S.activeSkin,
-      slayerTurns:S.slayerTurns, dragonSlain:S.dragonSlain,
-      dragonHP:S.dragonHP, dragonHPMax:S.dragonHPMax,
-      ownedItems:S.ownedItems,
     });
     localStorage.setItem(saveKeyFor(CURRENT_USER), payload);
     cloudPush(payload);
@@ -1001,11 +842,6 @@ function load(){
     if(!Array.isArray(S.ownedSkins)) S.ownedSkins=["default"];
     if(!S.ownedSkins.includes("default")) S.ownedSkins.unshift("default");
     if(typeof S.activeSkin!=="string" || !BOARD_SKINS[S.activeSkin] || !S.ownedSkins.includes(S.activeSkin)) S.activeSkin="default";
-    if(typeof S.slayerTurns!=="number") S.slayerTurns=0;
-    if(typeof S.dragonSlain!=="number") S.dragonSlain=0;
-    if(typeof S.dragonHP!=="number") S.dragonHP=0;
-    if(typeof S.dragonHPMax!=="number") S.dragonHPMax=0;
-    if(!Array.isArray(S.ownedItems)) S.ownedItems=[];
     if(typeof S.crime!=="number") S.crime=0;
     if(typeof S.music!=="boolean") S.music=true;
     if(!Array.isArray(S.defences)||S.defences.length!==2) S.defences=["wall","redoubt"];
@@ -1105,36 +941,23 @@ function renderHistory(){
     host.appendChild(r);
   });
 }
-function dismissToast(){
-  const el=$("rtoast"); if(!el) return;
-  clearTimeout(_rtTimer);
-  el.classList.remove("show","hold");
-  const qb=$("questBar"); if(qb) qb.style.opacity="1";
-}
-/* size "big" = something the player should actually read (raids, dragons, chests,
-   taxes, decrees). Those WAIT to be dismissed rather than vanishing on a timer.
-   Small pickups still fade on their own so play isn't interrupted. */
 function rewardToast(emoji, title, reward, size, bad){
   logEvent(emoji,title,reward,bad);          // everything the player sees also enters the chronicle
   const el=$("rtoast"); if(!el) return;
   $("rtE").textContent=emoji||"";
   $("rtT").textContent=title||"";
   $("rtR").textContent=reward||"";
-  el.classList.remove("big","bad","show","epic","hold"); void el.offsetWidth;
+  el.classList.remove("big","bad","show"); void el.offsetWidth;
   if(size==="big") el.classList.add("big");
   if(bad) el.classList.add("bad");
-  if(typeof reward==="string" && reward.indexOf("EPIC GRAND TOTAL")>=0) el.classList.add("epic");
-  const hold = (size==="big");
-  if(hold) el.classList.add("hold");
   el.classList.add("show");
   const qb=$("questBar"); if(qb){ qb.style.transition="opacity .25s"; qb.style.opacity="0"; }
   clearTimeout(_rtTimer);
-  // a generous safety timeout so a notification can never strand the player
-  _rtTimer=setTimeout(dismissToast, hold ? 30000 : 3200);
+  _rtTimer=setTimeout(()=>{ el.classList.remove("show"); if(qb) qb.style.opacity="1"; }, size==="big"?4600:3200);
 }
 function refresh(){
   $("coinN").textContent = fmtCoin(S.coins);
-  $("rollN").textContent = S.rolls + (S.blessed?" 🔮":"") + (S.slayerTurns>0?" 🐲x2":"");
+  $("rollN").textContent = S.rolls + (S.blessed?" 🔮":"");
   const rp=$("rollsPill");
   rp.classList.toggle("low", S.rolls>0 && S.rolls<=5);
   rp.classList.toggle("empty", S.rolls<S.multi);
@@ -1259,7 +1082,6 @@ ground.position.y=-.3; ground.receiveShadow=true; scene.add(ground);
     if("colorSpace" in t) t.colorSpace=THREE.SRGBColorSpace;
     return t;
   })();
-  window.COBBLE_TEX=cobbleTex;    // shared — rebuildDetail reuses this, never regenerates it
   const cobble=new THREE.Mesh(new THREE.RingGeometry(2.4,10.5,48),
     new THREE.MeshStandardMaterial({map:cobbleTex,roughness:.95}));
   cobble.rotation.x=-Math.PI/2; cobble.position.y=0.015; cobble.receiveShadow=true;
@@ -1383,12 +1205,6 @@ const TILE_DEFS=(()=>{
 /* ---- a river across the land, and a humpback bridge carrying the road over it ---- */
 let WATER=null, WATER_Y=0.026;      // baseline height the shimmer bobs around
 let RIVER=null;                     // {ax,az,bx,bz,halfW} — the water's footprint on the ground
-let BRIDGE_CROSS_POINT=null;        // where citizens funnel through to cross on foot
-function riverSide(x,z){
-  if(!RIVER) return 0;
-  const abx=RIVER.bx-RIVER.ax, abz=RIVER.bz-RIVER.az;
-  return Math.sign((x-RIVER.ax)*abz - (z-RIVER.az)*abx) || 0;
-}
 function overRiver(x,z,margin){
   if(!RIVER) return false;
   const abx=RIVER.bx-RIVER.ax, abz=RIVER.bz-RIVER.az;
@@ -1441,7 +1257,6 @@ function buildRiverAndBridge(){
   WATER_Y=0.026; WATER=water;
   RIVER={ ax:cx-flow.x*RIVER_L/2, az:cz-flow.z*RIVER_L/2,
           bx:cx+flow.x*RIVER_L/2, bz:cz+flow.z*RIVER_L/2, halfW:RIVER_W/2 };
-  BRIDGE_CROSS_POINT=curve.getPoint(0.5).clone();      // the deck's midpoint — the one dry way across
 
   /* ---- the earthen embankment the road climbs, with a gap left for the arch ---- */
   const GY=-0.30, MHALF=1.42, ARCH_HALF_U=0.085;
@@ -1503,7 +1318,7 @@ function buildRiverAndBridge(){
   }
 
   /* ---- the timber deck: one smooth ribbon over the whole crossing ---- */
-  const HALF=1.55, DROP=0.11, THICK=0.16;   // wide enough for two people to pass
+  const HALF=1.16, DROP=0.11, THICK=0.16;
   const dp=[], dn=[], di=[];
   const dpush=(v,n)=>{ dp.push(v.x,v.y,v.z); dn.push(n.x,n.y,n.z); };
   for(let k=0;k<=N;k++){
@@ -1529,7 +1344,7 @@ function buildRiverAndBridge(){
   scene.add(deck); BRIDGE_PARTS.push(deck);
 
   /* ---- slim handrails, only along the raised part, with posts down to the deck ---- */
-  const RAIL_Y=0.46, RAIL_OUT=1.47, POST_H=RAIL_Y+DROP;   // rails track the wider deck
+  const RAIL_Y=0.46, RAIL_OUT=1.08, POST_H=RAIL_Y+DROP;
   const postSpots=[];
   for(const sgn of [-1,1]){
     const rp=[];
@@ -1783,11 +1598,7 @@ buildRiverAndBridge();
 const townGroup=new THREE.Group(); scene.add(townGroup);
 /* deterministic pseudo-random so a given kingdom always rebuilds identically */
 function srand(n){ const x=Math.sin(n*127.1+311.7)*43758.5453; return x-Math.floor(x); }
-/* Visual Pass 2C: a controlled kingdom palette -- royal blue and burgundy dominate,
-   with honey-gold as a rarer accent roof, so the town reads as one kingdom's work
-   rather than a patchwork of unrelated hues. Board skins (Christmas/Autumn) still
-   override this via skinRoofs() -- only the DEFAULT palette changes here. */
-const ROOFS=[0x7a3040,0x2f5a8a,0x7a3040,0x2f5a8a,0xd4a017,0x3a4f78];
+const ROOFS=[0xb0413e,0x3f6db0,0xd4a017,0x5a8f4f,0x8a4f9c,0xc4622d];
 /* structures evolve with tier: tents → huts → houses → halls → towers → citadels */
 /* detail slots collected from every building, then drawn as a handful of
    instanced meshes — hundreds of windows and doors for a few draw calls */
@@ -1988,15 +1799,6 @@ function buildArchDetail(){
     list.forEach((sl,i)=>{ fill(d,sl); d.updateMatrix(); im.setMatrixAt(i,d.matrix); });
     im.instanceMatrix.needsUpdate=true; return im;
   };
-  /* Visual Pass 2C: a thin wooden frame sits just behind each window, reusing the
-     same window slot data — one extra InstancedMesh for the whole town, not one
-     per building, so this is effectively free. Gives every house's windows a
-     consistent "dressed" look instead of a bare lit rectangle. */
-  const frameMat=new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.9});
-  const frameMesh=mk(new THREE.BoxGeometry(1,1,.04),frameMat,win,(o,sl)=>{
-    o.position.set(sl[0],sl[1],sl[2]-Math.cos(sl[3])*0.012-0.001);
-    o.rotation.set(0,sl[3],0); o.scale.set(sl[4]*1.22,sl[4]*1.5,1);
-  });
   // warm lit windows — they read as life inside the houses
   const winMat=new THREE.MeshStandardMaterial({color:0xffdf9a,emissive:0x8a6320,emissiveIntensity:.55,roughness:.6});
   const winMesh=mk(new THREE.BoxGeometry(1,1,.05),winMat,win,(o,sl)=>{
@@ -2014,32 +1816,7 @@ function buildArchDetail(){
   const eaveMesh=mk(new THREE.BoxGeometry(1,.06,1),eaveMat,eave,(o,sl)=>{
     o.position.set(sl[0],sl[1],sl[2]); o.rotation.set(0,sl[3],0); o.scale.set(sl[4],1,sl[4]);
   });
-  /* Visual Pass 2C: flower boxes under about a third of windows — "used sparingly"
-     per the brief, so most windows stay plain and the ones that get a box read as
-     a deliberate touch rather than decoration on every house. Box + a few blossom
-     dots, drawn as two more instanced meshes for the whole town. */
-  const flowerSlots = win.filter((sl,i)=> (i*7+3)%3===0);
-  const boxMat=new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.95});
-  const boxMesh=mk(new THREE.BoxGeometry(1,.09,.16),boxMat,flowerSlots,(o,sl)=>{
-    o.position.set(sl[0],sl[1]-sl[4]*0.62,sl[2]+Math.cos(sl[3])*0.09);
-    o.rotation.set(0,sl[3],0); o.scale.set(sl[4]*1.05,1,1);
-  });
-  const bloomMat=new THREE.MeshStandardMaterial({color:0xd9607a,roughness:.85});
-  const bloomMesh = flowerSlots.length ? (()=>{
-    const im=new THREE.InstancedMesh(new THREE.SphereGeometry(1,5,4),bloomMat,flowerSlots.length*3);
-    let n=0;
-    flowerSlots.forEach(sl=>{
-      for(const off of [-0.3,0,0.3]){
-        d.position.x = sl[0] + Math.cos(sl[3])*off*sl[4];
-        d.position.y = sl[1]-sl[4]*0.5;
-        d.position.z = sl[2] - Math.sin(sl[3])*off*sl[4] + Math.cos(sl[3])*0.1;
-        d.rotation.set(0,0,0); d.scale.setScalar(0.045*sl[4]);
-        d.updateMatrix(); im.setMatrixAt(n++,d.matrix);
-      }
-    });
-    im.instanceMatrix.needsUpdate=true; return im;
-  })() : null;
-  [frameMesh,winMesh,doorMesh,chimMesh,eaveMesh,boxMesh,bloomMesh].forEach(m=>{ if(m){ m.castShadow=false; m.receiveShadow=false; townGroup.add(m); } });
+  [winMesh,doorMesh,chimMesh,eaveMesh].forEach(m=>{ if(m){ m.castShadow=false; m.receiveShadow=false; townGroup.add(m); } });
 }
 /* ---- shops and homes fronting directly onto the board, so it reads as a high street ---- */
 function buildRoadside(progress){
@@ -2202,33 +1979,23 @@ function rebuildWorkSites(){
   const farms=Math.min(6, 1+Math.floor(prog/7));
   const lots =Math.min(4, Math.floor(prog/10));
   const place=(idx,total,type,offset)=>{
-    // try the intended tile angle first, then neighbours further round, and at
-    // each angle step progressively further out — dense outer housing rings at
-    // high legacy can otherwise block every distance along a single ray
-    for(const tiOff of [0,-2,2,-4,4,-6,6]){
-      const ti=(Math.floor((idx/total)*TILE_COUNT + 5) + tiOff + TILE_COUNT) % TILE_COUNT;
-      const base=path[ti], out=base.clone().normalize();
-      for(let step=0; step<10; step++){
-        const off=offset + Math.sign(offset)*step*2.4;
-        const pos=base.clone().addScaledVector(out,off);
-        if(pos.length()>56) continue;                          // a little beyond the widest housing ring
-        let tooClose=false;
-        for(const w of WORK_SITES){ if(w.pos.distanceTo(pos)<5.5){ tooClose=true; break; } }
-        if(tooClose) continue;
-        if(!plotClear(pos.x,pos.z,FOOT_FARM)) continue;         // don't drop a field onto a building
-        if(overRiver(pos.x,pos.z,2.6)) continue;                // fields don't grow in the river
-        const g=(type==="farm")?makeFarm(Math.min(3,Math.floor(era*0.6)),idx*13+2)
-                               :makeLumber(Math.min(3,Math.floor(era*0.5)),idx*17+5);
-        g.position.set(pos.x,0,pos.z);
-        g.rotation.y=Math.atan2(-pos.x,-pos.z);
-        townGroup.add(g);
-        WORK_SITES.push({pos:pos.clone(), type}); claimPlot(pos.x,pos.z,FOOT_FARM);
-        return;
-      }
-    }
+    // sit each site just off the board so it's seen in passing
+    const ti=Math.floor((idx/total)*TILE_COUNT + 5) % TILE_COUNT;
+    const base=path[ti], out=base.clone().normalize();
+    const pos=base.clone().addScaledVector(out,offset);
+    if(pos.length()>45) return;
+    for(const w of WORK_SITES){ if(w.pos.distanceTo(pos)<5.5) return; }
+    if(!plotClear(pos.x,pos.z,FOOT_FARM)) return;           // don't drop a field onto a building
+    if(overRiver(pos.x,pos.z,2.6)) return;                  // fields don't grow in the river
+    const g=(type==="farm")?makeFarm(Math.min(3,Math.floor(era*0.6)),idx*13+2)
+                           :makeLumber(Math.min(3,Math.floor(era*0.5)),idx*17+5);
+    g.position.set(pos.x,0,pos.z);
+    g.rotation.y=Math.atan2(-pos.x,-pos.z);
+    townGroup.add(g);
+    WORK_SITES.push({pos:pos.clone(), type}); claimPlot(pos.x,pos.z,FOOT_FARM);
   };
   for(let i=0;i<farms;i++) place(i,farms,"farm", 5.6);        // fields outside the road
-  for(let i=0;i<lots;i++)  place(i+0.5,lots,"lumber", 5.9);   // woodlots also OUTSIDE — away from the castle district (Pass 2B)
+  for(let i=0;i<lots;i++)  place(i+0.5,lots,"lumber", -5.6);  // woodlots just inside it
 }
 const HOUSE_SPOTS=[];
 let LAST_HOUSE=null;                                        // newest structure, for the raising animation
@@ -2246,142 +2013,69 @@ function claimPlot(x,z,r){ OCCUPIED.push({x,z,r}); }
 /* footprint radii, moderately generous */
 const FOOT_BUILDING=1.90, FOOT_TREE=1.15, FOOT_FARM=2.5;
 const RISING=[];                                            // structures currently under construction                                       // where servants attend their lords
-/* ================= CASTLE EVOLUTION (Visual Pass 2A) =================
-   tier runs 0..7 (see eraLevel()). Three honest stages, each keeping the
-   silhouette of the stage before it so growth reads as ADDITIVE:
-     0-1  a modest wooden-and-stone hall — no towers, no walls, no crest
-     2-4  a real keep: gatehouse, twin gate towers, corner towers, courtyard
-          wall, crenellations, arrow slits, buttresses — growing each tier
-     5-7  the complete storybook castle: full dressing, banners, crest,
-          gold accents, and a faint magical shimmer at the highest tier */
 function makeCastle(tier){
   const g=new THREE.Group();
-  const stone=new THREE.MeshStandardMaterial({color:0xe4dcc8,roughness:.82});
-  const dark =new THREE.MeshStandardMaterial({color:0x9a8f78,roughness:.88});
-  const roofM=new THREE.MeshStandardMaterial({color:0x7a3040,roughness:.65});
-  const gold =new THREE.MeshStandardMaterial({color:0xffc93c,roughness:.35,metalness:.55});
-  const woodM=new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9});
-  const winMat=new THREE.MeshStandardMaterial({color:0x3a2f5a,emissive:0xffca6a,emissiveIntensity:.45,roughness:.6});
-  const H=2.4+tier*.62;
-
-  /* STAGE 1 (tier 0-1): a modest hall */
-  const hall=new THREE.Mesh(new THREE.BoxGeometry(2.6,H,2.6),stone);
-  hall.position.y=H/2; hall.castShadow=hall.receiveShadow=true; g.add(hall);
-  const hallRoof=new THREE.Mesh(new THREE.ConeGeometry(2.05,1.05,4),roofM);
-  hallRoof.rotation.y=Math.PI/4; hallRoof.position.y=H+.45; hallRoof.castShadow=true; g.add(hallRoof);
-  const door=new THREE.Mesh(new THREE.BoxGeometry(.62,.92,.1),woodM);
-  door.position.set(0,.46,1.32); g.add(door);
-  const doorArch=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.1,10,1,false,0,Math.PI),woodM);
-  doorArch.rotation.set(Math.PI/2,0,0); doorArch.position.set(0,.92,1.32); g.add(doorArch);
+  const stone=new THREE.MeshStandardMaterial({color:0xbfb6a4,roughness:.85});
+  const dark=new THREE.MeshStandardMaterial({color:0x8f8677,roughness:.9});
+  const roofM=new THREE.MeshStandardMaterial({color:0x8f2f3f,roughness:.7});
+  const gold=new THREE.MeshStandardMaterial({color:0xffc93c,roughness:.4,metalness:.5});
+  const s=0.65+tier*0.17;                                   // castle literally rises with your tier
+  const keep=new THREE.Mesh(new THREE.BoxGeometry(3.0,2.6+tier*.7,3.0),stone);
+  keep.position.y=(2.6+tier*.7)/2; keep.castShadow=keep.receiveShadow=true; g.add(keep);
+  const battle=new THREE.Mesh(new THREE.BoxGeometry(3.3,.35,3.3),dark);
+  battle.position.y=2.6+tier*.7; g.add(battle);
+  /* crenellations — the toothed parapet that reads instantly as "castle" */
   {
-    const wg=new THREE.BoxGeometry(.2,.42,.06);
-    const wins=new THREE.InstancedMesh(wg,winMat,4);
+    const top=2.6+tier*.7+0.35, per=7, span=3.3, step=span/per;
+    const merlon=new THREE.BoxGeometry(step*0.5,0.3,step*0.5);
+    const crens=new THREE.InstancedMesh(merlon,dark,per*4);
     const d=new THREE.Object3D(); let n=0;
-    for(const off of [-0.75,0.75]) [[off,1.32,0],[off,-1.32,Math.PI]].forEach(([x,z,ry])=>{
-      d.position.set(x,H*0.5,z); d.rotation.set(0,ry,0); d.updateMatrix(); wins.setMatrixAt(n++,d.matrix);
-    });
+    for(let i=0;i<per;i++){
+      const t=-span/2+step*(i+.5);
+      [[t,-span/2],[t,span/2],[-span/2,t],[span/2,t]].forEach(([x,z])=>{
+        d.position.set(x,top+0.15,z); d.rotation.set(0,0,0); d.scale.set(1,1,1);
+        d.updateMatrix(); crens.setMatrixAt(n++,d.matrix);
+      });
+    }
+    crens.count=n; crens.instanceMatrix.needsUpdate=true; crens.castShadow=true; g.add(crens);
+  }
+  /* tall arched windows down the keep face */
+  {
+    const winMat=new THREE.MeshStandardMaterial({color:0x3a2f5a,emissive:0xffca6a,emissiveIntensity:.4,roughness:.6});
+    const wg=new THREE.BoxGeometry(.22,.55,.06);
+    const H=2.6+tier*.7;
+    const wins=new THREE.InstancedMesh(wg,winMat,16);
+    const d=new THREE.Object3D(); let n=0;
+    for(const row of [H*0.35,H*0.68]){
+      for(const off of [-0.9,-0.3,0.3,0.9]){
+        [[off,1.51,0],[off,-1.51,Math.PI]].forEach(([x,z,ry])=>{
+          d.position.set(x,row,z); d.rotation.set(0,ry,0); d.scale.set(1,1,1);
+          d.updateMatrix(); wins.setMatrixAt(n++,d.matrix);
+        });
+      }
+    }
     wins.count=n; wins.instanceMatrix.needsUpdate=true; g.add(wins);
+    // the great door
+    const door=new THREE.Mesh(new THREE.BoxGeometry(.7,1.0,.1),new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.9}));
+    door.position.set(0,.5,1.52); g.add(door);
+    const arch=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.1,10,1,false,0,Math.PI),new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.9}));
+    arch.rotation.set(Math.PI/2,0,0); arch.position.set(0,1.0,1.52); g.add(arch);
   }
-
-  /* STAGE 2 (tier 2-4): gatehouse, gate towers, corner towers, courtyard wall */
-  if(tier>=2){
-    const gatehouse=new THREE.Mesh(new THREE.BoxGeometry(1.3,1.5,.7),stone);
-    gatehouse.position.set(0,.75,1.65); gatehouse.castShadow=gatehouse.receiveShadow=true; g.add(gatehouse);
-    const archCut=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.72,12,1,false,0,Math.PI),dark);
-    archCut.rotation.set(Math.PI/2,0,0); archCut.position.set(0,.86,1.65); g.add(archCut);
-    const portcullis=new THREE.Mesh(new THREE.BoxGeometry(.66,.9,.04),new THREE.MeshStandardMaterial({color:0x4a4a52,roughness:.6,metalness:.4}));
-    portcullis.position.set(0,.62,1.98); g.add(portcullis);
-
-    const gth=2.6+tier*.35;
-    for(const sx of [-1,1]){
-      const t=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,gth,10),stone);
-      t.position.set(sx*1.35,gth/2,1.55); t.castShadow=true; g.add(t);
-      const cap=new THREE.Mesh(new THREE.ConeGeometry(.58,.7,10),roofM);
-      cap.position.set(sx*1.35,gth+.35,1.55); cap.castShadow=true; g.add(cap);
-      const slit=new THREE.Mesh(new THREE.BoxGeometry(.05,.34,.04),dark);
-      slit.position.set(sx*1.35,gth*0.62,1.98); g.add(slit);
-    }
-
-    const th=2.9+tier*.68;
-    for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
-      const t=new THREE.Mesh(new THREE.CylinderGeometry(.5,.6,th,10),stone);
-      t.position.set(sx*1.55,th/2,sz*1.55); t.castShadow=true; g.add(t);
-      const r=new THREE.Mesh(new THREE.ConeGeometry(.68,.85,10),roofM);
-      r.position.set(sx*1.55,th+.42,sz*1.55); r.castShadow=true; g.add(r);
-      const slit=new THREE.Mesh(new THREE.BoxGeometry(.05,.3,.04),dark);
-      slit.position.set(sx*1.55+sx*0.61,th*0.6,sz*1.55+sz*0.05); slit.rotation.y=Math.PI/2; g.add(slit);
-    }
-
-    const wallH=1.05+tier*.06, wSpan=3.4;
-    const wallSegs=[[0,-wSpan/2,wSpan,0],[0,wSpan/2,wSpan,0],[-wSpan/2,0,0,wSpan],[wSpan/2,0,0,wSpan]];
-    wallSegs.forEach(([cx,cz,lx,lz])=>{
-      if(lx>lz){ const w=new THREE.Mesh(new THREE.BoxGeometry(lx*0.62,wallH,.22),dark);
-        w.position.set(cx*0.62,wallH/2,cz); w.castShadow=w.receiveShadow=true; g.add(w); }
-      else { const w=new THREE.Mesh(new THREE.BoxGeometry(.22,wallH,lz*0.62),dark);
-        w.position.set(cx,wallH/2,cz*0.62); w.castShadow=w.receiveShadow=true; g.add(w); }
-    });
-    {
-      const merlon=new THREE.BoxGeometry(.16,.24,.16);
-      const per=6, positions=[];
-      for(let i=0;i<per;i++){ const t=-wSpan*0.31+(wSpan*0.62/per)*(i+.5);
-        positions.push([t,-wSpan*0.31,wallH],[t,wSpan*0.31,wallH],[-wSpan*0.31,t,wallH],[wSpan*0.31,t,wallH]); }
-      const crens=new THREE.InstancedMesh(merlon,dark,positions.length);
-      const d=new THREE.Object3D();
-      positions.forEach(([x,z,y],i)=>{ d.position.set(x,y+.12,z); d.updateMatrix(); crens.setMatrixAt(i,d.matrix); });
-      crens.instanceMatrix.needsUpdate=true; crens.castShadow=true; g.add(crens);
-    }
-    for(const sx of [-1,1]){
-      const b=new THREE.Mesh(new THREE.BoxGeometry(.24,H*0.7,.5),stone);
-      b.position.set(sx*1.42,H*0.35,.5); b.castShadow=true; g.add(b);
-    }
+  for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]){      // corner towers
+    const th=3.2+tier*.8;
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.62,.72,th,10),stone);
+    t.position.set(sx*1.75,th/2,sz*1.75); t.castShadow=true; g.add(t);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.85,1.1,10),roofM);
+    r.position.set(sx*1.75,th+.55,sz*1.75); r.castShadow=true; g.add(r);
   }
-
-  /* STAGE 3 (tier 5-7): the complete storybook castle */
-  if(tier>=5){
-    hallRoof.visible=false;
-    const battle=new THREE.Mesh(new THREE.BoxGeometry(2.9,.3,2.9),dark);
-    battle.position.y=H+.15; g.add(battle);
-    {
-      const merlon=new THREE.BoxGeometry(.22,.26,.22);
-      const per=6, span=2.9, positions=[];
-      for(let i=0;i<per;i++){ const t=-span/2+(span/per)*(i+.5);
-        positions.push([t,-span/2],[t,span/2],[-span/2,t],[span/2,t]); }
-      const crens=new THREE.InstancedMesh(merlon,dark,positions.length);
-      const d=new THREE.Object3D();
-      positions.forEach(([x,z],i)=>{ d.position.set(x,H+.43,z); d.updateMatrix(); crens.setMatrixAt(i,d.matrix); });
-      crens.instanceMatrix.needsUpdate=true; crens.castShadow=true; g.add(crens);
-    }
-    const spire=new THREE.Mesh(new THREE.ConeGeometry(1.5,1.1,4),roofM);
-    spire.rotation.y=Math.PI/4; spire.position.y=H+1.0; spire.castShadow=true; g.add(spire);
-
-    const crestBoard=new THREE.Mesh(new THREE.CircleGeometry(.26,10),gold);
-    crestBoard.position.set(0,1.55,1.68); g.add(crestBoard);
-    const crestMark=new THREE.Mesh(new THREE.ConeGeometry(.11,.2,3),new THREE.MeshStandardMaterial({color:0x7a3040,roughness:.5}));
-    crestMark.position.set(0,1.55,1.71); crestMark.rotation.z=Math.PI; g.add(crestMark);
-
-    const gth=2.6+tier*.35, th=2.9+tier*.68;
-    const flagM=new THREE.MeshStandardMaterial({color:0xffc93c,roughness:.6});
-    [[-1.35,gth+.05,1.55],[1.35,gth+.05,1.55],[-1.55,th+.05,-1.55],[1.55,th+.05,1.55]].forEach(([x,y,z])=>{
-      const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.6,5),woodM);
-      pole.position.set(x,y+.3,z); g.add(pole);
-      const flag=new THREE.Mesh(new THREE.BoxGeometry(.32,.24,.03),flagM);
-      flag.position.set(x+.17,y+.5,z); g.add(flag);
-    });
-    for(const sx of [-1,1]){
-      const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.03,6,12),gold);
-      band.rotation.x=Math.PI/2; band.position.set(sx*1.35,gth-.1,1.55); g.add(band);
-    }
-
-    if(tier>=7){
-      const glow=new THREE.PointLight(0xd9b8ff,0.9,5.5);
-      glow.position.set(0,H+1.6,0); g.add(glow);
-      const halo=new THREE.Mesh(new THREE.SphereGeometry(.14,8,8),
-        new THREE.MeshStandardMaterial({color:0xe9d4ff,emissive:0xb078e0,emissiveIntensity:1,roughness:.4}));
-      halo.position.set(0,H+2.05,0); g.add(halo);
-    }
+  if(tier>=3){                                              // banners once you're a City+
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.6,6),dark);
+    pole.position.y=(2.6+tier*.7)+1.0; g.add(pole);
+    const flag=new THREE.Mesh(new THREE.BoxGeometry(.9,.55,.04),gold);
+    flag.position.set(.48,(2.6+tier*.7)+1.45,0); g.add(flag);
   }
-
-  const s=0.72+tier*0.145;
+  const gate=new THREE.Mesh(new THREE.BoxGeometry(.9,1.3,.12),new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9}));
+  gate.position.set(0,.65,1.52); g.add(gate);
   g.scale.setScalar(s);
   return g;
 }
@@ -2531,17 +2225,9 @@ function rebuildDetail(){
   while(detailGroup.children.length){ const c=detailGroup.children[0]; detailGroup.remove(c); disposeGroup(c); }
   const progress=S.tier*BUILDS_PER_TIER+S.builds;
   const LANES=8;
-  /* ================= Visual Pass 2B: intentional kingdom layout =================
-     One clear MAIN ROAD (gate straight to the castle, wider + cobbled) reads as the
-     spine of the settlement; the remaining radial avenues are narrower branching
-     paths, same gravel as before. The plaza gets the same cobblestone texture as
-     the castle's own apron, so the district in front of the gate reads as one
-     deliberate space rather than a flat colour. */
+  /* GRAVEL ROADS — radial avenues from the gate ring in to the castle, plus a ring road */
   if(progress>=1){
     const roadMat=new THREE.MeshStandardMaterial({color:0x9a8f7c,roughness:1});
-    const mainRoadMat=window.COBBLE_TEX
-      ? new THREE.MeshStandardMaterial({map:window.COBBLE_TEX,roughness:.95})
-      : new THREE.MeshStandardMaterial({color:0x8f8577,roughness:.95});
     const outer=BOARD_R*0.86, inner=3.4;
     // a road only exists where it isn't wading through the river
     const roadDry=(cx,cz,hx,hz,steps)=>{                 // sample along a road's length
@@ -2551,16 +2237,14 @@ function rebuildDetail(){
       }
       return true;
     };
-    const gateAngle=Math.atan2(path[0].x,path[0].z);      // the lane pointing straight at the gate is the MAIN road
     for(let lane=0;lane<LANES;lane++){
       const a=(lane/LANES)*Math.PI*2;
       const len=outer-inner;
       const cx=Math.cos(a)*(inner+len/2), cz=Math.sin(a)*(inner+len/2);
       if(!roadDry(cx,cz,Math.cos(a)*len,Math.sin(a)*len,8)) continue;
-      const isMain = Math.abs(((a-gateAngle+Math.PI)%(2*Math.PI))-Math.PI) < (Math.PI/LANES);
-      const road=new THREE.Mesh(new THREE.PlaneGeometry(isMain?2.4:1.5,len), isMain?mainRoadMat:roadMat);
+      const road=new THREE.Mesh(new THREE.PlaneGeometry(1.5,len),roadMat);
       road.rotation.x=-Math.PI/2; road.rotation.z=-a;
-      road.position.set(cx,isMain?0.038:0.035,cz);
+      road.position.set(cx,0.035,cz);
       road.receiveShadow=true; detailGroup.add(road);
     }
     // ring roads are drawn as arcs that stop at the riverbank on either side
@@ -2591,97 +2275,8 @@ function rebuildDetail(){
         spur.receiveShadow=true; detailGroup.add(spur);
       }
     }
-    // castle-facing plaza — cobblestone, matching the apron already around the keep
-    const plazaMat=window.COBBLE_TEX
-      ? new THREE.MeshStandardMaterial({map:window.COBBLE_TEX,roughness:.95})
-      : roadMat;
-    const plaza=new THREE.Mesh(new THREE.CircleGeometry(4.2,26),plazaMat);
+    const plaza=new THREE.Mesh(new THREE.CircleGeometry(4.2,26),roadMat);
     plaza.rotation.x=-Math.PI/2; plaza.position.y=0.028; plaza.receiveShadow=true; detailGroup.add(plaza);
-  }
-  /* MARKET STALLS — grouped canopies at MARKET_POS, once the settlement exists.
-     Traders (FOLK) already bustle here; this gives the district actual buildings
-     to bustle AROUND, so the market reads as a place rather than open ground. */
-  if(progress>=2 && typeof MARKET_POS!=="undefined"){
-    const poleM=new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9});
-    const canopyColors=[0xb0413e,0x2f6db0,0xe0a41f];
-    const stallCount=Math.min(5, 1+Math.floor(legacy()/5));
-    // MARKET_POS already sits inside the board loop, at a safe distance from the tiles
-    // (it's placed just behind the gate for exactly this reason) — so the stalls fan out
-    // SIDEWAYS from it, at roughly the same distance from the centre, rather than pushing
-    // further toward the loop where they'd collide with tiles.
-    const toCentre=MARKET_POS.clone().normalize();
-    const along=new THREE.Vector3(-toCentre.z,0,toCentre.x);
-    for(let i=0;i<stallCount;i++){
-      const t=(i/(stallCount-1||1))-0.5;                    // -0.5..0.5 across the row
-      const px=MARKET_POS.x + along.x*t*3.4 - toCentre.x*0.6;
-      const pz=MARKET_POS.z + along.z*t*3.4 - toCentre.z*0.6;
-      if(overRiver(px,pz,1.2)) continue;
-      let onBoard=false;
-      for(let tt=0;tt<TILE_COUNT;tt++){ if(Math.hypot(px-path[tt].x,pz-path[tt].z)<1.9){ onBoard=true; break; } }
-      if(onBoard) continue;                                 // never crowd the tiles themselves
-      // (stalls are small, decorative, and meant to sit near existing houses —
-      // they don't compete for the same exclusive footprint housing claims)
-      const stall=new THREE.Group();
-      for(const [dx,dz] of [[-.42,-.32],[.42,-.32],[-.42,.32],[.42,.32]]){
-        const leg=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.62,5),poleM);
-        leg.position.set(dx,.31,dz); stall.add(leg);
-      }
-      const canopy=new THREE.Mesh(new THREE.ConeGeometry(.62,.32,4),
-        new THREE.MeshStandardMaterial({color:canopyColors[i%3],roughness:.8}));
-      canopy.rotation.y=Math.PI/4; canopy.position.y=.78; canopy.castShadow=true; stall.add(canopy);
-      const table=new THREE.Mesh(new THREE.BoxGeometry(.78,.06,.5),poleM);
-      table.position.y=.62; stall.add(table);
-      stall.position.set(px,0,pz);
-      stall.rotation.y=Math.atan2(MARKET_POS.x-px, MARKET_POS.z-pz);
-      detailGroup.add(stall);
-    }
-  }
-  /* SMALL DRESSING PROPS — barrels, crates, a well, low fence posts. Used sparingly,
-     grouped near the plaza/market where the brief asks for "breathing room" elsewhere
-     on the board. Kept in ONE instanced batch per prop type — near-zero draw cost. */
-  if(progress>=2 && typeof MARKET_POS!=="undefined"){
-    const barrelMat=new THREE.MeshStandardMaterial({color:0x7a5230,roughness:.9});
-    const crateMat =new THREE.MeshStandardMaterial({color:0x8a6a42,roughness:.85});
-    const stoneMat =new THREE.MeshStandardMaterial({color:0xa89c86,roughness:.9});
-    const fenceMat =new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9});
-    const propSpots=[];
-    const toCentre=MARKET_POS.clone().normalize();
-    const along=new THREE.Vector3(-toCentre.z,0,toCentre.x);
-    // a handful of prop clusters flanking the market row, never on the board itself
-    for(const t of [-0.7,-0.2,0.35,0.75]){
-      const px=MARKET_POS.x+along.x*t*3.6-toCentre.x*1.1, pz=MARKET_POS.z+along.z*t*3.6-toCentre.z*1.1;
-      let onBoard=false;
-      for(let tt=0;tt<TILE_COUNT;tt++){ if(Math.hypot(px-path[tt].x,pz-path[tt].z)<2.0){ onBoard=true; break; } }
-      if(!onBoard && !overRiver(px,pz,1.0)) propSpots.push([px,pz]);
-    }
-    if(propSpots.length){
-      const barrels=new THREE.InstancedMesh(new THREE.CylinderGeometry(.13,.14,.3,8),barrelMat,propSpots.length*2);
-      const crates=new THREE.InstancedMesh(new THREE.BoxGeometry(.22,.22,.22),crateMat,propSpots.length);
-      const d=new THREE.Object3D(); let bi=0, ci=0;
-      propSpots.forEach(([px,pz],i)=>{
-        d.position.set(px+0.15,.15,pz); d.rotation.set(0,srand(i*9+1)*6,0); d.updateMatrix(); barrels.setMatrixAt(bi++,d.matrix);
-        d.position.set(px-0.1,.15,pz+0.2); d.rotation.set(0,srand(i*9+2)*6,0); d.updateMatrix(); barrels.setMatrixAt(bi++,d.matrix);
-        d.position.set(px,.11,pz-0.25); d.rotation.set(0,srand(i*9+3)*6,0); d.updateMatrix(); crates.setMatrixAt(ci++,d.matrix);
-      });
-      barrels.instanceMatrix.needsUpdate=true; crates.instanceMatrix.needsUpdate=true;
-      barrels.castShadow=crates.castShadow=true;
-      detailGroup.add(barrels); detailGroup.add(crates);
-    }
-    // one well, just off the plaza, once the settlement is properly established
-    if(legacy()>4){
-      const well=new THREE.Group();
-      const ring=new THREE.Mesh(new THREE.CylinderGeometry(.32,.34,.32,12),stoneMat);
-      ring.position.y=.16; ring.castShadow=true; well.add(ring);
-      const roof=new THREE.Mesh(new THREE.ConeGeometry(.42,.3,4),new THREE.MeshStandardMaterial({color:0x7a3040,roughness:.7}));
-      roof.rotation.y=Math.PI/4; roof.position.y=.72; roof.castShadow=true; well.add(roof);
-      for(const sx of [-1,1]){
-        const post=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.5,5),fenceMat);
-        post.position.set(sx*.3,.5,0); well.add(post);
-      }
-      const wx=MARKET_POS.x-toCentre.x*2.0, wz=MARKET_POS.z-toCentre.z*2.0;
-      if(!overRiver(wx,wz,1.0)) well.position.set(wx,0,wz);
-      detailGroup.add(well);
-    }
   }
   /* GRASS TUFTS + LOOSE ROCKS — one draw call each, scattered off the roads */
   const grassGeo=new THREE.ConeGeometry(0.055,0.32,3);
@@ -3402,18 +2997,6 @@ function addCrown(k,app,headY,gold,accent){
   } else if(app.crown==="laurel"){
     for(let i=0;i<10;i++){ const lf=new THREE.Mesh(new THREE.ConeGeometry(.03,.1,4),new THREE.MeshStandardMaterial({color:0x3f8f5a,roughness:.7}));
       const a=(i/10)*Math.PI*1.5 - Math.PI*0.75; lf.position.set(Math.sin(a)*.24,cy-.02,Math.cos(a)*.24*0+.0); lf.position.x=Math.cos(a+Math.PI/2)*.22; lf.position.z=Math.sin(a+Math.PI/2)*.22; lf.position.y=cy; lf.rotation.z=a; k.add(lf); }
-  } else if(app.crown==="circlet"){                    // Iron Circlet — plain, unbending
-    const ironM=new THREE.MeshStandardMaterial({color:0x5a5a62,roughness:.55,metalness:.5});
-    const band=new THREE.Mesh(new THREE.TorusGeometry(.205,.018,6,16),ironM);
-    band.rotation.x=Math.PI/2; band.position.y=cy; k.add(band);
-    const pt=new THREE.Mesh(new THREE.ConeGeometry(.03,.09,4),ironM); pt.position.set(0,cy+.09,0); k.add(pt);
-  } else if(app.crown==="diadem"){                      // Gilded Diadem — gold enough to worry the treasury
-    const band=new THREE.Mesh(new THREE.CylinderGeometry(.20,.23,.17,12),gold); band.position.y=cy; k.add(band);
-    for(let i=0;i<8;i++){ const sp=new THREE.Mesh(new THREE.ConeGeometry(.035,.16,4),gold);
-      const a=i/8*Math.PI*2; sp.position.set(Math.cos(a)*.20,cy+.15,Math.sin(a)*.20); k.add(sp); }
-    for(let i=0;i<8;i++){ const gm=new THREE.Mesh(new THREE.SphereGeometry(.022,8,8),accent);
-      const a=i/8*Math.PI*2+0.39; gm.position.set(Math.cos(a)*.205,cy+.02,Math.sin(a)*.205); k.add(gm); }
-    const gem=new THREE.Mesh(new THREE.SphereGeometry(.038,8,8),accent); gem.position.set(0,cy+.02,.225); k.add(gem);
   } else {
     const band=new THREE.Mesh(new THREE.CylinderGeometry(.19,.22,.15,10),gold); band.position.y=cy; k.add(band);
     for(let i=0;i<5;i++){ const sp=new THREE.Mesh(new THREE.ConeGeometry(.04,.13,4),gold);
@@ -3442,16 +3025,6 @@ function makeKing(app){
   body.position.y=.62; body.castShadow=true; k.add(body);
   const sash=new THREE.Mesh(new THREE.CylinderGeometry(topR+.012,botR+.012,.13,12),accent);
   sash.position.y=.5; k.add(sash);
-
-  if(app.cape){                                        // Ermine-Trimmed Cape — a store purchase
-    const capeM=new THREE.MeshStandardMaterial({color:0x5a2440,roughness:.85,side:THREE.DoubleSide});
-    const trimM=new THREE.MeshStandardMaterial({color:0xf4efff,roughness:.95});
-    const capeGeo=new THREE.CylinderGeometry(botR+.10,botR+.20,.86,12,1,true,Math.PI*0.62,Math.PI*0.76);
-    const cape=new THREE.Mesh(capeGeo,capeM);
-    cape.position.set(0,.58,-.05); cape.castShadow=true; k.add(cape);
-    const trim=new THREE.Mesh(new THREE.TorusGeometry(botR+.20,.028,6,16,Math.PI*0.76),trimM);
-    trim.rotation.set(Math.PI/2,0,Math.PI*1.19); trim.position.set(0,.16,-.05); k.add(trim);
-  }
 
   /* queen flowing gown hides the legs; king shows leggings */
   if(isQueen){
@@ -3526,51 +3099,22 @@ function coinBurst(at,n=8){
   }
   sCoin(); buzz(30);
 }
-let LAST_GAIN={base:0, total:0, boon:false};      // what the most recent reward actually came to
-function gain(n,at){
-  const base=Math.round(n);
-  if(S.slayerTurns>0) n=Math.round(n*2);          // the dragon-slayer boon doubles the FINAL take,
-  else n=base;                                    // i.e. after the player's own roll multiplier
-  LAST_GAIN={base, total:n, boon:(n>base)};
-  S.coins+=n; S.realmCoins+=n; coinBurst(at||king.position, Math.min(12,3+Math.round(n/60/RG()))); questProgress("coins",n); refresh(); return n;
-}
-/* formats a reward line. `tag` is the player's own roll multiplier (e.g. " ×5").
-   When the dragon boon is active it doubles the ALREADY-multiplied take, so the
-   line reports one unambiguous grand total rather than two competing multipliers. */
-function goldLine(tag){
-  const g=LAST_GAIN, t=tag||"";
-  return g.boon ? ("🐲 EPIC GRAND TOTAL  +"+g.total.toLocaleString()+" 🪙"+t)
-                : ("+"+g.total.toLocaleString()+" 🪙"+t);
-}
+function gain(n,at){ S.coins+=n; S.realmCoins+=n; coinBurst(at||king.position, Math.min(12,3+Math.round(n/60/RG()))); questProgress("coins",n); refresh(); }
 
 /* ---- dragon ---- */
-/* a fresh colour (and a couple of silhouette variants) for every dragon that's slain */
-const DRAGON_BREEDS=[
-  {n:"Verdant Wyrm",   body:0x3f8f5a, dark:0x2c6b41, eye:0xffc93c, glow:0xff8800, horn:false, spikes:false},
-  {n:"Ember Drake",    body:0xb1402c, dark:0x7a2418, eye:0xffe27a, glow:0xff4400, horn:false, spikes:true },
-  {n:"Sapphire Wyrm",  body:0x2e6fb0, dark:0x1c4a78, eye:0xbfe6ff, glow:0x3fa0ff, horn:true,  spikes:false},
-  {n:"Amethyst Drake", body:0x7a4fb0, dark:0x532f80, eye:0xe6c8ff, glow:0xa060ff, horn:true,  spikes:true },
-  {n:"Sunstone Wyrm",  body:0xd9a02c, dark:0xa5731a, eye:0xfff0b0, glow:0xffcf3c, horn:false, spikes:true },
-  {n:"Obsidian Drake", body:0x3a3742, dark:0x232128, eye:0xff5c5c, glow:0xff2020, horn:true,  spikes:false},
-  {n:"Frost Wyrm",     body:0x8fc8d9, dark:0x5a94a5, eye:0xdff8ff, glow:0x7fe0ff, horn:false, spikes:false},
-  {n:"Rose Drake",     body:0xc44f7a, dark:0x8a2f52, eye:0xffd0e0, glow:0xff5c9c, horn:true,  spikes:true },
-];
-function dragonBreed(n){ return DRAGON_BREEDS[n%DRAGON_BREEDS.length]; }
-function makeDragon(breedIdx){
-  const bd=dragonBreed(breedIdx||0);
+function makeDragon(){
   const d=new THREE.Group();
-  d.userData.breed=bd;
-  const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.7});
-  const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.8});
-  const bodyM=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),body);
-  bodyM.scale.set(1,.85,1.35); bodyM.position.y=.8; bodyM.castShadow=true; d.add(bodyM);
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,.8,8),body);
+  const green=new THREE.MeshStandardMaterial({color:0x3f8f5a,roughness:.7});
+  const dark=new THREE.MeshStandardMaterial({color:0x2c6b41,roughness:.8});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),green);
+  body.scale.set(1,.85,1.35); body.position.y=.8; body.castShadow=true; d.add(body);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,.8,8),green);
   neck.position.set(0,1.35,.55); neck.rotation.x=-.5; d.add(neck);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.32,10,10),body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.32,10,10),green);
   head.scale.set(1,.85,1.3); head.position.set(0,1.75,.85); head.castShadow=true; d.add(head);
   const snout=new THREE.Mesh(new THREE.ConeGeometry(.16,.4,8),dark);
   snout.rotation.x=Math.PI/2; snout.position.set(0,1.7,1.25); d.add(snout);
-  const eyeM=new THREE.MeshStandardMaterial({color:bd.eye,emissive:bd.glow,emissiveIntensity:.6});
+  const eyeM=new THREE.MeshStandardMaterial({color:0xffc93c,emissive:0xff8800,emissiveIntensity:.6});
   const e1=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),eyeM); e1.position.set(-.14,1.85,1.0); d.add(e1);
   const e2=e1.clone(); e2.position.x=.14; d.add(e2);
   for(const sg of[-1,1]){
@@ -3579,22 +3123,8 @@ function makeDragon(breedIdx){
     wing.position.set(sg*.85,1.35,.1); wing.castShadow=true;
     d.add(wing); d.userData[sg<0?"wingL":"wingR"]=wing;
   }
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(.22,1.4,8),body);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.22,1.4,8),green);
   tail.rotation.x=1.9; tail.position.set(0,.6,-1.05); d.add(tail);
-  if(bd.horn){                                     // a pair of curling horns for some breeds
-    const hornM=new THREE.MeshStandardMaterial({color:0xe7e0cf,roughness:.5});
-    for(const sg of[-1,1]){
-      const h=new THREE.Mesh(new THREE.ConeGeometry(.05,.34,6),hornM);
-      h.position.set(sg*.13,2.02,.78); h.rotation.set(-.5,0,sg*.35); h.castShadow=true; d.add(h);
-    }
-  }
-  if(bd.spikes){                                   // a ridge of back spikes for others
-    for(let i=0;i<5;i++){
-      const sp=new THREE.Mesh(new THREE.ConeGeometry(.07,.26,5),dark);
-      sp.position.set(0, 1.1+i*0.02, .6-i*0.32); sp.rotation.x=-0.3;
-      sp.scale.setScalar(1-i*0.08); sp.castShadow=true; d.add(sp);
-    }
-  }
   return d;
 }
 /* ---- enemy knight (raids) ---- */
@@ -3818,94 +3348,45 @@ function closeCreation(){
   const cb=createDoneCb; createDoneCb=null;
   if(cb) cb();
 }
-/* store-purchased options appear right in the customizer, locked until owned —
-   the same locked/owned language as the Board Theme picker, just as a swatch/chip */
-function lockedItemId(map,val){ return map[val]; }
 function renderCreateRows(){
   const host=$("createRows"); if(!host) return; host.innerHTML="";
-  const firstTimeOnly = !S.appearance;   // once a monarch has been saved, these become permanent
   const hx=n=>"#"+(n>>>0).toString(16).padStart(6,"0");
   const apply=(key,val)=>{ KING_APP[key]=val; rebuildKing(); renderCreateRows(); tone(760,0,.04,"square",.06); buzz(10); };
-  function tryApply(key,val,lockMap){
-    const itemId=lockMap?lockedItemId(lockMap,val):null;
-    if(itemId && !storeOwns(itemId)){
-      msg("🔒 In the Store — "+(STORE_CHARACTER.find(i=>i.id===itemId)||{}).name,1500); buzz(12); return;
-    }
-    apply(key,val);
-  }
   function row(label, build){
     const r=document.createElement("div"); r.className="crRow";
     const l=document.createElement("div"); l.className="crLabel"; l.textContent=label;
     const c=document.createElement("div"); c.className="crChips"; build(c);
     r.append(l,c); host.appendChild(r);
   }
-  function chip(c,key,val,txt,lockMap){
-    const itemId=lockMap?lockedItemId(lockMap,val):null;
-    const locked=itemId && !storeOwns(itemId);
-    const b=document.createElement("button");
-    b.className="crChip"+(KING_APP[key]===val?" on":"")+(locked?" locked":"");
-    b.textContent=(locked?"🔒 ":"")+txt;
-    b.onclick=()=>tryApply(key,val,lockMap); c.appendChild(b);
+  function chip(c,key,val,txt){
+    const b=document.createElement("button"); b.className="crChip"+(KING_APP[key]===val?" on":""); b.textContent=txt;
+    b.onclick=()=>apply(key,val); c.appendChild(b);
   }
-  function swatch(c,key,hex,lockMap){
-    const itemId=lockMap?lockedItemId(lockMap,hex):null;
-    const locked=itemId && !storeOwns(itemId);
-    const b=document.createElement("button"); b.className="crSwatch"+(KING_APP[key]===hex?" on":"")+(locked?" locked":"");
-    b.style.background=hx(hex);
-    if(locked){ const lk=document.createElement("span"); lk.className="crLock"; lk.textContent="🔒"; b.appendChild(lk); }
-    b.onclick=()=>tryApply(key,hex,lockMap); c.appendChild(b);
+  function swatch(c,key,hex){
+    const b=document.createElement("button"); b.className="crSwatch"+(KING_APP[key]===hex?" on":"");
+    b.style.background=hx(hex); b.onclick=()=>apply(key,hex); c.appendChild(b);
   }
   const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
-  if(firstTimeOnly){
-    // Gender, Build, Skin, and Hair Color are decided once at creation and never revisited —
-    // a permanent choice about who the monarch IS, not a cosmetic that changes later.
-    row("Ruler",(c)=>{ [["king","King"],["queen","Queen"]].forEach(([v,txt])=>{
-      const b=document.createElement("button"); b.className="crChip"+(KING_APP.gender===v?" on":""); b.textContent="👑 "+txt;
-      b.onclick=()=>{ KING_APP.gender=v; KING_APP.crown = v==="queen"?"tiara":"crown"; rebuildKing(); renderCreateRows(); tone(880,0,.05,"square",.08); buzz(15); };
-      c.appendChild(b); }); });
-    row("Build",(c)=>SIZES.forEach(v=>chip(c,"size",v,cap(v))));
-    row("Skin",(c)=>SKINS.forEach(h=>swatch(c,"skin",h,SKINS_LOCKED)));
-    row("Hair Color",(c)=>HAIRS.forEach(h=>swatch(c,"hair",h)));
-  } else {
-    // a quiet reminder row instead — shows what was chosen, with no way to change it
-    const r=document.createElement("div"); r.className="crRow crLockedNote";
-    r.innerHTML='<div class="crLabel">Ruler &amp; Build</div><div class="crNote">Chosen at creation — permanent</div>';
-    host.appendChild(r);
-  }
+  row("Ruler",(c)=>{ [["king","King"],["queen","Queen"]].forEach(([v,txt])=>{
+    const b=document.createElement("button"); b.className="crChip"+(KING_APP.gender===v?" on":""); b.textContent="👑 "+txt;
+    b.onclick=()=>{ KING_APP.gender=v; KING_APP.crown = v==="queen"?"tiara":"crown"; rebuildKing(); renderCreateRows(); tone(880,0,.05,"square",.08); buzz(15); };
+    c.appendChild(b); }); });
+  row("Build",(c)=>SIZES.forEach(v=>chip(c,"size",v,cap(v))));
+  row("Skin",(c)=>SKINS.forEach(h=>swatch(c,"skin",h)));
+  row("Hair Color",(c)=>HAIRS.forEach(h=>swatch(c,"hair",h)));
   row("Hair Style",(c)=>HAIRSTYLES.forEach(v=>chip(c,"hairStyle",v,cap(v))));
-  row("Robe",(c)=>ROBES.forEach(h=>swatch(c,"robe",h,ROBES_LOCKED)));
+  row("Robe",(c)=>ROBES.forEach(h=>swatch(c,"robe",h)));
   row("Accent",(c)=>ACCENTS.forEach(h=>swatch(c,"accent",h)));
-  row("Crown",(c)=>CROWNS.forEach(v=>chip(c,"crown",v,cap(v),CROWNS_LOCKED)));
-  row("Cape",(c)=>{
-    const owned=storeOwns("cape_ermine");
-    const b=document.createElement("button");
-    b.className="crChip"+(KING_APP.cape?" on":"")+(owned?"":" locked");
-    b.textContent=(owned?"":"🔒 ")+(KING_APP.cape?"Wearing":"Wear it");
-    b.onclick=()=>{
-      if(!owned){ msg("🔒 In the Store — Ermine-Trimmed Cape",1500); buzz(12); return; }
-      KING_APP.cape=!KING_APP.cape; rebuildKing(); renderCreateRows(); tone(760,0,.04,"square",.06); buzz(10);
-    };
-    c.appendChild(b);
-  });
+  row("Crown",(c)=>CROWNS.forEach(v=>chip(c,"crown",v,cap(v))));
 }
 $("createDone").addEventListener("click",()=>{ tone(1046,0,.1,"triangle",.15); buzz([40,30,60]); closeCreation(); });
 $("randomizeBtn").addEventListener("click",()=>{
-  // never land on an option the player hasn't unlocked in the Store
-  const owned=(v,lockMap)=> !lockMap[v] || storeOwns(lockMap[v]);
-  const pick=(a,lockMap)=>{
-    const choices = lockMap ? a.filter(v=>owned(v,lockMap)) : a;
-    return choices[(Math.random()*choices.length)|0];
-  };
-  const firstTimeOnly = !S.appearance;   // once saved once, Gender/Build/Skin/Hair Color are permanent
-  if(firstTimeOnly){
-    KING_APP.gender=Math.random()<.5?"king":"queen";
-    KING_APP.size=pick(SIZES);
-    KING_APP.skin=pick(SKINS,SKINS_LOCKED);
-    KING_APP.hair=pick(HAIRS);
-  }
-  KING_APP.hairStyle=pick(HAIRSTYLES);
-  KING_APP.robe=pick(ROBES,ROBES_LOCKED); KING_APP.accent=pick(ACCENTS);
-  KING_APP.crown=KING_APP.gender==="queen"?"tiara":pick(CROWNS,CROWNS_LOCKED);
+  const pick=a=>a[(Math.random()*a.length)|0];
+  KING_APP.gender=Math.random()<.5?"king":"queen";
+  KING_APP.size=pick(SIZES);
+  KING_APP.skin=pick(SKINS); KING_APP.hair=pick(HAIRS); KING_APP.hairStyle=pick(HAIRSTYLES);
+  KING_APP.robe=pick(ROBES); KING_APP.accent=pick(ACCENTS);
+  KING_APP.crown=KING_APP.gender==="queen"?"tiara":pick(CROWNS);
   rebuildKing(); renderCreateRows(); tone(880,0,.08,"triangle",.12); buzz(20);
 });
 const QUESTS = [
@@ -3993,9 +3474,9 @@ $("calX").addEventListener("click",()=>$("calOv").classList.remove("show"));
 
 /* ================= SOCIAL (dual-mode: Firestore or bots) ================= */
 const BOTS = [
-  {name:"Aldwyn",might:2400,realm:1},{name:"Brunhild",might:5200,realm:1},{name:"Cedric",might:8800,realm:1},
-  {name:"Dagny",might:14500,realm:2},{name:"Eowyn",might:21000,realm:2},{name:"Fenwyn",might:30000,realm:2},
-  {name:"Godric",might:42000,realm:3},{name:"Hilda",might:56000,realm:3},{name:"Ivar",might:72000,realm:4},{name:"Jorunn",might:95000,realm:4},
+  {name:"Aldwyn",might:2400},{name:"Brunhild",might:5200},{name:"Cedric",might:8800},
+  {name:"Dagny",might:14500},{name:"Eowyn",might:21000},{name:"Fenwyn",might:30000},
+  {name:"Godric",might:42000},{name:"Hilda",might:56000},{name:"Ivar",might:72000},{name:"Jorunn",might:95000},
 ];
 function socKey(){ return "kingsRise3d.social."+CURRENT_USER; }
 function socialData(){
@@ -4013,14 +3494,14 @@ const Social = {
           window.FB.orderBy("might","desc"),window.FB.limit(50));
         const snap=await window.FB.getDocs(q);
         const rows=[];
-        snap.forEach(d=>{const v=d.data();rows.push({name:v.name||"?",might:v.might||0,realm:v.realm||1,you:d.id===FB_UID});});
-        if(!rows.some(r=>r.you)) rows.push({name:CURRENT_USER,might:myMight(),realm:S.realm,you:true});
+        snap.forEach(d=>{const v=d.data();rows.push({name:v.name||"?",might:v.might||0,you:d.id===FB_UID});});
+        if(!rows.some(r=>r.you)) rows.push({name:CURRENT_USER,might:myMight(),you:true});
         rows.sort((a,b)=>b.might-a.might);
         return rows.map((r,i)=>({rank:i+1,...r}));
       }catch(e){ console.warn("leaderboard failed",e); }
     }
-    const rows=BOTS.map(b=>({name:b.name,might:b.might,realm:b.realm,you:false}));
-    rows.push({name:CURRENT_USER,might:myMight(),realm:S.realm,you:true});
+    const rows=BOTS.map(b=>({name:b.name,might:b.might,you:false}));
+    rows.push({name:CURRENT_USER,might:myMight(),you:true});
     rows.sort((a,b)=>b.might-a.might);
     return rows.map((r,i)=>({rank:i+1,...r}));
   },
@@ -4094,9 +3575,7 @@ async function renderBoard(){
     const div=document.createElement("div");
     div.className="lbRow"+(r.you?" you":"");
     const medal=r.rank===1?"👑":r.rank===2?"🥈":r.rank===3?"🥉":"#"+r.rank;
-    const rn=Math.max(1,r.realm||1);
-    const rname=REALM_THEMES[(rn-1)%REALM_THEMES.length].name;
-    div.innerHTML='<div class="lbRank">'+medal+'</div><div class="lbName">'+r.name+(r.you?' <small>(you)</small>':'')+'<div class="lbRealm">Realm '+rn+' · '+rname+'</div></div><div class="lbMight">'+fmtMight(r.might)+' ⚔️</div>';
+    div.innerHTML='<div class="lbRank">'+medal+'</div><div class="lbName">'+r.name+(r.you?' <small>(you)</small>':'')+'</div><div class="lbMight">'+fmtMight(r.might)+' ⚔️</div>';
     body.appendChild(div);
   });
 }
@@ -4309,9 +3788,7 @@ $("dieDock").addEventListener("pointerdown",()=>{
   if(G.state!=="idle") return;
   if(S.rolls<S.multi){ sNo(); msg("Need "+S.multi+" 🎲 — recharging…",1400); return; }
   tone(523,0,.1,"triangle",.15);
-  dismissToast();                  // rolling on clears any notification still being read
   S.rolls-=S.multi; S.rolled++; refresh(); questProgress("roll",1);
-  if(S.slayerTurns>0){ S.slayerTurns--; refresh(); }   // the dragon-slayer bonus counts down by turns taken, not time
   weekTick(1);   // one tap = one roll toward the weekly goal (multipliers don't inflate it)
   resetLook();                     // snap the camera back to follow on roll
   G.state="rolling"; $("dieLabel").textContent="ROLLING…";
@@ -4364,12 +3841,11 @@ function collectTaxes(){
   const skim=Math.round(gross*(S.crime/100));      // crime% of the take is stolen before it reaches you
   const net=Math.max(0,gross-skim);
   gain(net);
-  const taxLine=goldLine();
   addToVault(net*VAULT_SHARE);      // a share is stored where raiders could reach it
   // crime cools a little each lap when you're not stoking it
   S.crime=Math.max(0,S.crime-1); clampRates(); refresh();
   rewardToast("🏁","Taxes Collected",
-    taxLine+"  ·  tax "+S.taxRate+"%"+(skim>0?"  ·  crime "+Math.round(skim/gross*100)+"% stolen":""), "big");
+    "+"+net.toLocaleString()+" 🪙  ·  tax "+S.taxRate+"%"+(skim>0?"  ·  crime "+Math.round(skim/gross*100)+"% stolen":""), "big");
 }
 const DECREES=[
   /* ---- TAXES & LEVIES ---- */
@@ -4389,7 +3865,7 @@ const DECREES=[
    opts:[
      {label:"Tax all sales",      sub:"+2% tax · +4% crime",       tax:+2, crime:+4},
      {label:"Tax luxuries only",  sub:"+1% tax · +2% crime",       tax:+1, crime:+2},
-     {label:"Free trade",         sub:"−1% tax · −8% crime · purse", tax:-1, crime:-8, gainPct:.5},
+     {label:"Free trade",         sub:"−1% tax · purse now",       tax:-1, crime:-8, gainPct:.5},
    ]},
   {g:"Taxes & Levies", t:"The Land Tax", d:"Every field and pasture could be measured, recorded, and taxed by the acre.",
    opts:[
@@ -4430,9 +3906,9 @@ const DECREES=[
   /* ---- COMMODITIES & MONOPOLIES ---- */
   {g:"Commodities", t:"The Salt Monopoly", d:"Salt preserves the winter stores. Whoever controls it controls the table.",
    opts:[
-     {label:"Crown monopoly",     sub:"+3% tax · +8% crime",       tax:+3, crime:+8},
+     {label:"Crown monopoly",     sub:"big purse · +8% crime",    gainPct:1.2, crime:+8},
      {label:"License the guilds", sub:"+2% tax · +4% crime",       tax:+2, crime:+4},
-     {label:"Cap the price",      sub:"−1% tax · −12% crime",      tax:-1, crime:-12},
+     {label:"Cap the price",      sub:"−12% crime · costs gold",   crime:-12, costPct:.35},
    ]},
   {g:"Commodities", t:"The Wine Excise", d:"The vintners petition over the duty on every cask.",
    opts:[
@@ -4442,15 +3918,15 @@ const DECREES=[
    ]},
   {g:"Commodities", t:"The Assize of Wheat", d:"Set the lawful price of bread before the winter bites.",
    opts:[
-     {label:"Let the market rule", sub:"+2% tax · +9% crime",      tax:+2, crime:+9},
-     {label:"Fix a fair price",    sub:"no change · −14% crime",   crime:-14},
-     {label:"Free bread for the poor", sub:"−2% tax · −20% crime", tax:-2, crime:-20},
+     {label:"Let the market rule", sub:"big purse · +9% crime",   gainPct:1.1, crime:+9},
+     {label:"Fix a fair price",    sub:"−14% crime · small cost",  crime:-14, costPct:.25},
+     {label:"Free bread for the poor", sub:"−20% crime · costs gold", crime:-20, costPct:.55},
    ]},
   {g:"Commodities", t:"The Leather Guild", d:"The tanners want exclusive right to work hides in your realm.",
    opts:[
-     {label:"Grant monopoly",     sub:"+2% tax · +6% crime",       tax:+2, crime:+6},
+     {label:"Grant monopoly",     sub:"purse now · +6% crime",    gainPct:.9, crime:+6},
      {label:"Charter with limits", sub:"+1% tax · +2 ⚔️",          tax:+1, soldiers:2},
-     {label:"Open the trade",     sub:"−1% tax · −9% crime",       tax:-1, crime:-9},
+     {label:"Open the trade",     sub:"−9% crime · +5 🎲",         crime:-9, rolls:5},
    ]},
   {g:"Commodities", t:"The Wool Staple", d:"All wool must pass through one appointed market — or must it?",
    opts:[
@@ -4540,7 +4016,7 @@ function startDecree(){
       if(o.tax){ S.taxRate+=o.tax; parts.push((o.tax>0?"+":"")+o.tax+"% tax"); }
       if(o.crime){ S.crime+=o.crime; parts.push((o.crime>0?"+":"")+o.crime+"% crime"); }
       if(o.costPct){ const c=Math.round(buildCost()*o.costPct); S.coins=Math.max(0,S.coins-c); parts.push("−"+c.toLocaleString()+" 🪙"); }
-      if(o.gainPct){ const g=Math.round(buildCost()*o.gainPct); gain(g); parts.push(goldLine()); }
+      if(o.gainPct){ const g=Math.round(buildCost()*o.gainPct); gain(g); parts.push("+"+g.toLocaleString()+" 🪙"); }
       if(o.rolls){ S.rolls=Math.max(0,S.rolls+o.rolls); parts.push((o.rolls>0?"+":"")+o.rolls+" 🎲"); }
       if(o.soldiers){ S.soldiers=Math.max(0,S.soldiers+o.soldiers); parts.push((o.soldiers>0?"+":"")+o.soldiers+" ⚔️"); }
       clampRates(); refresh();
@@ -4562,24 +4038,15 @@ function startCrime(){
   coach("crimetile","🗡️ Thieves!","Crime tiles rob you at your current crime rate — but the underworld pays in dice. A lawless kingdom is poorer, yet rolls more.","realmPill");
   const rate=S.crime;                                // thieves take exactly your crime rate
   const loss=Math.min(S.coins, Math.round(buildCost()*(rate/100)));
+  const rolls=Math.max(1, Math.round(rate/12));      // the underworld pays in dice
+  S.coins=Math.max(0,S.coins-loss);
+  S.rolls+=rolls;
+  S.crime=Math.max(0,S.crime-2);                     // a heist vents some pressure
   clampRates(); refresh();
   sNo(); buzz([110,50,110]);
   folkEvent("flee", 3.2, 9);              // townsfolk scatter from the cutpurses
-  if(rate<=0){
-    // a lawful realm has no underworld to bribe — the watch itself borrows a rider instead
-    const taken=Math.min(S.rolls, 1);
-    S.rolls-=taken;
-    rewardToast("🗡️","Thieves in the Night",
-      taken>0?"No thieves to bribe — the watch borrows −1 🎲":"The realm is lawful — nothing to report", "big", taken>0);
-  } else {
-    const rolls=Math.max(1, Math.round(rate/12));      // the underworld pays in dice
-    S.coins=Math.max(0,S.coins-loss);
-    S.rolls+=rolls;
-    S.crime=Math.max(0,S.crime-2);                     // a heist vents some pressure
-    clampRates(); refresh();
-    rewardToast("🗡️","Thieves in the Night",
-      (loss>0?"−"+loss.toLocaleString()+" 🪙 ("+rate+"%)  ":"")+"+"+rolls+" 🎲", "big", true);
-  }
+  rewardToast("🗡️","Thieves in the Night",
+    (loss>0?"−"+loss.toLocaleString()+" 🪙 ("+rate+"%)  ":"")+"+"+rolls+" 🎲", "big", true);
   endTurn();
 }
 function land(){
@@ -4593,16 +4060,16 @@ function land(){
   switch(t.type){
     case "coin": {
       const n=Math.round((20+((Math.random()*4)|0)*10)*m*tt*RG()*posMult(S.pos));
-      gain(n); logEvent("🪙","Gold",  goldLine(tag)); msg(goldLine(tag)); endTurn(); break;
+      gain(n); logEvent("🪙","Gold",  "+"+n.toLocaleString()+" 🪙"+tag); msg("+"+n.toLocaleString()+" 🪙"+tag); endTurn(); break;
     }
     case "gem": {
       const n=Math.round(80*m*tt*RG()*posMult(S.pos));
       gain(n); questProgress("gem",1);
-      logEvent("💎","Gemstone",goldLine(tag)); msg("💎 "+goldLine(tag)); endTurn(); break;
+      logEvent("💎","Gemstone","+"+n.toLocaleString()+" 🪙"+tag); msg("💎 +"+n.toLocaleString()+" 🪙"+tag); endTurn(); break;
     }
     case "go": {
       const n=Math.round(50*m*tt*RG());
-      gain(n); logEvent("🏁","Passed the Gate",goldLine(tag)); msg("🏁 "+goldLine(tag)); endTurn(); break;
+      gain(n); logEvent("🏁","Passed the Gate","+"+n.toLocaleString()+" 🪙"+tag); msg("🏁 +"+n.toLocaleString()+" 🪙"+tag); endTurn(); break;
     }
     case "bonus": {
       const extra=2*m; S.rolls+=extra;
@@ -4682,7 +4149,7 @@ function startFortune(m,tt){
     let r=Math.random()*total, pick=FORTUNE[0];
     for(const f of FORTUNE){ if((r-=f.w)<0){pick=f;break;} }
     const o=pick.f(m,tt), parts=[];
-    if(o.coins){ const n=Math.round(o.coins*RG()*posMult(S.pos)); gain(n); parts.push(goldLine()); }
+    if(o.coins){ const n=Math.round(o.coins*RG()*posMult(S.pos)); gain(n); parts.push("+"+n.toLocaleString()+" 🪙"); }
     if(o.rolls){ S.rolls+=o.rolls; parts.push("+"+o.rolls+" 🎲"); }
     if(o.soldiers){ S.soldiers+=o.soldiers; parts.push("+"+o.soldiers+" ⚔️"); }
     if(o.bless){ S.blessed=true; }
@@ -4709,7 +4176,7 @@ function startChest(m,tt){
   lid.geometry.translate(0,.17,.37); lid.castShadow=true;
   const clasp=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,.06),gold); clasp.position.set(0,.55,.4);
   grp.add(base,lid,clasp);
-  const ahead=standPos((S.pos+1)%path.length);   // stand on the tile's real walking surface, not just its flat x/z (matters on the bridge)
+  const ahead=tilePos((S.pos+1)%path.length).setY(0);
   grp.position.copy(ahead); grp.lookAt(king.position.x,0,king.position.z);
   grp.scale.set(.01,.01,.01);
   scene.add(grp);
@@ -4843,7 +4310,7 @@ function startWheel(m,t){
       if(jackSlice) jackSlice.setAttribute("fill","#ff4d6d");
       const idx=sliceAt(rot);
       const w=WHEEL[idx], prize=w.f(m,t), parts=[], isJack=(idx===JIDX);
-      if(prize.coins){ const nn=Math.round(prize.coins*RG()*posMult(S.pos)); gain(nn); parts.push(goldLine()); }
+      if(prize.coins){ const nn=Math.round(prize.coins*RG()*posMult(S.pos)); gain(nn); parts.push("+"+nn.toLocaleString()+" 🪙"); }
       if(prize.rolls){ S.rolls+=prize.rolls; parts.push("+"+prize.rolls+" 🎲"); }
       if(prize.soldiers){ S.soldiers+=prize.soldiers; parts.push("+"+prize.soldiers+" ⚔️"); }
       if(isJack){
@@ -4983,7 +4450,7 @@ function startRaid(scale){
   ctx.scout=scoutReport(ctx);
   /* spawn the enemy knight ahead */
   const kn=makeKnight();
-  const ahead=standPos((S.pos+1)%path.length);   // stand on the tile's real walking surface, not just its flat x/z (matters on the bridge)
+  const ahead=tilePos((S.pos+1)%path.length).setY(0);
   kn.position.copy(ahead); kn.lookAt(king.position.x,0,king.position.z);
   kn.scale.set(.01,.01,.01);
   scene.add(kn); G.knight=kn; G.state="raid";
@@ -5042,106 +4509,58 @@ function resolveBattle(idx,tac,ctx){
   sStep();
 }
 /* dragon — the 2D frenzy, staged in 3D */
-/* ---- the dragon fight: a real health bar, not a timer.
-   80-100 taps to bring one down; every tap costs a soldier; the dragon never
-   disappears mid-fight — it stays until its health hits zero or you're out
-   of soldiers. Felling it pays a lump sum and a 3-turn double-rewards buff,
-   then a fresh dragon (a new colour/breed) takes its place. ---- */
 function startDragon(scale){
   G.state="encounter";
   sRoar(); buzz([80,50,120]);
-  const breed=dragonBreed(S.dragonSlain);
-  const d=makeDragon(S.dragonSlain);
-  const ahead=standPos((S.pos+1)%path.length);   // stand on the tile's real walking surface (matters on the bridge)
+  msg("🐉 DRAGON'S HOARD!",1200);
+  const d=makeDragon();
+  const ahead=tilePos((S.pos+1)%path.length).setY(0);
   d.position.copy(ahead); d.lookAt(king.position.x,0,king.position.z);
   d.scale.set(.01,.01,.01);
   scene.add(d); G.dragon=d; G.dragonT=0;
-
-  // if this dragon fled a previous encounter with health left, it picks up where it left off
-  const returning = S.dragonHPMax>0 && S.dragonHP>0;
-  const hp   = returning ? S.dragonHP    : (80+Math.floor(srand(S.dragonSlain*97+Math.floor(clock.elapsedTime))*21));
-  const hpMax= returning ? S.dragonHPMax : hp;
-  const perTapGold=Math.round(Math.max(9,7*scale)*RG()*posMult(S.pos));
-  const FIGHT_TIME=5;                               // seconds to land as many strikes as you can
-  G.fight={hp, hpMax, taps:0, loot:0, perTapGold, running:false, recoil:0, breed, time:FIGHT_TIME, timeMax:FIGHT_TIME};
-  S.dragonHPMax=hpMax;                              // remember this dragon's full health for future returns
-
-  msg(returning ? "🐉 "+breed.n+" returns — still wounded!" : "🐉 "+breed.n+" guards its hoard!", 1400);
-  $("dragonName").textContent=breed.n;
-  $("dragonHPFill").style.width=Math.round(hp/hpMax*100)+"%";
-  $("dragonHPNum").textContent=hp+" / "+hpMax;
-  $("dragonTimeFill").style.width="100%";
-
-  const armFight=()=>{
+  const perTap=Math.round(Math.max(15,12*scale)*RG()*posMult(S.pos));
+  G.frenzy={taps:0,loot:0,perTap,time:3.0,running:false,recoil:0};
+  $("frenzyLoot").textContent="🪙 0";
+  $("frenzyFill").style.width="100%";
+  const armFrenzy=()=>{
     if(G.state!=="encounter")return;
-    $("tapHint").textContent="🐉 TAP TO STRIKE!";
+    $("tapHint").textContent="🐉 TAP FAST!";
     $("tapHint").classList.add("show");
-    $("dragonHP").classList.add("show");
-    G.fight.running=true;
-    if(S.soldiers<=0) $("dragonNoSoldiers").classList.add("show");
-    setTimeout(()=>$("tapHint").classList.remove("show"),1100);
+    $("frenzy").classList.add("show");
+    G.frenzy.running=true;
+    setTimeout(()=>$("tapHint").classList.remove("show"),900);
   };
   if(!S.seen.dragonPlayed){
+    // first dragon ever: explain fully and WAIT for a Begin tap before the 3s timer starts
     S.seen.dragonPlayed=1; save();
-    showCard("🐉","A Dragon guards its hoard!","Tap the dragon to strike before time runs out — every hit costs one soldier. Bring its health to 0 to claim a huge hoard and a 3-turn ×2 bonus on everything you earn. If it escapes, it stays wounded for next time!","Begin!",()=>{
-      setTimeout(armFight,350);
+    showCard("🐉","A Dragon guards its hoard!","When you tap Begin, tap ANYWHERE as fast as you can for 3 seconds — every tap knocks gold loose. Ready?","Begin!",()=>{
+      setTimeout(armFrenzy,350);
     });
   } else {
-    setTimeout(armFight,700);
+    setTimeout(armFrenzy,700);
   }
 }
-function endDragonFight(victory){
-  const F=G.fight; if(!F) return;
-  F.running=false;
-  $("dragonHP").classList.remove("show");
-  $("dragonNoSoldiers").classList.remove("show");
+function endFrenzy(){
+  const F=G.frenzy; F.running=false;
+  $("frenzy").classList.remove("show");
   $("tapHint").classList.remove("show");
-  if(victory){
-    const hoard=Math.round((900+F.hpMax*22)*RG()*posMult(S.pos));
-    const got=gain(hoard, G.dragon?G.dragon.position:king.position);   // gain() itself applies any active x2
-    coinBurst(G.dragon?G.dragon.position:king.position,16);
-    S.slayerTurns=3;                                    // 3 turns of double rewards from here
-    S.dragonSlain++;
-    S.dragonHP=0; S.dragonHPMax=0;                      // fully defeated — the next dragon starts fresh
-    sFanfare(); buzz([90,60,120]);
-    rewardToast("🐉","Dragon Slain!","+"+got.toLocaleString()+" 🪙  ·  ×2 rewards for 3 turns","big");
-    logEvent("🐉","Slew the "+F.breed.n,"+"+got.toLocaleString()+" 🪙  ·  🐲x2 (3 turns)");
-    save();
-  } else {
-    // ran out of time or soldiers: keep whatever loot the strikes already knocked loose,
-    // and remember exactly how wounded it is so it comes back hurt next time
-    S.dragonHP=F.hp; S.dragonHPMax=F.hpMax;
-    if(F.loot>0){ gain(F.loot, G.dragon?G.dragon.position:king.position); coinBurst(G.dragon?G.dragon.position:king.position,8); }
-    const reason = S.soldiers<=0 ? "Out of Soldiers!" : (F.hp<F.hpMax ? "It Escaped — Wounded!" : "Dragon Loot");
-    rewardToast("🐉", reason,
-      (F.loot>0?"+"+F.loot.toLocaleString()+" 🪙  ":"")+F.hp+"/"+F.hpMax+" HP left", "big", true);
-    save();
+  if(F.loot>0){
+    gain(F.loot, G.dragon?G.dragon.position:king.position);
+    coinBurst(G.dragon?G.dragon.position:king.position,12);
   }
-  G.state="dragonFlee"; G.dragonT=0; G.fight=null;
+  rewardToast("🐉", F.taps>=20?"Hoard Plundered!":"Dragon Loot", "+"+F.loot.toLocaleString()+" 🪙  ("+F.taps+" taps)", "big");
+  G.state="dragonFlee"; G.dragonT=0; G.frenzy=null;
 }
-$("dragonNoSoldiers").addEventListener("pointerdown",e=>{
-  e.stopPropagation();
-  if(G.state==="encounter"&&G.fight) endDragonFight(false);
-});
 window.addEventListener("pointerdown",e=>{
-  /* dragon strikes — every tap costs one soldier and chips the health bar */
-  if(G.state==="encounter"&&G.fight&&G.fight.running&&!e.target.closest(".ov")&&!e.target.closest("#dieDock")){
-    const F=G.fight;
-    if(S.soldiers<=0){
-      $("dragonNoSoldiers").classList.add("show");
-      buzz(15); sNo();
-      return;                                          // no soldiers, no strikes
-    }
-    S.soldiers--; refresh();
-    F.taps++; F.hp=Math.max(0,F.hp-1); F.loot+=F.perTapGold;
+  /* dragon frenzy taps (anywhere except the die dock / overlays) */
+  if(G.state==="encounter"&&G.frenzy&&G.frenzy.running&&!e.target.closest(".ov")&&!e.target.closest("#dieDock")){
+    const F=G.frenzy;
+    F.taps++; F.loot+=F.perTap;
     sCoin(); sSlash(); buzz(10);
     F.recoil=1;
-    if(F.taps%4===0&&G.dragon) coinBurst(G.dragon.position,3);
+    if(F.taps%3===0&&G.dragon) coinBurst(G.dragon.position,3);
     king.userData.armR.rotation.x=-1.6; king.userData.elbowR.rotation.x=-1.3;
-    $("dragonHPFill").style.width=Math.round(F.hp/F.hpMax*100)+"%";
-    $("dragonHPNum").textContent=F.hp+" / "+F.hpMax;
-    if(F.hp<=0){ endDragonFight(true); }
-    else if(S.soldiers<=0){ $("dragonNoSoldiers").classList.add("show"); }
+    $("frenzyLoot").textContent="🪙 "+F.loot.toLocaleString();
   }
   /* chest tap to open */
   if(G.state==="chest"&&G.chest&&!G.chest.opened&&!e.target.closest(".ov")&&!e.target.closest("#dieDock")){
@@ -5267,10 +4686,6 @@ $("customizeBtn").addEventListener("click",()=>{
   $("menuOv").classList.remove("show");
   openCreation(false, ()=>{});
 });
-$("rtX").addEventListener("pointerdown",e=>{ e.stopPropagation(); dismissToast(); });
-$("rtoast").addEventListener("pointerdown",e=>{
-  if($("rtoast").classList.contains("hold")){ e.stopPropagation(); dismissToast(); }
-});
 $("soundBtn").addEventListener("click",()=>{ S.sound=!S.sound; $("soundBtn").textContent=S.sound?"🔊 Sound":"🔇 Muted"; save(); });
 
 /* ---- Board Theme (kingdom skin) picker ---- */
@@ -5326,59 +4741,6 @@ function grantSkin(id){
   return true;
 }
 window.grantSkin=grantSkin;   // reachable for future store / reward code
-
-/* ---- Store UI: three fronts, one shared render/purchase routine ---- */
-let storeFront="character";
-function storeCardTag(item){
-  const price=storeItemPrice(item);
-  if(storeOwns(item.id)) return {cls:"owned", text:"Owned"};
-  if(S.coins<price) return {cls:"cant", text:price.toLocaleString()+" 🪙"};
-  return {cls:"buy", text:"Buy · "+price.toLocaleString()};
-}
-function renderStoreList(){
-  const box=$("storeList"); if(!box) return;
-  box.innerHTML="";
-  $("storeCoinN").textContent=fmtCoin(S.coins);
-  ["frontCharacter","frontRealm","frontCitizens"].forEach(id=>{
-    $(id).classList.toggle("on", id==="front"+storeFront[0].toUpperCase()+storeFront.slice(1));
-  });
-  const items = storeFronts()[storeFront] || [];
-  items.forEach(item=>{
-    const owned=storeOwns(item.id);
-    const tag=storeCardTag(item);
-    const card=document.createElement("button");
-    card.className="storeCard"+(owned?" owned":"");
-    card.innerHTML =
-      '<div class="storeIcon">'+item.icon+'</div>'+
-      '<div class="storeInfo"><div class="storeName">'+item.name+'</div><div class="storeBlurb">'+item.blurb+'</div></div>'+
-      '<div class="storeTag '+tag.cls+'">'+tag.text+'</div>';
-    card.onclick=()=>{
-      if(owned){ msg("Already owned",1000); return; }
-      const price=storeItemPrice(item);
-      if(S.coins<price){ msg("Need "+price.toLocaleString()+" 🪙",1400); buzz(12); return; }
-      if(storeBuy(storeFront,item)){
-        tone(880,0,.05,"square",.08); buzz(15);
-        msg("🛒 "+item.name+" purchased!",1400);
-        if(storeFront==="realm" && item.skinId){ applyBoardSkin(); }
-        renderStoreList();
-      }
-    };
-    box.appendChild(card);
-  });
-}
-function openStore(front){
-  if(front) storeFront=front;
-  renderStoreList();
-  $("storeOv").classList.add("show");
-}
-$("storeBtn").addEventListener("click",()=>{
-  if(G.state!=="idle"){ msg("Finish your turn first",1200); return; }
-  openStore("character");
-});
-$("storeX").addEventListener("click",()=>$("storeOv").classList.remove("show"));
-$("frontCharacter").addEventListener("click",()=>{ storeFront="character"; renderStoreList(); });
-$("frontRealm").addEventListener("click",()=>{ storeFront="realm"; renderStoreList(); });
-$("frontCitizens").addEventListener("click",()=>{ storeFront="citizens"; renderStoreList(); });
 /* browsers need a user gesture before audio can start */
 window.addEventListener("pointerdown",()=>{
   if(!MUSIC.started && S.music!==false && S.sound!==false){ musicStart(); }
@@ -5692,21 +5054,19 @@ function animate(){
       }
       stepNext();
     }
-  } else if(G.state==="encounter"&&G.fight){
-    const F=G.fight;
+  } else if(G.state==="encounter"&&G.frenzy){
+    const F=G.frenzy;
+    if(F.running){
+      F.time-=dt;
+      $("frenzyFill").style.width=Math.max(0,F.time/3*100)+"%";
+      if(F.time<=0) endFrenzy();
+    }
     armR.rotation.x+=(0-armR.rotation.x)*Math.min(1,dt*10);
     elbowR.rotation.x+=(-.3-elbowR.rotation.x)*Math.min(1,dt*10);
     if(F&&F.recoil>0&&G.dragon){
       F.recoil=Math.max(0,F.recoil-dt*4);
       G.dragon.position.y=Math.sin(clock.elapsedTime*3)*.08+F.recoil*.25;
       G.dragon.rotation.x=-F.recoil*.22;
-    } else if(G.dragon){
-      G.dragon.position.y=Math.sin(clock.elapsedTime*3)*.08;   // idle bob while waiting for the next strike
-    }
-    if(F.running){
-      F.time-=dt;
-      $("dragonTimeFill").style.width=Math.max(0,F.time/(F.timeMax||5)*100)+"%";
-      if(F.time<=0) endDragonFight(false);              // out of time — it escapes, wounded
     }
   } else if(G.state==="dragonFlee"&&G.dragon){
     G.dragonT+=dt;
@@ -5724,16 +5084,15 @@ function animate(){
       C.lid.rotation.x=Math.max(-1.7,C.lid.rotation.x-dt*6);
       if(C.t>.15&&!C.paid){
         C.paid=true; questProgress("chest",1);
-        C.paidTotal=gain(C.amount,C.grp.position);   // what actually landed, boon included
-        C.paidLine=goldLine();
+        gain(C.amount,C.grp.position);
         S.rolls += C.rolls; refresh();
         coinBurst(C.grp.position,14);
       }
       if(C.t>1.2){
         scene.remove(C.grp);
-        const amt=C.paidTotal||C.amount, rolls=C.rolls, C0line=C.paidLine; G.chest=null;
+        const amt=C.amount, rolls=C.rolls; G.chest=null;
         folkEvent("cheer", 3.0, 9);            // the crowd celebrates the haul
-        rewardToast("🎁","Royal Chest",(C0line||("+"+amt.toLocaleString()+" 🪙"))+"  +"+rolls+" 🎲"+(S.multi>1?"  ×"+S.multi:""), "med");
+        rewardToast("🎁","Royal Chest","+"+amt.toLocaleString()+" 🪙  +"+rolls+" 🎲"+(S.multi>1?"  ×"+S.multi:""), "med");
         endTurn();
       }
     }
@@ -5773,7 +5132,6 @@ function animate(){
         if(F.win){
           const captured=2+S.tier+Math.round(F.ctx.committed*.1);
           gain(F.ctx.loot,G.knight.position);
-          const raidLine=goldLine();
           S.soldiers+=captured; S.raidStreak++;
           const raidRolls = 4 + Math.min(S.raidStreak-1, 5)*3;   // scales per streak/bonus tier
           S.rolls += raidRolls;
@@ -5782,7 +5140,7 @@ function animate(){
           questProgress("raid",1);
           folkEvent("cheer", 3.4, 11);
           rewardToast("🏆","Victory over "+F.ctx.rv.n,
-            raidLine+" · +"+captured+" ⚔️ · +"+raidRolls+" 🎲"+(S.raidStreak>=2?"  🔥"+S.raidStreak:"")+
+            "+"+F.ctx.loot.toLocaleString()+" 🪙 · +"+captured+" ⚔️ · +"+raidRolls+" 🎲"+(S.raidStreak>=2?"  🔥"+S.raidStreak:"")+
             "  ·  they held "+defenceNames(F.ctx.defences),
             "big");
           setTimeout(finishFight, 1500);   // let the knight topple before the turn ends
@@ -6021,20 +5379,12 @@ function animate(){
           m.position.y=Math.abs(Math.sin(t*1.7+p.phase))*0.02;
           m.rotation.y+=Math.sin(t*0.45+p.phase)*0.005;
         } else {
-          // if the destination is across the river, walk to the bridge first —
-          // otherwise the straight line would cut through the water
-          let target=p.dest;
-          if(BRIDGE_CROSS_POINT && riverSide(m.position.x,m.position.z)!==riverSide(p.dest.x,p.dest.z)
-             && riverSide(m.position.x,m.position.z)!==0){
-            const distToBridge=Math.hypot(BRIDGE_CROSS_POINT.x-m.position.x,BRIDGE_CROSS_POINT.z-m.position.z);
-            if(distToBridge>0.6) target=BRIDGE_CROSS_POINT;
-          }
-          const dx=target.x-m.position.x, dz=target.z-m.position.z;
+          const dx=p.dest.x-m.position.x, dz=p.dest.z-m.position.z;
           const d=Math.hypot(dx,dz);
-          if(d<0.45 && target===p.dest){
+          if(d<0.45){
             p.rest=1.5+srand(Math.floor(t*11)+p.phase*57)*3.6;
             p.dest=pickPlace(Math.floor(t*7)+p.phase*211);
-          } else if(d>=0.001) {
+          } else {
             const fast=p.role==="play"?1.9:1.0;
             const sp=Math.min(d, p.speed*1.2*fast*dt);
             m.position.x+=dx/d*sp; m.position.z+=dz/d*sp;
