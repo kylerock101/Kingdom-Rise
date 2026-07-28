@@ -602,10 +602,18 @@ window.FIREBASE_CONFIG = {
   appId: "1:18178986781:web:4659c69d6e2fc308af07f4",
   measurementId: "G-4BMFK5DYQF"
 };
+window.FB_STATUS = {state:"pending", mode:"firebase-pending", error:null, initializedAt:null};
 window.__fbReady = new Promise(res=>{ window.__fbReadyRes = res; });
-if(!window.FIREBASE_CONFIG || window.FIREBASE_CONFIG.apiKey === "PASTE_ME"){ window.__fbReadyRes(); }
-else { setTimeout(()=>{ try{ window.__fbReadyRes(); }catch(e){} }, 6000); }
-function fbOn(){ return !!(window.FB && window.FB.auth); }
+function fbSetStatus(state, mode, error){
+  window.FB_STATUS = {state, mode, error:error||null, initializedAt:Date.now()};
+  console.info("[save/auth] Firebase status:", JSON.stringify(window.FB_STATUS));
+  try{ window.__fbReadyRes(window.FB_STATUS); }catch(e){}
+}
+if(!window.FIREBASE_CONFIG || window.FIREBASE_CONFIG.apiKey === "PASTE_ME"){
+  fbSetStatus("disabled","local-fallback",null);
+}
+function fbOn(){ return !!(window.FB && window.FB.auth && window.FB_STATUS && window.FB_STATUS.state==="ready"); }
+function localAuthAllowed(){ return window.FB_STATUS && window.FB_STATUS.state==="disabled"; }
 let FB_UID = null;
 
 /* ================= HELPERS / SOUND ================= */
@@ -876,12 +884,127 @@ function myMight(){ return Math.round(S.coins/Math.max(1,RG()) + S.soldiers*40 +
 
 /* ================= AUTH + SAVE (ported from 2D) ================= */
 let CURRENT_USER = null;
+const GAME_VERSION="King's Rise 3D - Beta v0.1", SAVE_EXPORT_VERSION=2;
 const CUR_KEY="kingsRise.currentUser", ACCT_KEY="kingsRise.accounts", DEV_KEY="kingsRise.dev", REM_KEY="kingsRise.remember";
 const saveKeyFor = u => "kingsRise3d.save."+u;
+const backupPrefixFor = u => "kingsRise3d.backup."+u+".";
+const rejectedKeyFor = u => "kingsRise3d.rejected."+u;
+const importPendingKeyFor = u => "kingsRise3d.importPending."+u;
+let LAST_CLOUD_SAVE_RAW=null, LAST_CLOUD_LOAD_RESULT=null, LAST_LOCAL_LOAD_RESULT=null, PENDING_IMPORT_PAYLOAD=null, _suppressCloudPush=false;
 function hashPw(x){ let h=5381; for(let i=0;i<x.length;i++){ h=((h<<5)+h+x.charCodeAt(i))>>>0; } return h.toString(16); }
 function getAccounts(){ try{ return JSON.parse(localStorage.getItem(ACCT_KEY)||"{}"); }catch(e){ return {}; } }
 function setAccounts(a){ try{ localStorage.setItem(ACCT_KEY, JSON.stringify(a)); }catch(e){} }
 function nameToEmail(n){ return n.toLowerCase().replace(/[^a-z0-9]/g,"_").slice(0,40)+"@kings-rise.app"; }
+function saveDiag(type, detail){ console.info("[save-system]", type, detail?JSON.stringify(detail):""); }
+function rememberRejectedPayload(raw, reason, source){
+  try{
+    const key=rejectedKeyFor(CURRENT_USER||"unknown");
+    localStorage.setItem(key, JSON.stringify({ts:Date.now(), source:source||"unknown", reason, payload:String(raw||"").slice(0,250000)}));
+  }catch(e){}
+  console.error("[save-system] rejected save payload", {source, reason});
+}
+function validateSavePayload(raw, source){
+  const fail=reason=>{
+    const result={ok:false, reason, source:source||"unknown"};
+    saveDiag("validation failed", result);
+    return result;
+  };
+  if(typeof raw!=="string" || !raw.trim()) return fail("empty payload");
+  let d;
+  try{ d=JSON.parse(raw); }catch(e){ return fail("malformed JSON: "+(e&&e.message?e.message:"parse failed")); }
+  if(!d || typeof d!=="object" || Array.isArray(d)) return fail("save root must be an object");
+  const seen=new Set();
+  function scan(v,path){
+    if(typeof v==="number"){
+      if(!Number.isFinite(v)) return path+" is not finite";
+      if(!Number.isSafeInteger(v)) return path+" is not a safe integer";
+    }
+    if(v && typeof v==="object"){
+      if(seen.has(v)) return null;
+      seen.add(v);
+      if(Array.isArray(v)){
+        for(let i=0;i<v.length;i++){ const r=scan(v[i],path+"["+i+"]"); if(r) return r; }
+      }else{
+        for(const k in v){ const r=scan(v[k],path+"."+k); if(r) return r; }
+      }
+    }
+    return null;
+  }
+  const bad=scan(d,"save"); if(bad) return fail(bad);
+  const required=["coins","rolls","multi","pos","tier","builds","realm","soldiers","lastRoll"];
+  for(const k of required){ if(typeof d[k]!=="number") return fail("missing or invalid required numeric field: "+k); }
+  const bounds={
+    coins:[0,1000000000000000], rolls:[0,1000000], multi:[1,20], pos:[0,200], tier:[0,TIERS.length-1],
+    builds:[0,BUILDS_PER_TIER], realm:[1,1000], soldiers:[0,10000000], realmCoins:[0,1000000000000000],
+    vault:[0,1000000000000000], taxRate:[0,60], crime:[0,90], weekProg:[0,100000], rolled:[0,100000000],
+    dragonHP:[0,1000000], dragonHPMax:[0,1000000], slayerTurns:[0,1000000], dragonSlain:[0,1000000]
+  };
+  for(const k in bounds){
+    if(d[k]===undefined) continue;
+    if(typeof d[k]!=="number") return fail(k+" must be numeric");
+    const range=bounds[k];
+    if(d[k]<range[0] || d[k]>range[1]) return fail(k+" outside allowed range "+range[0]+".."+range[1]);
+  }
+  if(d.lastRoll<0 || d.lastRoll>Date.now()+365*24*60*60*1000) return fail("lastRoll outside allowed timestamp range");
+  if(d.seen!==undefined && (!d.seen || typeof d.seen!=="object" || Array.isArray(d.seen))) return fail("seen must be an object");
+  if(d.defences!==undefined && !Array.isArray(d.defences)) return fail("defences must be an array");
+  if(d.ownedSkins!==undefined && !Array.isArray(d.ownedSkins)) return fail("ownedSkins must be an array");
+  if(d.ownedItems!==undefined && !Array.isArray(d.ownedItems)) return fail("ownedItems must be an array");
+  const result={ok:true, data:d, source:source||"unknown"};
+  saveDiag("validation ok", {source:result.source, realm:d.realm, rolls:d.rolls, coins:d.coins});
+  return result;
+}
+function backupExistingLocalSave(user, reason){
+  if(!user) return;
+  try{
+    const key=saveKeyFor(user), prev=localStorage.getItem(key);
+    if(!prev) return;
+    const valid=validateSavePayload(prev,"backup-existing-local");
+    if(!valid.ok) return;
+    const stamp=new Date().toISOString().replace(/[:.]/g,"-")+"-"+Math.random().toString(36).slice(2,8);
+    localStorage.setItem(backupPrefixFor(user)+stamp, prev);
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.indexOf(backupPrefixFor(user))===0) keys.push(k);
+    }
+    keys.sort().reverse().slice(5).forEach(k=>localStorage.removeItem(k));
+    saveDiag("local backup created", {user, reason, backupsKept:Math.min(keys.length,5)});
+  }catch(e){ console.warn("[save-system] local backup failed",e); }
+}
+function replaceLocalSave(user, raw, source){
+  const valid=validateSavePayload(raw, source);
+  if(!valid.ok){ rememberRejectedPayload(raw, valid.reason, source); return false; }
+  backupExistingLocalSave(user, source);
+  try{ localStorage.setItem(saveKeyFor(user), raw); saveDiag("local save replaced", {user, source}); return true; }
+  catch(e){ console.error("[save-system] local save write failed",e); return false; }
+}
+function makeDiagnosticExport(){
+  const user=CURRENT_USER||"unknown";
+  return {
+    exportVersion:SAVE_EXPORT_VERSION,
+    schema:"kings-rise-save-diagnostic",
+    generatedAt:Date.now(),
+    generatedAtIso:new Date().toISOString(),
+    firebaseStatus:window.FB_STATUS||null,
+    authenticatedUid:FB_UID||null,
+    username:CURRENT_USER||null,
+    gameVersion:GAME_VERSION,
+    localSaveKey:saveKeyFor(user),
+    localSave:(()=>{ try{return localStorage.getItem(saveKeyFor(user));}catch(e){return null;} })(),
+    cloudSave:LAST_CLOUD_SAVE_RAW,
+    localLoadResult:LAST_LOCAL_LOAD_RESULT,
+    cloudLoadResult:LAST_CLOUD_LOAD_RESULT,
+  };
+}
+async function refreshCloudSaveForDiagnostics(){
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return null;
+  try{
+    const snap=await window.FB.getDoc(window.FB.doc(window.FB.db,"players",FB_UID));
+    LAST_CLOUD_SAVE_RAW=(snap.exists()&&snap.data().save3d)||null;
+    return LAST_CLOUD_SAVE_RAW;
+  }catch(e){ console.warn("[save-system] diagnostic cloud fetch failed",e); return null; }
+}
 function fbErrMsg(e){
   const c=(e&&e.code)||"";
   if(c.includes("email-already-in-use")) return "That name is taken — tap Log In.";
@@ -898,11 +1021,14 @@ const Auth = {
       try{
         const cred = await window.FB.createUserWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
         FB_UID = cred.user.uid;
+        saveDiag("auth mode", {mode:"firebase", uid:FB_UID, action:"register"});
         try{ await window.FB.updateProfile(cred.user,{displayName:name}); }catch(e){}
         try{ await window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),{name,might:500,updatedAt:Date.now()},{merge:true}); }catch(e){}
         return {user:name};
       }catch(e){ throw new Error(fbErrMsg(e)); }
     }
+    if(!localAuthAllowed()) throw new Error("Cloud sign-in is unavailable. Use Guest mode or try again when Firebase finishes loading.");
+    saveDiag("auth mode", {mode:"local-fallback", uid:null, action:"register"});
     const a=getAccounts();
     if(a[name]) throw new Error("That name is taken — tap Log In.");
     a[name]={pw:hashPw(pw)}; setAccounts(a); return {user:name};
@@ -912,9 +1038,12 @@ const Auth = {
       try{
         const cred = await window.FB.signInWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
         FB_UID = cred.user.uid;
+        saveDiag("auth mode", {mode:"firebase", uid:FB_UID, action:"login"});
         return {user: cred.user.displayName || name};
       }catch(e){ throw new Error(fbErrMsg(e)); }
     }
+    if(!localAuthAllowed()) throw new Error("Cloud sign-in is unavailable. Use Guest mode or try again when Firebase finishes loading.");
+    saveDiag("auth mode", {mode:"local-fallback", uid:null, action:"login"});
     const a=getAccounts();
     if(!a[name]) throw new Error("No kingdom by that name — tap Register.");
     if(a[name].pw!==hashPw(pw)) throw new Error("Wrong password.");
@@ -932,23 +1061,29 @@ const Auth = {
       return new Promise(res=>{
         const un = window.FB.onAuthStateChanged(window.FB.auth, u=>{
           try{ un(); }catch(e){}
-          if(u){ FB_UID=u.uid; res(u.displayName||null); } else res(null);
+          if(u){ FB_UID=u.uid; saveDiag("auth mode", {mode:"firebase-restore", uid:FB_UID}); res(u.displayName||null); } else res(null);
         });
       });
     }
+    if(!localAuthAllowed()){ saveDiag("auth mode", {mode:"firebase-unavailable-no-local-auth"}); return null; }
+    saveDiag("auth mode", {mode:"local-fallback-restore", uid:null});
     try{ return localStorage.getItem(CUR_KEY)||null; }catch(e){ return null; }
   },
 };
 let _lastCloudPush=0;
 function cloudPush(payload){
-  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return;
+  if(_suppressCloudPush){ saveDiag("cloud write skipped", {reason:"suppressed"}); return; }
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ saveDiag("cloud write skipped", {reason:"not-authenticated-or-guest", uid:FB_UID||null}); return; }
+  const valid=validateSavePayload(payload,"cloud-push");
+  if(!valid.ok){ rememberRejectedPayload(payload, valid.reason, "cloud-push"); return; }
   const now=Date.now();
   if(now-_lastCloudPush<5000) return;
   _lastCloudPush=now;
   try{
     window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),
       {name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:now},{merge:true})
-      .catch(e=>console.warn("cloud save failed",e));
+      .then(()=>saveDiag("cloud write success", {uid:FB_UID, path:"players/"+FB_UID}))
+      .catch(e=>{ console.warn("cloud save failed",e); saveDiag("cloud write failure", {uid:FB_UID, message:e&&e.message}); });
   }catch(e){}
 }
 function saveNow(){
@@ -970,6 +1105,9 @@ function saveNow(){
       dragonHP:S.dragonHP, dragonHPMax:S.dragonHPMax,
       ownedItems:S.ownedItems,
     });
+    const valid=validateSavePayload(payload,"saveNow");
+    if(!valid.ok){ rememberRejectedPayload(payload, valid.reason, "saveNow"); return; }
+    try{ const prev=localStorage.getItem(saveKeyFor(CURRENT_USER)); if(prev && prev!==payload) backupExistingLocalSave(CURRENT_USER,"saveNow"); }catch(e){}
     localStorage.setItem(saveKeyFor(CURRENT_USER), payload);
     cloudPush(payload);
   }catch(e){}
@@ -980,8 +1118,12 @@ function load(){
   if(!CURRENT_USER) return false;
   try{
     const raw = localStorage.getItem(saveKeyFor(CURRENT_USER));
-    if(!raw) return false;
-    const d = JSON.parse(raw);
+    if(!raw){ LAST_LOCAL_LOAD_RESULT={ok:false, reason:"missing", ts:Date.now()}; saveDiag("local load result", LAST_LOCAL_LOAD_RESULT); return false; }
+    const valid=validateSavePayload(raw,"local-load");
+    LAST_LOCAL_LOAD_RESULT={ok:valid.ok, reason:valid.reason||null, ts:Date.now()};
+    saveDiag("local load result", LAST_LOCAL_LOAD_RESULT);
+    if(!valid.ok){ rememberRejectedPayload(raw, valid.reason, "local-load"); return false; }
+    const d = valid.data;
     Object.assign(S, d);
     S.rolling=false; S.qReady=false;
     if(typeof S.lastRoll!=="number") S.lastRoll=Date.now();
@@ -5445,6 +5587,14 @@ $("exportBtn").addEventListener("click",async()=>{
   try{
     const payload=localStorage.getItem(saveKeyFor(CURRENT_USER))||"{}";
     const code=btoa(unescape(encodeURIComponent(payload)));
+    await refreshCloudSaveForDiagnostics();
+    const diag=makeDiagnosticExport();
+    const diagJson=JSON.stringify(diag,null,2);
+    const diagCode=btoa(unescape(encodeURIComponent(diagJson)));
+    try{ localStorage.setItem("kingsRise3d.lastDiagnosticExport", diagJson); }catch(e){}
+    console.log("SAVE CODE:\n"+code);
+    console.log("DIAGNOSTIC SAVE EXPORT JSON:\n"+diagJson);
+    console.log("DIAGNOSTIC SAVE EXPORT CODE:\n"+diagCode);
     let ok=false;
     try{ await navigator.clipboard.writeText(code); ok=true; }catch(e){}
     if(!ok){
@@ -5454,20 +5604,42 @@ $("exportBtn").addEventListener("click",async()=>{
       try{ document.execCommand("copy"); ok=true; }catch(e){}
       document.body.removeChild(ta);
     }
-    msg(ok?"📤 Save code copied":"📤 Copy failed — see console",1600);
-    if(!ok) console.log("SAVE CODE:\n"+code);
-  }catch(e){ msg("Export failed",1200); }
+    msg(ok?"Save code copied - diagnostic in console":"Copy failed - codes in console",1800);
+  }catch(e){ console.error("[save-system] export failed",e); msg("Export failed",1200); }
 });
-$("importBtn").addEventListener("click",()=>{
+$("importBtn").addEventListener("click",async()=>{
   const code=prompt("Paste your save code:");
   if(!code) return;
-  try{
-    const json=decodeURIComponent(escape(atob(code.trim())));
-    JSON.parse(json);                                  // validate before writing
-    localStorage.setItem(saveKeyFor(CURRENT_USER), json);
-    msg("📥 Save restored — reloading…",1400);
+  let json;
+  try{ json=decodeURIComponent(escape(atob(code.trim()))); }
+  catch(e){ rememberRejectedPayload(code,"import code was not valid base64","import"); msg("That code wasn't valid",1600); return; }
+  const valid=validateSavePayload(json,"import");
+  if(!valid.ok){ rememberRejectedPayload(json,valid.reason,"import"); msg("Import rejected: "+valid.reason,2200); return; }
+  const choice=(prompt("Import validated. Type LOCAL to import locally only, CLOUD to replace your cloud save too, or CANCEL.")||"").trim().toUpperCase();
+  if(choice==="CANCEL" || !choice){ saveDiag("save source selected", {source:"import-cancel"}); msg("Import cancelled",1200); return; }
+  if(choice!=="LOCAL" && choice!=="CLOUD"){ msg("Import cancelled",1200); return; }
+  if(!CURRENT_USER){ msg("Sign in or use Guest before importing",1600); return; }
+  if(choice==="LOCAL"){
+    if(!replaceLocalSave(CURRENT_USER,json,"import-local")){ msg("Import rejected",1400); return; }
+    try{ localStorage.setItem(importPendingKeyFor(CURRENT_USER), JSON.stringify({mode:"local-only", ts:Date.now()})); }catch(e){}
+    saveDiag("save source selected", {source:"import-local-only"});
+    msg("Imported locally - cloud unchanged",1800);
     setTimeout(()=>location.reload(),900);
-  }catch(e){ msg("That code wasn't valid",1600); }
+    return;
+  }
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){
+    msg("Cloud replace requires Firebase sign-in",1800);
+    return;
+  }
+  if(!replaceLocalSave(CURRENT_USER,json,"import-cloud")){ msg("Import rejected",1400); return; }
+  try{
+    await window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),
+      {name:CURRENT_USER, might:myMight(), realm:valid.data.realm, save3d:json, updatedAt:Date.now()},{merge:true});
+    try{ localStorage.removeItem(importPendingKeyFor(CURRENT_USER)); }catch(e){}
+    saveDiag("cloud write success", {uid:FB_UID, path:"players/"+FB_UID, source:"import-cloud"});
+    msg("Imported locally and replaced cloud",1900);
+    setTimeout(()=>location.reload(),900);
+  }catch(e){ console.warn("cloud import failed",e); saveDiag("cloud write failure", {uid:FB_UID, source:"import-cloud", message:e&&e.message}); msg("Cloud import failed; local copy preserved",2200); }
 });
 $("freeRollsBtn").addEventListener("click",()=>{ S.rolls+=20; sCoin(); refresh(); msg("+20 rolls 🎲",1000); $("menuOv").classList.remove("show"); });
 $("nextDayBtn").addEventListener("click",()=>{
@@ -5517,16 +5689,34 @@ async function enterGame(u){
     }catch(e){}
   },2200);
   try{ localStorage.setItem(CUR_KEY,u); }catch(e){}
-  if(fbOn()&&FB_UID&&u!=="Guest"){
+  let pendingImport=null;
+  try{ pendingImport=JSON.parse(localStorage.getItem(importPendingKeyFor(u))||"null"); }catch(e){ pendingImport=null; }
+  PENDING_IMPORT_PAYLOAD=pendingImport;
+  _suppressCloudPush=!!(pendingImport && pendingImport.mode==="local-only");
+  if(_suppressCloudPush) saveDiag("save source selected", {source:"pending-local-import", cloudWritesSuppressed:true});
+  if(fbOn()&&FB_UID&&u!=="Guest"&&!_suppressCloudPush){
     try{
       const snap=await window.FB.getDoc(window.FB.doc(window.FB.db,"players",FB_UID));
-      if(snap.exists()&&snap.data().save3d){
-        try{ localStorage.setItem(saveKeyFor(u),snap.data().save3d); }catch(e){}
+      const cloudRaw=(snap.exists()&&snap.data().save3d)||null;
+      LAST_CLOUD_SAVE_RAW=cloudRaw;
+      if(cloudRaw){
+        const valid=validateSavePayload(cloudRaw,"cloud-load");
+        LAST_CLOUD_LOAD_RESULT={ok:valid.ok, reason:valid.reason||null, ts:Date.now(), uid:FB_UID};
+        saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
+        if(valid.ok) replaceLocalSave(u,cloudRaw,"cloud-load");
+        else rememberRejectedPayload(cloudRaw, valid.reason, "cloud-load");
+      }else{
+        LAST_CLOUD_LOAD_RESULT={ok:false, reason:"missing", ts:Date.now(), uid:FB_UID};
+        saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
       }
-    }catch(e){ console.warn("cloud load failed",e); }
+    }catch(e){ LAST_CLOUD_LOAD_RESULT={ok:false, reason:e&&e.message||"cloud load failed", ts:Date.now(), uid:FB_UID}; console.warn("cloud load failed",e); saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT); }
+  }else if(u==="Guest"){
+    LAST_CLOUD_LOAD_RESULT={ok:false, reason:"guest-local-mode", ts:Date.now()};
+    saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
   }
   $("authOv").classList.remove("show");
   const had=load();
+  saveDiag("save source selected", {source:had?"local-save":"new-game", uid:FB_UID||null, user:u});
   applyRealmScene(); rebuildTown(); rebuildFolk(); rebuildDetail(); refresh();
   king.position.copy(standPos(S.pos));
   G.state="idle"; showDie(true);
@@ -6128,6 +6318,12 @@ showDie(false);
 (async ()=>{
   const cfg=window.FIREBASE_CONFIG;
   if(!cfg||cfg.apiKey==="PASTE_ME") return;
+  let settled=false;
+  const failTimer=setTimeout(()=>{
+    if(settled) return;
+    settled=true;
+    fbSetStatus("failed","firebase-unavailable",{message:"Firebase initialization timed out"});
+  }, 12000);
   try{
     const V="12.15.0";
     const [appM,authM,fsM]=await Promise.all([
@@ -6135,19 +6331,29 @@ showDie(false);
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-firestore.js"),
     ]);
+    if(settled) return;
     const app=appM.initializeApp(cfg);
     window.FB={
       auth:authM.getAuth(app), db:fsM.getFirestore(app),
       createUserWithEmailAndPassword:authM.createUserWithEmailAndPassword,
       signInWithEmailAndPassword:authM.signInWithEmailAndPassword,
-      fbSignOut:authM.signOut, onAuthStateChanged:authM.onAuthStateChanged,
-      updateProfile:authM.updateProfile,
+      onAuthStateChanged:authM.onAuthStateChanged,
+      updateProfile:authM.updateProfile, fbSignOut:authM.signOut,
       doc:fsM.doc, getDoc:fsM.getDoc, setDoc:fsM.setDoc, updateDoc:fsM.updateDoc,
       collection:fsM.collection, addDoc:fsM.addDoc, getDocs:fsM.getDocs,
       query:fsM.query, where:fsM.where, orderBy:fsM.orderBy, limit:fsM.limit,
     };
-  }catch(e){ console.warn("Firebase failed to load — running local:",e); }
-  finally{ try{ window.__fbReadyRes(); }catch(e){} }
+    settled=true;
+    clearTimeout(failTimer);
+    fbSetStatus("ready","firebase-authenticated-capable",null);
+  }catch(e){
+    if(!settled){
+      settled=true;
+      clearTimeout(failTimer);
+      console.warn("Firebase failed to load:",e);
+      fbSetStatus("failed","firebase-unavailable",{message:e&&e.message||String(e)});
+    }
+  }
 })();
 </script>
 <div id="devPin"><div id="devPinBox">
