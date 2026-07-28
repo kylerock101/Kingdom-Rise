@@ -884,13 +884,13 @@ function myMight(){ return Math.round(S.coins/Math.max(1,RG()) + S.soldiers*40 +
 
 /* ================= AUTH + SAVE (ported from 2D) ================= */
 let CURRENT_USER = null;
-const GAME_VERSION="King's Rise 3D - Beta v0.1", SAVE_EXPORT_VERSION=2;
+const GAME_VERSION="King's Rise 3D - Beta v0.1", SAVE_EXPORT_VERSION=2, SAVE_GAME_VERSION="0.1", STRUCTURED_SAVE_VERSION=2;
 const CUR_KEY="kingsRise.currentUser", ACCT_KEY="kingsRise.accounts", DEV_KEY="kingsRise.dev", REM_KEY="kingsRise.remember";
 const saveKeyFor = u => "kingsRise3d.save."+u;
 const backupPrefixFor = u => "kingsRise3d.backup."+u+".";
 const rejectedKeyFor = u => "kingsRise3d.rejected."+u;
 const importPendingKeyFor = u => "kingsRise3d.importPending."+u;
-let LAST_CLOUD_SAVE_RAW=null, LAST_CLOUD_LOAD_RESULT=null, LAST_LOCAL_LOAD_RESULT=null, PENDING_IMPORT_PAYLOAD=null, _suppressCloudPush=false;
+let LAST_CLOUD_SAVE_RAW=null, LAST_CLOUD_STRUCTURED_SAVE=null, LAST_CLOUD_REVISION=0, LAST_CLOUD_CLIENT_UPDATED_AT=0, LAST_CLOUD_SERVER_UPDATED_AT=0, LAST_CLOUD_LOAD_RESULT=null, LAST_LOCAL_LOAD_RESULT=null, PENDING_IMPORT_PAYLOAD=null, _suppressCloudPush=false;
 function hashPw(x){ let h=5381; for(let i=0;i<x.length;i++){ h=((h<<5)+h+x.charCodeAt(i))>>>0; } return h.toString(16); }
 function getAccounts(){ try{ return JSON.parse(localStorage.getItem(ACCT_KEY)||"{}"); }catch(e){ return {}; } }
 function setAccounts(a){ try{ localStorage.setItem(ACCT_KEY, JSON.stringify(a)); }catch(e){} }
@@ -954,6 +954,73 @@ function validateSavePayload(raw, source){
   saveDiag("validation ok", {source:result.source, realm:d.realm, rolls:d.rolls, coins:d.coins});
   return result;
 }
+
+function cloneSaveValue(v){ return v===undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+function legacySaveObjectFromState(){
+  return {
+    coins:S.coins, rolls:S.rolls, multi:S.multi, pos:S.pos, tier:S.tier, builds:S.builds,
+    realm:S.realm, soldiers:S.soldiers, blessed:S.blessed, raidStreak:S.raidStreak,
+    realmCoins:S.realmCoins, sound:S.sound, lastRoll:S.lastRoll,
+    streak:S.streak, dailyClaimed:S.dailyClaimed, lastDay:today(),
+    qi:S.qi, qp:S.qp, qDone:S.qDone, seen:S.seen, rolled:S.rolled,
+    weekProg:S.weekProg, weekStart:S.weekStart, weekClaimed:S.weekClaimed, weekReady:S.weekReady,
+    taxRate:S.taxRate, crime:S.crime, music:S.music,
+    defences:S.defences, vault:S.vault, defLog:(S.defLog||[]).slice(0,20), lastDefSim:S.lastDefSim,
+    log:LOG.slice(0,LOG_MAX), appearance:S.appearance,
+    ownedSkins:S.ownedSkins, activeSkin:S.activeSkin,
+    slayerTurns:S.slayerTurns, dragonSlain:S.dragonSlain,
+    dragonHP:S.dragonHP, dragonHPMax:S.dragonHPMax, ownedItems:S.ownedItems,
+  };
+}
+function legacyKnownSaveKeys(){ return new Set(Object.keys(legacySaveObjectFromState())); }
+function unknownLegacyFields(d){ const known=legacyKnownSaveKeys(), extra={}; for(const k in d){ if(!known.has(k)) extra[k]=cloneSaveValue(d[k]); } return extra; }
+function sectionsFromLegacyState(d, meta){
+  d=d&&typeof d==="object"?d:{}; meta=meta||{};
+  return {
+    profile:{uid:meta.uid||FB_UID||null, username:meta.username||CURRENT_USER||null, appearance:cloneSaveValue(d.appearance), ownedSkins:cloneSaveValue(d.ownedSkins), activeSkin:d.activeSkin, ownedItems:cloneSaveValue(d.ownedItems), legacyUnknown:unknownLegacyFields(d)},
+    economy:{coins:d.coins, rolls:d.rolls, multi:d.multi, realmCoins:d.realmCoins, vault:d.vault, taxRate:d.taxRate, crime:d.crime},
+    progression:{pos:d.pos, tier:d.tier, builds:d.builds, realm:d.realm, lastRoll:d.lastRoll, streak:d.streak, dailyClaimed:d.dailyClaimed, lastDay:d.lastDay, qi:d.qi, qp:d.qp, qDone:d.qDone, seen:cloneSaveValue(d.seen), rolled:d.rolled, weekProg:d.weekProg, weekStart:d.weekStart, weekClaimed:d.weekClaimed, weekReady:d.weekReady},
+    kingdom:{soldiers:d.soldiers, blessed:d.blessed, raidStreak:d.raidStreak, defences:cloneSaveValue(d.defences), defLog:cloneSaveValue(d.defLog), lastDefSim:d.lastDefSim, log:cloneSaveValue(d.log)},
+    settings:{sound:d.sound, music:d.music},
+    stats:{slayerTurns:d.slayerTurns, dragonSlain:d.dragonSlain, dragonHP:d.dragonHP, dragonHPMax:d.dragonHPMax},
+    legacyState:cloneSaveValue(d)
+  };
+}
+function structuredSaveFromLegacyState(d, meta){ meta=meta||{}; const clientUpdatedAt=Number.isSafeInteger(meta.clientUpdatedAt)?meta.clientUpdatedAt:Date.now(); const revision=Number.isSafeInteger(meta.revision)?meta.revision:0; return {schemaVersion:STRUCTURED_SAVE_VERSION, gameVersion:SAVE_GAME_VERSION, revision, clientUpdatedAt, updatedAt:meta.updatedAt||null, data:sectionsFromLegacyState(d, meta)}; }
+function structuredSaveFromCurrentState(meta){ return structuredSaveFromLegacyState(legacySaveObjectFromState(), meta); }
+function legacyStateFromStructuredSave(env){
+  const data=env&&env.data||{};
+  const d=Object.assign({}, cloneSaveValue(data.legacyState)||{});
+  Object.assign(d, cloneSaveValue(data.economy)||{}, cloneSaveValue(data.progression)||{}, cloneSaveValue(data.kingdom)||{}, cloneSaveValue(data.settings)||{}, cloneSaveValue(data.stats)||{});
+  if(data.profile){ if(data.profile.appearance!==undefined) d.appearance=cloneSaveValue(data.profile.appearance); if(data.profile.ownedSkins!==undefined) d.ownedSkins=cloneSaveValue(data.profile.ownedSkins); if(data.profile.activeSkin!==undefined) d.activeSkin=data.profile.activeSkin; if(data.profile.ownedItems!==undefined) d.ownedItems=cloneSaveValue(data.profile.ownedItems); if(data.profile.legacyUnknown&&typeof data.profile.legacyUnknown==="object") Object.assign(d, cloneSaveValue(data.profile.legacyUnknown)); }
+  return d;
+}
+function structuredEnvelopeFromPlayerDoc(p){ if(!p||typeof p!=="object") return null; if(p.saveV2&&typeof p.saveV2==="object") return p.saveV2; if(p.schemaVersion!==STRUCTURED_SAVE_VERSION) return null; return {schemaVersion:p.schemaVersion, gameVersion:p.gameVersion, revision:p.revision, clientUpdatedAt:p.clientUpdatedAt, updatedAt:p.updatedAt||null, data:{profile:p.profile, economy:p.economy, progression:p.progression, kingdom:p.kingdom, settings:p.settings, stats:p.stats, legacyState:p.legacyState}}; }
+function firestoreMillis(v){ if(!v) return 0; if(typeof v==="number"&&Number.isFinite(v)) return v; if(typeof v.toMillis==="function") return v.toMillis(); if(typeof v.seconds==="number") return v.seconds*1000+Math.floor((v.nanoseconds||0)/1000000); return 0; }
+function flattenStructuredSaveForFirestore(env){ const data=env.data||{}; return {schemaVersion:env.schemaVersion, gameVersion:env.gameVersion, revision:env.revision, clientUpdatedAt:env.clientUpdatedAt, profile:data.profile||{}, economy:data.economy||{}, progression:data.progression||{}, kingdom:data.kingdom||{}, settings:data.settings||{}, stats:data.stats||{}, legacyState:data.legacyState||{}, migrationState:"dual-write"}; }
+function validateStructuredSavePayload(env, source){
+  const fail=reason=>{ const result={ok:false, reason, source:source||"unknown"}; saveDiag("structured validation failed", result); return result; };
+  if(!env||typeof env!=="object"||Array.isArray(env)) return fail("structured root must be an object");
+  if(env.schemaVersion!==STRUCTURED_SAVE_VERSION) return fail("unsupported schemaVersion");
+  if(typeof env.gameVersion!=="string"||!env.gameVersion) return fail("missing gameVersion");
+  if(typeof env.revision!=="number"||!Number.isSafeInteger(env.revision)||env.revision<0) return fail("invalid revision");
+  if(typeof env.clientUpdatedAt!=="number"||!Number.isSafeInteger(env.clientUpdatedAt)||env.clientUpdatedAt<0) return fail("invalid clientUpdatedAt");
+  const data=env.data; if(!data||typeof data!=="object"||Array.isArray(data)) return fail("missing data object");
+  for(const k of ["profile","economy","progression","kingdom","settings","stats"]){ if(!data[k]||typeof data[k]!=="object"||Array.isArray(data[k])) return fail("missing section: "+k); }
+  if(data.profile.uid!==undefined&&data.profile.uid!==null&&typeof data.profile.uid!=="string") return fail("profile.uid must be a string");
+  if(data.profile.username!==undefined&&data.profile.username!==null&&typeof data.profile.username!=="string") return fail("profile.username must be a string");
+  if(String(source||"").includes("cloud")){
+    if(!data.profile.uid) return fail("missing profile.uid");
+    if(FB_UID&&data.profile.uid!==FB_UID) return fail("profile.uid mismatch");
+    if(!data.profile.username) return fail("missing profile.username");
+  }
+  const legacy=legacyStateFromStructuredSave(env), valid=validateSavePayload(JSON.stringify(legacy), source||"structured-save");
+  if(!valid.ok) return fail("structured legacy projection invalid: "+valid.reason);
+  const ok={ok:true, data:env, legacy:valid.data, source:source||"unknown"}; saveDiag("structured validation ok", {source:ok.source, revision:env.revision, clientUpdatedAt:env.clientUpdatedAt}); return ok;
+}
+function cloudFreshnessFromStructured(env){ return {revision:env&&Number.isSafeInteger(env.revision)?env.revision:0, clientUpdatedAt:env&&Number.isSafeInteger(env.clientUpdatedAt)?env.clientUpdatedAt:0, serverUpdatedAt:firestoreMillis(env&&env.updatedAt)}; }
+function cloudMetaFromPlayerData(p){ return {revision:Number.isSafeInteger(p&&p.revision)?p.revision:0, clientUpdatedAt:Number.isSafeInteger(p&&p.clientUpdatedAt)?p.clientUpdatedAt:0, serverUpdatedAt:firestoreMillis(p&&p.updatedAt)}; }
+function setCloudTrackingFromEnvelope(env){ const f=cloudFreshnessFromStructured(env); LAST_CLOUD_REVISION=f.revision; LAST_CLOUD_CLIENT_UPDATED_AT=f.clientUpdatedAt; LAST_CLOUD_SERVER_UPDATED_AT=f.serverUpdatedAt; LAST_CLOUD_STRUCTURED_SAVE=env; }
 function backupExistingLocalSave(user, reason){
   if(!user) return;
   try{
@@ -993,6 +1060,7 @@ function makeDiagnosticExport(){
     localSaveKey:saveKeyFor(user),
     localSave:(()=>{ try{return localStorage.getItem(saveKeyFor(user));}catch(e){return null;} })(),
     cloudSave:LAST_CLOUD_SAVE_RAW,
+    structuredCloudSave:LAST_CLOUD_STRUCTURED_SAVE,
     localLoadResult:LAST_LOCAL_LOAD_RESULT,
     cloudLoadResult:LAST_CLOUD_LOAD_RESULT,
   };
@@ -1001,7 +1069,9 @@ async function refreshCloudSaveForDiagnostics(){
   if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return null;
   try{
     const snap=await window.FB.getDoc(window.FB.doc(window.FB.db,"players",FB_UID));
-    LAST_CLOUD_SAVE_RAW=(snap.exists()&&snap.data().save3d)||null;
+    const data=snap.exists()?snap.data():null;
+    LAST_CLOUD_SAVE_RAW=(data&&data.save3d)||null;
+    LAST_CLOUD_STRUCTURED_SAVE=structuredEnvelopeFromPlayerDoc(data);
     return LAST_CLOUD_SAVE_RAW;
   }catch(e){ console.warn("[save-system] diagnostic cloud fetch failed",e); return null; }
 }
@@ -1071,7 +1141,7 @@ const Auth = {
   },
 };
 let _lastCloudPush=0;
-function cloudPush(payload){
+async function cloudPush(payload){
   if(_suppressCloudPush){ saveDiag("cloud write skipped", {reason:"suppressed"}); return; }
   if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ saveDiag("cloud write skipped", {reason:"not-authenticated-or-guest", uid:FB_UID||null}); return; }
   const valid=validateSavePayload(payload,"cloud-push");
@@ -1080,31 +1150,28 @@ function cloudPush(payload){
   if(now-_lastCloudPush<5000) return;
   _lastCloudPush=now;
   try{
-    window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),
-      {name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:now},{merge:true})
-      .then(()=>saveDiag("cloud write success", {uid:FB_UID, path:"players/"+FB_UID}))
-      .catch(e=>{ console.warn("cloud save failed",e); saveDiag("cloud write failure", {uid:FB_UID, message:e&&e.message}); });
-  }catch(e){}
+    const ref=window.FB.doc(window.FB.db,"players",FB_UID);
+    const snap=await window.FB.getDoc(ref);
+    const remote=snap.exists()?snap.data():null;
+    const remoteMeta=cloudMetaFromPlayerData(remote);
+    if(remote && remoteMeta.revision>LAST_CLOUD_REVISION){
+      saveDiag("cloud write conflict", {reason:"remote-newer", localRevision:LAST_CLOUD_REVISION, remoteRevision:remoteMeta.revision, uid:FB_UID});
+      return;
+    }
+    const nextRevision=Math.max(LAST_CLOUD_REVISION, remoteMeta.revision||0)+1;
+    const env=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:CURRENT_USER, revision:nextRevision, clientUpdatedAt:now});
+    const structuredValid=validateStructuredSavePayload(env,"cloud-push-structured");
+    if(!structuredValid.ok){ rememberRejectedPayload(JSON.stringify(env), structuredValid.reason, "cloud-push-structured"); return; }
+    const update=Object.assign({name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:window.FB.serverTimestamp?window.FB.serverTimestamp():now}, flattenStructuredSaveForFirestore(env));
+    await window.FB.setDoc(ref, update,{merge:true});
+    setCloudTrackingFromEnvelope(env);
+    saveDiag("cloud write success", {uid:FB_UID, path:"players/"+FB_UID, revision:nextRevision, schemaVersion:STRUCTURED_SAVE_VERSION});
+  }catch(e){ console.warn("cloud save failed",e); saveDiag("cloud write failure", {uid:FB_UID, message:e&&e.message}); }
 }
 function saveNow(){
   if(!CURRENT_USER) return;
   try{
-    const payload = JSON.stringify({
-      coins:S.coins, rolls:S.rolls, multi:S.multi, pos:S.pos, tier:S.tier, builds:S.builds,
-      realm:S.realm, soldiers:S.soldiers, blessed:S.blessed, raidStreak:S.raidStreak,
-      realmCoins:S.realmCoins, sound:S.sound, lastRoll:S.lastRoll,
-      streak:S.streak, dailyClaimed:S.dailyClaimed, lastDay:today(),
-      qi:S.qi, qp:S.qp, qDone:S.qDone, seen:S.seen, rolled:S.rolled,
-      weekProg:S.weekProg, weekStart:S.weekStart, weekClaimed:S.weekClaimed, weekReady:S.weekReady,
-      taxRate:S.taxRate, crime:S.crime, music:S.music,
-      defences:S.defences, vault:S.vault, defLog:(S.defLog||[]).slice(0,20), lastDefSim:S.lastDefSim,
-      log:LOG.slice(0,LOG_MAX),
-      appearance:S.appearance,
-      ownedSkins:S.ownedSkins, activeSkin:S.activeSkin,
-      slayerTurns:S.slayerTurns, dragonSlain:S.dragonSlain,
-      dragonHP:S.dragonHP, dragonHPMax:S.dragonHPMax,
-      ownedItems:S.ownedItems,
-    });
+    const payload = JSON.stringify(legacySaveObjectFromState());
     const valid=validateSavePayload(payload,"saveNow");
     if(!valid.ok){ rememberRejectedPayload(payload, valid.reason, "saveNow"); return; }
     try{ const prev=localStorage.getItem(saveKeyFor(CURRENT_USER)); if(prev && prev!==payload) backupExistingLocalSave(CURRENT_USER,"saveNow"); }catch(e){}
@@ -5697,14 +5764,28 @@ async function enterGame(u){
   if(fbOn()&&FB_UID&&u!=="Guest"&&!_suppressCloudPush){
     try{
       const snap=await window.FB.getDoc(window.FB.doc(window.FB.db,"players",FB_UID));
-      const cloudRaw=(snap.exists()&&snap.data().save3d)||null;
+      const player=snap.exists()?snap.data():null;
+      const cloudRaw=(player&&player.save3d)||null;
       LAST_CLOUD_SAVE_RAW=cloudRaw;
-      if(cloudRaw){
-        const valid=validateSavePayload(cloudRaw,"cloud-load");
-        LAST_CLOUD_LOAD_RESULT={ok:valid.ok, reason:valid.reason||null, ts:Date.now(), uid:FB_UID};
+      let selectedRaw=null, selectedSource=null, selectedRevision=0;
+      const env=structuredEnvelopeFromPlayerDoc(player);
+      if(env){
+        const structuredValid=validateStructuredSavePayload(env,"cloud-load-structured");
+        if(structuredValid.ok){ selectedRaw=JSON.stringify(structuredValid.legacy); selectedSource="structured-cloud"; selectedRevision=env.revision; setCloudTrackingFromEnvelope(env); }
+        else rememberRejectedPayload(JSON.stringify(env), structuredValid.reason, "cloud-load-structured");
+      }
+      if(!selectedRaw && cloudRaw){
+        const valid=validateSavePayload(cloudRaw,"cloud-load-legacy");
+        if(valid.ok){
+          const migrated=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:u, revision:cloudMetaFromPlayerData(player).revision||0, clientUpdatedAt:valid.data.lastRoll||Date.now(), updatedAt:player&&player.updatedAt});
+          selectedRaw=cloudRaw; selectedSource="legacy-cloud"; selectedRevision=migrated.revision; setCloudTrackingFromEnvelope(migrated);
+          saveDiag("migration prepared", {state:"dual-write", source:"save3d", uid:FB_UID});
+        }else rememberRejectedPayload(cloudRaw, valid.reason, "cloud-load-legacy");
+      }
+      if(selectedRaw){
+        LAST_CLOUD_LOAD_RESULT={ok:true, source:selectedSource, reason:null, ts:Date.now(), uid:FB_UID, revision:selectedRevision};
         saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
-        if(valid.ok) replaceLocalSave(u,cloudRaw,"cloud-load");
-        else rememberRejectedPayload(cloudRaw, valid.reason, "cloud-load");
+        replaceLocalSave(u,selectedRaw,selectedSource);
       }else{
         LAST_CLOUD_LOAD_RESULT={ok:false, reason:"missing", ts:Date.now(), uid:FB_UID};
         saveDiag("cloud load result", LAST_CLOUD_LOAD_RESULT);
@@ -6339,7 +6420,7 @@ showDie(false);
       signInWithEmailAndPassword:authM.signInWithEmailAndPassword,
       onAuthStateChanged:authM.onAuthStateChanged,
       updateProfile:authM.updateProfile, fbSignOut:authM.signOut,
-      doc:fsM.doc, getDoc:fsM.getDoc, setDoc:fsM.setDoc, updateDoc:fsM.updateDoc,
+      doc:fsM.doc, getDoc:fsM.getDoc, setDoc:fsM.setDoc, updateDoc:fsM.updateDoc, serverTimestamp:fsM.serverTimestamp,
       collection:fsM.collection, addDoc:fsM.addDoc, getDocs:fsM.getDocs,
       query:fsM.query, where:fsM.where, orderBy:fsM.orderBy, limit:fsM.limit,
     };
