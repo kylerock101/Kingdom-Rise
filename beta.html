@@ -18,7 +18,9 @@
     display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
   #banner{background:linear-gradient(180deg,#ff5c4d,#d33d2e);border-radius:12px;padding:6px 12px;
     font-weight:900;font-size:11px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 3px 0 #8f2418;white-space:nowrap;}
-  #rollsPill{text-align:center;line-height:1.1;}
+  #rollsPill{text-align:center;line-height:1.1;flex:0 0 auto;}
+  #coinPill{flex:0 0 auto;}
+  #banner{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
   #rollTimer{display:block;font-size:8.5px;color:#ffc93c;font-weight:800;}
   #rollsPill.low{box-shadow:inset 0 -2px 0 rgba(0,0,0,.4),0 0 12px rgba(255,170,60,.8);}
   #rollsPill.empty{box-shadow:inset 0 -2px 0 rgba(0,0,0,.4),0 0 14px rgba(255,80,60,.9);animation:pulse 1.1s infinite;}
@@ -222,6 +224,11 @@
     background:linear-gradient(180deg,rgba(255,201,60,.22),rgba(255,201,60,.08));
     box-shadow:inset 0 0 0 1.5px rgba(255,201,60,.45), 0 4px 14px rgba(0,0,0,.35);}
   #goalIcon{font-size:18px;}
+  #buildBtn.ready{animation:bReady 1.15s ease-in-out infinite;}
+  @keyframes bReady{
+    0%,100%{box-shadow:inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px #54d98c, 0 0 10px rgba(84,217,140,.65);}
+    50%    {box-shadow:inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 3px #8ff5bb, 0 0 20px rgba(84,217,140,1);}
+  }
   #goalText{flex:1;min-width:0;line-height:1.2;}
   #goalMain{display:block;font-size:12.5px;font-weight:900;color:#ffc93c;}
   #goalSub{display:block;font-size:9.5px;font-weight:800;color:#a99cd6;margin-top:1px;}
@@ -343,7 +350,7 @@
 
 <div id="hud">
   <div id="topRow">
-    <div class="pill">🪙 <span id="coinN">0</span></div>
+    <div class="pill" id="coinPill">🪙 <span id="coinN">0</span></div>
     <div id="banner">Camp</div>
     <div class="pill" id="rollsPill">🎲 <span id="rollN">30</span><span id="rollTimer"></span></div>
   </div>
@@ -898,7 +905,7 @@ function updateRollTimer(){
 setInterval(()=>{ const b=S.rolls; accrueRolls(); if(S.rolls!==b) refresh(); else updateRollTimer(); },1000);
 
 /* ================= HUD ================= */
-function msg(t,ms=1600){
+function msg(t,ms=2800){
   const m=$("msg"); m.textContent=t; m.classList.add("show");
   clearTimeout(m._x); m._x=setTimeout(()=>m.classList.remove("show"),ms);
 }
@@ -946,10 +953,10 @@ function rewardToast(emoji, title, reward, size, bad){
   el.classList.add("show");
   const qb=$("questBar"); if(qb){ qb.style.transition="opacity .25s"; qb.style.opacity="0"; }
   clearTimeout(_rtTimer);
-  _rtTimer=setTimeout(()=>{ el.classList.remove("show"); if(qb) qb.style.opacity="1"; }, size==="big"?2600:1900);
+  _rtTimer=setTimeout(()=>{ el.classList.remove("show"); if(qb) qb.style.opacity="1"; }, size==="big"?4600:3200);
 }
 function refresh(){
-  $("coinN").textContent = S.coins.toLocaleString();
+  $("coinN").textContent = fmtCoin(S.coins);
   $("rollN").textContent = S.rolls + (S.blessed?" 🔮":"");
   const rp=$("rollsPill");
   rp.classList.toggle("low", S.rolls>0 && S.rolls<=5);
@@ -1002,7 +1009,7 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.05;                         // gentle — keeps colours bright, not washed
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x1c1240);
-scene.fog=new THREE.Fog(0x1c1240,40,92);
+scene.fog=new THREE.Fog(0x1c1240,48,110);
 const MAP_FOG=scene.fog;
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);
 // cool sky fill above, faint warm bounce below — keeps shadows from going flat-dark
@@ -1010,7 +1017,7 @@ scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x4a3a2e, .68));
 const sun=new THREE.DirectionalLight(0xffe0ad, 1.28);      // warm golden key light
 sun.position.set(8,14,6); sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);                         // sharper contact shadows
-sun.shadow.camera.left=-32; sun.shadow.camera.right=32; sun.shadow.camera.top=32; sun.shadow.camera.bottom=-32;
+sun.shadow.camera.left=-38; sun.shadow.camera.right=38; sun.shadow.camera.top=38; sun.shadow.camera.bottom=-38;
 sun.shadow.camera.near=0.5; sun.shadow.camera.far=60;
 sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.02;       // clean contact, no shadow-acne
 sun.shadow.radius=3;                                       // soft penumbra
@@ -1021,10 +1028,10 @@ rim.position.set(-9,7,-6); scene.add(rim);
 /* ---- Visual Pass 1: a soft gradient sky dome (vertex-coloured, no texture) ---- */
 let skyDome=null, skyTop=new THREE.Color(0x2a1a5c), skyBot=new THREE.Color(0x6a5aa8);
 {
-  const sg=new THREE.SphereGeometry(104,24,16);
+  const sg=new THREE.SphereGeometry(124,24,16);
   const cols=[], pos=sg.attributes.position, tmp=new THREE.Color();
   for(let i=0;i<pos.count;i++){
-    const y=pos.getY(i)/104;                                // -1 (bottom) .. 1 (top)
+    const y=pos.getY(i)/124;                                // -1 (bottom) .. 1 (top)
     const t=Math.min(1,Math.max(0,(y+0.35)/1.1));
     tmp.copy(skyBot).lerp(skyTop,t);
     cols.push(tmp.r,tmp.g,tmp.b);
@@ -1040,7 +1047,7 @@ let skyDome=null, skyTop=new THREE.Color(0x2a1a5c), skyBot=new THREE.Color(0x6a5
   g.setAttribute("position",new THREE.Float32BufferAttribute(pts,3));
   scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:.13,transparent:true,opacity:.8}))); }
 const groundMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,vertexColors:true});
-const groundGeo=new THREE.CylinderGeometry(40,40,.6,72,4,false);
+const groundGeo=new THREE.CylinderGeometry(48,48,.6,80,4,false);
 {
   // gentle mottled greens across the meadow — baked per-vertex, costs nothing at runtime
   const posn=groundGeo.attributes.position, cols=[], base=new THREE.Color(0x2f7047), tmp=new THREE.Color();
@@ -1092,7 +1099,7 @@ function applyRealmScene(){
     skyBot.copy(base).lerp(new THREE.Color(0xffffff),0.18).multiplyScalar(1.08);
     const col=skyDome.geometry.attributes.color, posn=skyDome.geometry.attributes.position, tmp=new THREE.Color();
     for(let i=0;i<posn.count;i++){
-      const y=posn.getY(i)/104, t=Math.min(1,Math.max(0,(y+0.35)/1.1));
+      const y=posn.getY(i)/124, t=Math.min(1,Math.max(0,(y+0.35)/1.1));
       tmp.copy(skyBot).lerp(skyTop,t); col.setXYZ(i,tmp.r,tmp.g,tmp.b);
     }
     col.needsUpdate=true;
@@ -1105,21 +1112,36 @@ function applyRealmScene(){
 /* ---- board: a 48-tile squiggly organic loop (one lap = a "year") ---- */
 const TILE_COUNT=48, BOARD_R=15.5, TILESZ=1.7;
 const path=[];
-for(let i=0;i<TILE_COUNT;i++){
-  const a=(i/TILE_COUNT)*Math.PI*2;
-  // layered sines give an organic, wandering coastline rather than a clean circle
-  const wob=1 + 0.15*Math.sin(a*3+0.6) + 0.09*Math.sin(a*5+1.7) + 0.06*Math.cos(a*2+0.2);
-  const r=BOARD_R*wob;
-  path.push(new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r));
+{
+  // The loop still wanders like a coastline, but the tiles are spread at EQUAL arc
+  // length around it — otherwise the curve bunches up and neighbouring tiles overlap.
+  const shape=a=>{
+    const wob=1 + 0.15*Math.sin(a*3+0.6) + 0.09*Math.sin(a*5+1.7) + 0.06*Math.cos(a*2+0.2);
+    const r=BOARD_R*wob;
+    return new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r);
+  };
+  const DENSE=1920, raw=[];
+  for(let k=0;k<DENSE;k++) raw.push(shape((k/DENSE)*Math.PI*2));
+  const cum=[0];
+  for(let k=1;k<=DENSE;k++) cum.push(cum[k-1]+raw[k%DENSE].distanceTo(raw[(k-1)%DENSE]));
+  const total=cum[DENSE];
+  for(let i=0;i<TILE_COUNT;i++){
+    const target=(i/TILE_COUNT)*total;
+    let k=1; while(k<DENSE && cum[k]<target) k++;
+    const seg=(cum[k]-cum[k-1])||1;
+    const t=(target-cum[k-1])/seg;
+    path.push(new THREE.Vector3().lerpVectors(raw[(k-1)%DENSE], raw[k%DENSE], t));
+  }
 }
 /* ---- a river cuts the board; four tiles arch over it as a stone bridge ---- */
 const BRIDGE_FROM=26, BRIDGE_SPAN=4;                  // tiles 26..29
-const BRIDGE_RISE=1.18;
+const BRIDGE_RISE=1.45;
+const BRIDGE_RAMP=2;                                   // tiles of easing either side of the span
 const onBridge=i=>{ const d=(i-BRIDGE_FROM+TILE_COUNT)%TILE_COUNT; return d<BRIDGE_SPAN ? d : -1; };
 {
   // a raised-cosine hump spread over the span plus a tile of approach either side,
   // so the climb eases in and out instead of stepping up off flat ground
-  const RAMP=2, total=BRIDGE_SPAN+RAMP*2;
+  const RAMP=BRIDGE_RAMP, total=BRIDGE_SPAN+RAMP*2;
   for(let j=0;j<total;j++){
     const i=((BRIDGE_FROM-RAMP+j)%TILE_COUNT+TILE_COUNT)%TILE_COUNT;
     path[i].y = BRIDGE_RISE*0.5*(1-Math.cos(2*Math.PI*(j+0.5)/total));
@@ -1128,6 +1150,47 @@ const onBridge=i=>{ const d=(i-BRIDGE_FROM+TILE_COUNT)%TILE_COUNT; return d<BRID
 const half=BOARD_R;
 const TILE_H=0.34, TILE_SINK=0.19;            // how far the slab settles into the grass
 const TILE_TOP=TILE_H/2 - TILE_SINK + TILE_H/2;  // walking surface after sinking
+/* citizens walk wherever they like — this just lifts them onto the board when they cross it,
+   ramping up at the tile edge so they step on rather than clip through */
+function surfaceUnder(x,z){
+  const rr=Math.hypot(x,z);
+  if(rr<BOARD_R*0.66 || rr>BOARD_R*1.36) return 0;    // nowhere near the loop: flat meadow
+  let bi=-1,best=1e9;
+  for(let q=0;q<TILE_COUNT;q++){
+    const dx=x-path[q].x, dz=z-path[q].z;
+    const d2=dx*dx+dz*dz;
+    if(d2<best){ best=d2; bi=q; }
+  }
+  const d=Math.sqrt(best), inner=TILESZ*0.42, outer=TILESZ*0.80;
+  if(d>=outer) return 0;
+  const top=path[bi].y+TILE_TOP;
+  return d<=inner ? top : top*(1-(d-inner)/(outer-inner));
+}
+
+/* places citizens like to be — squares, lanes and the outer ring, so their errands
+   naturally take them across the board */
+const PLACES=[];
+function rebuildPlaces(){
+  PLACES.length=0;
+  const push=(x,z)=>{ if(!overRiver(x,z,1.6)) PLACES.push(new THREE.Vector3(x,0,z)); };
+  for(let k=0;k<6;k++){ const a=k/6*Math.PI*2+0.2; push(Math.cos(a)*5.4, Math.sin(a)*5.4); }        // castle square
+  for(let k=0;k<10;k++){ const a=k/10*Math.PI*2; const r=BOARD_R*0.62+0.7; push(Math.cos(a)*r, Math.sin(a)*r); } // ring road
+  for(let k=0;k<8;k++){ const a=k/8*Math.PI*2+0.35; const r=BOARD_R*1.30+0.8; push(Math.cos(a)*r, Math.sin(a)*r); } // outer ring — crossing the board to get there
+  for(let k=0;k<6;k++){ const a=k/6*Math.PI*2+0.9; const r=BOARD_R*0.86; push(Math.cos(a)*r, Math.sin(a)*r); }      // lane ends
+  if(typeof GATE_POS!=="undefined") push(GATE_POS.x, GATE_POS.z);
+}
+function pickPlace(seed){
+  if(!PLACES.length) return new THREE.Vector3();
+  return PLACES[Math.floor(srand(seed)*PLACES.length)%PLACES.length];
+}
+function fmtCoin(v){                                   // 452,314 · 7.14M · 2.70B — keeps the HUD narrow
+  v=Math.round(v);
+  if(v<1e6) return v.toLocaleString();
+  for(const [d,suf] of [[1e12,"T"],[1e9,"B"],[1e6,"M"]]){
+    if(v>=d){ const n=v/d; return (n>=100?n.toFixed(0):n>=10?n.toFixed(1):n.toFixed(2))+suf; }
+  }
+  return v.toLocaleString();
+}
 const tilePos=i=>path[i].clone();
 const standPos=i=>{ const v=path[i].clone(); v.y+=TILE_TOP; return v; };   // stand on top of the slab, bridge or turf
 const EM={go:"🏁",coin:"🪙",fortune:"🃏",chest:"🎁",gem:"💎",wheel:"🎡",hazard:"🔥",raid:"⚔️",bonus:"⭐",recruit:"🛡️",dragon:"🐉",sprint:"🏇",bless:"🔮",decree:"📜",crime:"🗡️"};
@@ -1139,207 +1202,176 @@ const TILE_DEFS=(()=>{
   let hz=0; for(const d of defs){ if(d.t==="hazard") d.e=(hz++%2)?"🦠":"🔥"; }
   return defs;
 })();
-/* ---- the river, and a single continuous timber bridge carrying the road over it ---- */
-let WATER=null;
+/* ---- a river across the land, and a humpback bridge carrying the road over it ---- */
+let WATER=null, WATER_Y=0.026;      // baseline height the shimmer bobs around
+let RIVER=null;                     // {ax,az,bx,bz,halfW} — the water's footprint on the ground
+function overRiver(x,z,margin){
+  if(!RIVER) return false;
+  const abx=RIVER.bx-RIVER.ax, abz=RIVER.bz-RIVER.az;
+  const L2=abx*abx+abz*abz||1;
+  let t=((x-RIVER.ax)*abx+(z-RIVER.az)*abz)/L2;
+  t=Math.max(0,Math.min(1,t));
+  const px=RIVER.ax+abx*t, pz=RIVER.az+abz*t;
+  return Math.hypot(x-px,z-pz) < RIVER.halfW+(margin||0);
+}
 const BRIDGE_PARTS=[];
 function buildRiverAndBridge(){
   const idx=d=>((BRIDGE_FROM+d)%TILE_COUNT+TILE_COUNT)%TILE_COUNT;
   const mid=path[idx(1)].clone().add(path[idx(2)]).multiplyScalar(.5);
 
-  const wood =new THREE.MeshStandardMaterial({color:0x8a5a32,roughness:.68});
-  const wood2=new THREE.MeshStandardMaterial({color:0x74492a,roughness:.75});
+  const wood =new THREE.MeshStandardMaterial({color:0x8a5a32,roughness:.7});
+  const wood2=new THREE.MeshStandardMaterial({color:0x6f4526,roughness:.8});
   const stone=new THREE.MeshStandardMaterial({color:0x9a9186,roughness:.9});
+  const earth=new THREE.MeshStandardMaterial({color:0x5f7a3c,roughness:1});
+  const sand =new THREE.MeshStandardMaterial({color:0x8f7f52,roughness:1});
 
-  // ---- the river ----
-  const bankDir=new THREE.Vector3().subVectors(path[idx(BRIDGE_SPAN-1)],path[idx(0)]);
-  bankDir.y=0; bankDir.normalize();
-  const bankAng=Math.atan2(bankDir.x,bankDir.z);
-  const bank=new THREE.Mesh(new THREE.PlaneGeometry(30,2.3),
-    new THREE.MeshStandardMaterial({color:0x6a5a3c,roughness:1}));
-  bank.rotation.x=-Math.PI/2; bank.rotation.z=-bankAng;
-  bank.position.set(mid.x,-0.26,mid.z); bank.receiveShadow=true;
-  scene.add(bank); BRIDGE_PARTS.push(bank);
-  const water=new THREE.Mesh(new THREE.PlaneGeometry(30,1.45),
-    new THREE.MeshStandardMaterial({color:0x2f7fae,roughness:.2,metalness:.2,transparent:true,opacity:.9}));
-  water.rotation.x=-Math.PI/2; water.rotation.z=-bankAng;
-  water.position.set(mid.x,-0.20,mid.z);
-  scene.add(water); BRIDGE_PARTS.push(water); WATER=water;
-
-
-  /* ---- one smooth spline through the whole crossing, with approaches at each end ---- */
+  /* ---- the crossing curve: spans the WHOLE hump and settles onto flat ground ---- */
   const ctrl=[];
-  ctrl.push(path[idx(-1)].clone());                        // meets the ground before the rise
-  for(let d=0;d<BRIDGE_SPAN;d++) ctrl.push(path[idx(d)].clone());
-  ctrl.push(path[idx(BRIDGE_SPAN)].clone());               // and settles back after it
+  for(let d=-BRIDGE_RAMP-1; d<=BRIDGE_SPAN+BRIDGE_RAMP; d++) ctrl.push(path[idx(d)].clone());
   const curve=new THREE.CatmullRomCurve3(ctrl,false,"catmullrom",0.5);
-
-  /* ---- Visual Pass 1: reeds and rocks along the riverbank (instanced) ---- */
-  {
-    const reedMat=new THREE.MeshStandardMaterial({color:0x5f8a3f,roughness:1});
-    const rockMatR=new THREE.MeshStandardMaterial({color:0x8a8278,roughness:1});
-    const REEDS=26, RRX=14;
-    const reeds=new THREE.InstancedMesh(new THREE.ConeGeometry(0.04,0.55,4),reedMat,REEDS);
-    const rrocks=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.14,0),rockMatR,RRX);
-    const d=new THREE.Object3D();
-    let ri=0, ki=0;
-    for(let n=0;n<REEDS+RRX;n++){
-      // scatter along both banks, just outside the water ribbon
-      const t=(n*0.13)%1, along=(t-0.5)*bankDir.clone().length?0:0;
-      const u=(n/(REEDS+RRX));
-      const bp=curve.getPoint(Math.max(0.06,Math.min(0.94,u)));
-      const side=(n%2)?1:-1;
-      const across=new THREE.Vector3(-bankDir.z,0,bankDir.x);
-      const jitter=1.6+Math.random()*0.8;
-      const px=bp.x+across.x*side*jitter + (Math.random()-.5)*0.8;
-      const pz=bp.z+across.z*side*jitter + (Math.random()-.5)*0.8;
-      if(n<REEDS){
-        d.position.set(px,-0.05,pz); d.rotation.set((Math.random()-.5)*0.3,Math.random()*6,(Math.random()-.5)*0.3);
-        d.scale.set(1,0.7+Math.random()*0.7,1); d.updateMatrix(); reeds.setMatrixAt(ri++,d.matrix);
-      } else {
-        d.position.set(px,-0.16,pz); d.rotation.set(0,Math.random()*6,0);
-        d.scale.setScalar(0.7+Math.random()*0.8); d.updateMatrix(); rrocks.setMatrixAt(ki++,d.matrix);
-      }
-    }
-    reeds.count=ri; rrocks.count=ki;
-    reeds.instanceMatrix.needsUpdate=true; rrocks.instanceMatrix.needsUpdate=true;
-    reeds.castShadow=rrocks.castShadow=true;
-    scene.add(reeds); scene.add(rrocks); BRIDGE_PARTS.push(reeds); BRIDGE_PARTS.push(rrocks);
+  const N=72, pts=[], nrm=[];
+  for(let k=0;k<=N;k++){
+    const u=k/N, p=curve.getPoint(u), t=curve.getTangent(u);
+    t.y=0; t.normalize();
+    pts.push(p); nrm.push(new THREE.Vector3(-t.z,0,t.x));
   }
 
-  const N=64;                                              // dense sampling = no visible facets
-  const pts=[], nrm=[];
+  /* ---- the river: a broad ribbon running right across the land, under the arch ---- */
+  // the river runs radially here (the road is tangential), flowing from the town's edge
+  // out past the island shore — it must NOT cut through the castle square
+  const flow=new THREE.Vector3(mid.x,0,mid.z).normalize();
+  const spin=Math.atan2(-flow.z,flow.x);                 // aligns the plane's long axis with `flow`
+  const RIVER_W=5.0, RIVER_L=42, RIVER_OFF=18;           // pushed outward, clear of the town
+  const cx=mid.x+flow.x*RIVER_OFF, cz=mid.z+flow.z*RIVER_OFF;
+  const layer=(w,h,mat,y)=>{
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);
+    m.rotation.x=-Math.PI/2; m.rotation.z=spin;
+    m.position.set(cx,y,cz); m.receiveShadow=true;
+    scene.add(m); BRIDGE_PARTS.push(m); return m;
+  };
+  // the meadow's top surface is y=0, so the river is laid just above it like the cobble apron
+  layer(RIVER_L,RIVER_W+3.0,new THREE.MeshStandardMaterial({color:0x7d6a45,roughness:1}),0.008);
+  layer(RIVER_L,RIVER_W+1.1,sand,0.016);
+  const water=layer(RIVER_L,RIVER_W,
+    new THREE.MeshStandardMaterial({color:0x2e86c1,roughness:.15,metalness:.25,transparent:true,opacity:.92}),0.026);
+  WATER_Y=0.026; WATER=water;
+  RIVER={ ax:cx-flow.x*RIVER_L/2, az:cz-flow.z*RIVER_L/2,
+          bx:cx+flow.x*RIVER_L/2, bz:cz+flow.z*RIVER_L/2, halfW:RIVER_W/2 };
+
+  /* ---- the earthen embankment the road climbs, with a gap left for the arch ---- */
+  const GY=-0.30, MHALF=1.42, ARCH_HALF_U=0.085;
+  const mp=[], mn=[], mi=[], rowU=[];
+  const mpush=(v,n)=>{ mp.push(v.x,v.y,v.z); mn.push(n.x,n.y,n.z); };
+  let rows=0;
   for(let k=0;k<=N;k++){
     const u=k/N;
-    const p=curve.getPoint(u);
-    const t=curve.getTangent(u); t.y=0; t.normalize();
-    pts.push(p);
-    nrm.push(new THREE.Vector3(-t.z,0,t.x));               // sideways, level with the world
+    if(Math.abs(u-0.5)<ARCH_HALF_U) continue;            // leave the middle open
+    const p=pts[k], sd=nrm[k];
+    if(p.y<0.04) continue;                                // no mound where the road is flat
+    const topY=p.y-0.14;
+    mpush(new THREE.Vector3(p.x-sd.x*MHALF,topY,p.z-sd.z*MHALF),new THREE.Vector3(0,1,0));
+    mpush(new THREE.Vector3(p.x+sd.x*MHALF,topY,p.z+sd.z*MHALF),new THREE.Vector3(0,1,0));
+    mpush(new THREE.Vector3(p.x-sd.x*(MHALF+0.5),GY,p.z-sd.z*(MHALF+0.5)),new THREE.Vector3(-sd.x,0,-sd.z));
+    mpush(new THREE.Vector3(p.x+sd.x*(MHALF+0.5),GY,p.z+sd.z*(MHALF+0.5)),new THREE.Vector3(sd.x,0,sd.z));
+    rowU.push(u); rows++;
+  }
+  for(let r=0;r<rows-1;r++){
+    if(Math.abs(rowU[r+1]-rowU[r])>0.04) continue;        // don't span the opening
+    const a=r*4, b=(r+1)*4;
+    mi.push(a,b,a+1, a+1,b,b+1);
+    mi.push(a+2,a,b+2, b+2,a,b);
+    mi.push(a+1,a+3,b+1, b+1,a+3,b+3);
+  }
+  if(rows>1){
+    const mg=new THREE.BufferGeometry();
+    mg.setAttribute("position",new THREE.Float32BufferAttribute(mp,3));
+    mg.setAttribute("normal",new THREE.Float32BufferAttribute(mn,3));
+    mg.setIndex(mi);
+    const mound=new THREE.Mesh(mg,earth);
+    mound.castShadow=mound.receiveShadow=true;
+    scene.add(mound); BRIDGE_PARTS.push(mound);
   }
 
-  // ---- the deck: one continuous ribbon, not a row of planks ----
-  const HALF=1.16, DECK_DROP=0.10, THICK=0.17;
-  const pos=[], nor=[], ix=[];
-  const push=(v,n)=>{ pos.push(v.x,v.y,v.z); nor.push(n.x,n.y,n.z); };
+  /* ---- the stone arch the river runs through ---- */
+  {
+    const cp=curve.getPoint(0.5), ct=curve.getTangent(0.5);
+    ct.y=0; ct.normalize();
+    const heading=Math.atan2(ct.x,ct.z);
+    const openW=curve.getPoint(0.5+ARCH_HALF_U).distanceTo(curve.getPoint(0.5-ARCH_HALF_U))+0.5;
+    const topY=cp.y-0.14;
+    const ARCH_R=Math.min(1.15,(topY-GY)*0.52);
+    const shape=new THREE.Shape();
+    shape.moveTo(-openW/2,GY); shape.lineTo(-openW/2,topY);
+    shape.lineTo(openW/2,topY); shape.lineTo(openW/2,GY); shape.lineTo(-openW/2,GY);
+    const hole=new THREE.Path();
+    const spring=GY+0.30;
+    hole.moveTo(-ARCH_R,GY); hole.lineTo(-ARCH_R,spring);
+    hole.absarc(0,spring,ARCH_R,Math.PI,0,true);
+    hole.lineTo(ARCH_R,GY); hole.lineTo(-ARCH_R,GY);
+    shape.holes.push(hole);
+    const ag=new THREE.ExtrudeGeometry(shape,{depth:(MHALF+0.5)*2,bevelEnabled:false,curveSegments:22});
+    ag.translate(0,0,-(MHALF+0.5));
+    ag.rotateY(heading+Math.PI/2);
+    const am=new THREE.Mesh(ag,stone);
+    am.position.set(cp.x,0,cp.z); am.castShadow=am.receiveShadow=true;
+    scene.add(am); BRIDGE_PARTS.push(am);
+  }
+
+  /* ---- the timber deck: one smooth ribbon over the whole crossing ---- */
+  const HALF=1.16, DROP=0.11, THICK=0.16;
+  const dp=[], dn=[], di=[];
+  const dpush=(v,n)=>{ dp.push(v.x,v.y,v.z); dn.push(n.x,n.y,n.z); };
   for(let k=0;k<=N;k++){
-    const p=pts[k], s=nrm[k];
-    const topY=p.y-DECK_DROP, botY=topY-THICK;
-    push(new THREE.Vector3(p.x-s.x*HALF, topY, p.z-s.z*HALF), new THREE.Vector3(0,1,0));
-    push(new THREE.Vector3(p.x+s.x*HALF, topY, p.z+s.z*HALF), new THREE.Vector3(0,1,0));
-    push(new THREE.Vector3(p.x-s.x*HALF, botY, p.z-s.z*HALF), new THREE.Vector3(-s.x,0,-s.z));
-    push(new THREE.Vector3(p.x+s.x*HALF, botY, p.z+s.z*HALF), new THREE.Vector3( s.x,0, s.z));
+    const p=pts[k], sd=nrm[k], topY=p.y-DROP, botY=topY-THICK;
+    dpush(new THREE.Vector3(p.x-sd.x*HALF,topY,p.z-sd.z*HALF),new THREE.Vector3(0,1,0));
+    dpush(new THREE.Vector3(p.x+sd.x*HALF,topY,p.z+sd.z*HALF),new THREE.Vector3(0,1,0));
+    dpush(new THREE.Vector3(p.x-sd.x*HALF,botY,p.z-sd.z*HALF),new THREE.Vector3(-sd.x,0,-sd.z));
+    dpush(new THREE.Vector3(p.x+sd.x*HALF,botY,p.z+sd.z*HALF),new THREE.Vector3(sd.x,0,sd.z));
   }
   for(let k=0;k<N;k++){
-    const a=k*4, b=(k+1)*4;
-    ix.push(a,b,a+1,  a+1,b,b+1);                          // deck surface
-    ix.push(a+2,a,b+2, b+2,a,b);                           // left flank
-    ix.push(a+1,a+3,b+1, b+1,a+3,b+3);                     // right flank
-    ix.push(a+2,b+2,a+3, a+3,b+2,b+3);                     // underside
+    const a=k*4,b=(k+1)*4;
+    di.push(a,b,a+1, a+1,b,b+1);
+    di.push(a+2,a,b+2, b+2,a,b);
+    di.push(a+1,a+3,b+1, b+1,a+3,b+3);
+    di.push(a+2,b+2,a+3, a+3,b+2,b+3);
   }
   const dg=new THREE.BufferGeometry();
-  dg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
-  dg.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));
-  dg.setIndex(ix);
+  dg.setAttribute("position",new THREE.Float32BufferAttribute(dp,3));
+  dg.setAttribute("normal",new THREE.Float32BufferAttribute(dn,3));
+  dg.setIndex(di);
   const deck=new THREE.Mesh(dg,wood2);
   deck.castShadow=deck.receiveShadow=true;
   scene.add(deck); BRIDGE_PARTS.push(deck);
 
-  /* ---- the hill the bridge is built into, with an arch opened through it ---- */
-  const GY=-0.30, MHALF=1.30, ARCH_R=0.78, ARCH_HALF_U=0.115;
-  const earth=new THREE.MeshStandardMaterial({color:0x6f7f4a,roughness:1});
-  const mp=[], mn=[], mi=[];
-  const mpush=(v,n)=>{ mp.push(v.x,v.y,v.z); mn.push(n.x,n.y,n.z); };
-  let rows=0, rowU=[];
-  for(let k=0;k<=N;k++){
-    const u=k/N;
-    if(Math.abs(u-0.5)<ARCH_HALF_U) continue;          // leave the middle open for the arch
-    const p=pts[k], sd=nrm[k];
-    const topY=p.y-0.13;
-    mpush(new THREE.Vector3(p.x-sd.x*MHALF, topY, p.z-sd.z*MHALF), new THREE.Vector3(0,1,0));
-    mpush(new THREE.Vector3(p.x+sd.x*MHALF, topY, p.z+sd.z*MHALF), new THREE.Vector3(0,1,0));
-    mpush(new THREE.Vector3(p.x-sd.x*MHALF, GY,   p.z-sd.z*MHALF), new THREE.Vector3(-sd.x,0,-sd.z));
-    mpush(new THREE.Vector3(p.x+sd.x*MHALF, GY,   p.z+sd.z*MHALF), new THREE.Vector3( sd.x,0, sd.z));
-    rowU.push(u); rows++;
-  }
-  for(let r=0;r<rows-1;r++){
-    if(Math.abs(rowU[r+1]-rowU[r])>0.05) continue;      // don't bridge across the opening
-    const a=r*4, b=(r+1)*4;
-    mi.push(a,b,a+1, a+1,b,b+1);                        // crown of the mound
-    mi.push(a+2,a,b+2, b+2,a,b);                        // flanks
-    mi.push(a+1,a+3,b+1, b+1,a+3,b+3);
-  }
-  // cap the two faces either side of the opening
-  for(const side of [0,1]){
-    const r=side===0 ? rowU.findIndex((u,ii)=>ii<rows-1 && Math.abs(rowU[ii+1]-u)>0.05)
-                     : rowU.findIndex(u=>u>0.5);
-    if(r<0) continue;
-    const a=r*4;
-    mi.push(a,a+1,a+2, a+2,a+1,a+3);
-  }
-  const mg=new THREE.BufferGeometry();
-  mg.setAttribute("position",new THREE.Float32BufferAttribute(mp,3));
-  mg.setAttribute("normal",new THREE.Float32BufferAttribute(mn,3));
-  mg.setIndex(mi);
-  const mound=new THREE.Mesh(mg,earth);
-  mound.castShadow=mound.receiveShadow=true;
-  scene.add(mound); BRIDGE_PARTS.push(mound);
-
-  /* ---- the stone arch spanning the gap we left ---- */
-  {
-    const cu=0.5, cp=curve.getPoint(cu);
-    const ct=curve.getTangent(cu); ct.y=0; ct.normalize();
-    const heading=Math.atan2(ct.x,ct.z);
-    const openW=(curve.getPoint(0.5+ARCH_HALF_U).distanceTo(curve.getPoint(0.5-ARCH_HALF_U)));
-    const topY=cp.y-0.13;
-    const shape=new THREE.Shape();                      // the block of stonework...
-    shape.moveTo(-openW/2, GY);
-    shape.lineTo(-openW/2, topY);
-    shape.lineTo( openW/2, topY);
-    shape.lineTo( openW/2, GY);
-    shape.lineTo(-openW/2, GY);
-    const hole=new THREE.Path();                        // ...with the arch cut out of it
-    const spring=GY+0.22;
-    hole.moveTo(-ARCH_R, GY);
-    hole.lineTo(-ARCH_R, spring);
-    hole.absarc(0, spring, ARCH_R, Math.PI, 0, true);
-    hole.lineTo( ARCH_R, GY);
-    hole.lineTo(-ARCH_R, GY);
-    shape.holes.push(hole);
-    const ag=new THREE.ExtrudeGeometry(shape,{depth:MHALF*2,bevelEnabled:false,curveSegments:20});
-    ag.translate(0,0,-MHALF);
-    ag.rotateY(heading+Math.PI/2);
-    const archMesh=new THREE.Mesh(ag,new THREE.MeshStandardMaterial({color:0x9a9186,roughness:.9}));
-    archMesh.position.set(cp.x,0,cp.z);
-    archMesh.castShadow=archMesh.receiveShadow=true;
-    scene.add(archMesh); BRIDGE_PARTS.push(archMesh);
-  }
-
-  // ---- handrails: two smooth tubes following the same curve ----
-  const RAIL_Y=0.50, RAIL_OUT=1.10;
+  /* ---- slim handrails, only along the raised part, with posts down to the deck ---- */
+  const RAIL_Y=0.46, RAIL_OUT=1.08, POST_H=RAIL_Y+DROP;
+  const postSpots=[];
   for(const sgn of [-1,1]){
     const rp=[];
     for(let k=0;k<=N;k++){
-      const p=pts[k], s=nrm[k];
-      rp.push(new THREE.Vector3(p.x+s.x*sgn*RAIL_OUT, p.y+RAIL_Y, p.z+s.z*sgn*RAIL_OUT));
+      const p=pts[k];
+      if(p.y<0.10) continue;                              // rails only where the road is off the ground
+      const sd=nrm[k];
+      rp.push(new THREE.Vector3(p.x+sd.x*sgn*RAIL_OUT,p.y+RAIL_Y,p.z+sd.z*sgn*RAIL_OUT));
     }
+    if(rp.length<4) continue;
     const rc=new THREE.CatmullRomCurve3(rp,false,"catmullrom",0.5);
-    const rail=new THREE.Mesh(new THREE.TubeGeometry(rc,N,0.055,8,false),wood);
+    const rail=new THREE.Mesh(new THREE.TubeGeometry(rc,rp.length*2,0.045,7,false),wood);
     rail.castShadow=true; scene.add(rail); BRIDGE_PARTS.push(rail);
-    // posts at even intervals along the run
-    for(let k=4;k<N;k+=8){
-      const p=pts[k], s=nrm[k];
-      const px=p.x+s.x*sgn*RAIL_OUT, pz=p.z+s.z*sgn*RAIL_OUT;
-      const h=RAIL_Y+DECK_DROP;
-      const post=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.056,h,8),wood);
-      post.position.set(px, p.y+RAIL_Y-h/2, pz);
-      post.castShadow=true; scene.add(post); BRIDGE_PARTS.push(post);
-    }
+    for(let k=2;k<rp.length-1;k+=4) postSpots.push(rp[k]);
   }
-
+  if(postSpots.length){                                   // every post in a single draw call
+    const posts=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.042,0.048,POST_H,7),wood,postSpots.length);
+    const d=new THREE.Object3D();
+    postSpots.forEach((q,i)=>{ d.position.set(q.x,q.y-POST_H/2,q.z); d.updateMatrix(); posts.setMatrixAt(i,d.matrix); });
+    posts.instanceMatrix.needsUpdate=true; posts.castShadow=true;
+    scene.add(posts); BRIDGE_PARTS.push(posts);
+  }
 }
 function tickWater(t){
   if(!WATER) return;
   WATER.material.opacity=0.88+Math.sin(t*0.9)*0.045;      // a slow shimmer
-  WATER.position.y=-0.34+Math.sin(t*0.7)*0.012;
+  WATER.position.y=WATER_Y+Math.sin(t*0.7)*0.006;         // bob around wherever the river was laid
 }
 /* ================= Visual Pass 1: painted medieval tile emblems =================
    Custom CanvasTextures drawn as engraved kingdom icons — no OS emoji.
@@ -1503,6 +1535,65 @@ TILE_DEFS.forEach((def,i)=>{
   scene.add(m); tiles.push({mesh:m,type:def.t});
 });
 buildRiverAndBridge();
+
+/* ---- the King's Gate: a stone archway the monarch passes through at the start tile ---- */
+(function buildStartArch(){
+  const i=0, p=path[i];
+  const nxt=path[1], prv=path[TILE_COUNT-1];
+  const heading=Math.atan2(nxt.x-prv.x, nxt.z-prv.z);      // arch faces along the road
+
+  const stone=new THREE.MeshStandardMaterial({color:0xb9b0a2,roughness:.88});
+  const stoneD=new THREE.MeshStandardMaterial({color:0x9a9186,roughness:.92});
+  const gold =new THREE.MeshStandardMaterial({color:0xd9ad4a,roughness:.45,metalness:.45});
+
+  const g=new THREE.Group();
+  g.userData.startArch=true;
+  g.position.set(p.x, p.y+TILE_TOP-0.17, p.z);
+  g.rotation.y=heading;
+
+  const HALF=1.45, PIER_W=0.42, PIER_H=2.15, SPAN_R=1.45;
+
+  // two piers either side of the road
+  for(const sgn of [-1,1]){
+    const pier=new THREE.Mesh(new THREE.BoxGeometry(PIER_W,PIER_H,PIER_W*1.15),stone);
+    pier.position.set(sgn*HALF, PIER_H/2, 0);
+    pier.castShadow=pier.receiveShadow=true; g.add(pier);
+    const base=new THREE.Mesh(new THREE.BoxGeometry(PIER_W*1.35,0.20,PIER_W*1.5),stoneD);
+    base.position.set(sgn*HALF,0.10,0); base.castShadow=true; g.add(base);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(PIER_W*1.3,0.16,PIER_W*1.45),stoneD);
+    cap.position.set(sgn*HALF,PIER_H+0.08,0); cap.castShadow=true; g.add(cap);
+  }
+
+  // the arch itself — voussoir blocks sweeping over the road
+  const SEG=11;
+  for(let k=0;k<=SEG;k++){
+    const a=Math.PI*(k/SEG);                               // 0..PI across the span
+    const bx=Math.cos(a)*HALF, by=PIER_H+Math.sin(a)*SPAN_R*0.62;
+    const blk=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.34,PIER_W*1.15),
+      (k%2)?stone:stoneD);
+    blk.position.set(bx,by,0);
+    blk.rotation.z=-(a-Math.PI/2);
+    blk.castShadow=true; g.add(blk);
+  }
+
+  // keystone + a gilded crown mark facing the approach
+  const key=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.42,PIER_W*1.25),gold);
+  key.position.set(0,PIER_H+SPAN_R*0.62+0.06,0); key.castShadow=true; g.add(key);
+  for(let t=0;t<3;t++){                                     // three small crown points
+    const pt=new THREE.Mesh(new THREE.ConeGeometry(0.075,0.20,4),gold);
+    pt.position.set((t-1)*0.16, PIER_H+SPAN_R*0.62+0.34, 0); g.add(pt);
+  }
+
+  // banners hanging from the arch
+  for(const sgn of [-1,1]){
+    const ban=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.72),
+      new THREE.MeshStandardMaterial({color:0x8a2f3f,roughness:.9,side:THREE.DoubleSide}));
+    ban.position.set(sgn*0.72, PIER_H+0.12, PIER_W*0.62);
+    ban.castShadow=true; g.add(ban);
+  }
+
+  scene.add(g);
+})();
 /* center kingdom towers (visual only, grows with tier) */
 const townGroup=new THREE.Group(); scene.add(townGroup);
 /* deterministic pseudo-random so a given kingdom always rebuilds identically */
@@ -1745,6 +1836,7 @@ function buildRoadside(progress){
       const off=(TILESZ/2)+2.15+ring*3.25;
       const q=new THREE.Vector3(p.x+sx*side*off, 0, p.z+sz*side*off);
       if(!plotClear(q.x,q.z,FOOT_BUILDING)) continue;      // shared footprint check
+      if(overRiver(q.x,q.z,1.5)) continue;                 // not in the water
       const seed=i*17+ring*331;
       const g=makeStructure(Math.max(0,Math.min(lvl, lvl-(ring?1:0))), seed);
       g.position.copy(q);
@@ -1891,9 +1983,10 @@ function rebuildWorkSites(){
     const ti=Math.floor((idx/total)*TILE_COUNT + 5) % TILE_COUNT;
     const base=path[ti], out=base.clone().normalize();
     const pos=base.clone().addScaledVector(out,offset);
-    if(pos.length()>37) return;
+    if(pos.length()>45) return;
     for(const w of WORK_SITES){ if(w.pos.distanceTo(pos)<5.5) return; }
     if(!plotClear(pos.x,pos.z,FOOT_FARM)) return;           // don't drop a field onto a building
+    if(overRiver(pos.x,pos.z,2.6)) return;                  // fields don't grow in the river
     const g=(type==="farm")?makeFarm(Math.min(3,Math.floor(era*0.6)),idx*13+2)
                            :makeLumber(Math.min(3,Math.floor(era*0.5)),idx*17+5);
     g.position.set(pos.x,0,pos.z);
@@ -1918,7 +2011,7 @@ function plotClear(x,z,r){
 }
 function claimPlot(x,z,r){ OCCUPIED.push({x,z,r}); }
 /* footprint radii, moderately generous */
-const FOOT_BUILDING=1.55, FOOT_TREE=1.05, FOOT_FARM=2.2;
+const FOOT_BUILDING=1.90, FOOT_TREE=1.15, FOOT_FARM=2.5;
 const RISING=[];                                            // structures currently under construction                                       // where servants attend their lords
 function makeCastle(tier){
   const g=new THREE.Group();
@@ -2051,7 +2144,9 @@ function rebuildTown(){
   MARKET_POS.copy(path[0]).addScaledVector(startDir,-3.6);   // market square just inside the gate, beside the road
 
   /* CASTLE — rises in the middle once you've begun building */
-  if(progress>=1){ const c=makeCastle(Math.min(7,eraLevel())); c.position.set(0,0,0); townGroup.add(c); claimPlot(0,0,4.0); }
+  if(progress>=1){ const c=makeCastle(Math.min(7,eraLevel())); c.position.set(0,0,0);
+                   c.userData.landmark=true;                 // visible from anywhere on the board
+                   townGroup.add(c); claimPlot(0,0,4.0); }
 
   /* GATEHOUSE — two towers flanking the road in at the start tile */
   if(progress>=2){
@@ -2084,6 +2179,7 @@ function rebuildTown(){
         for(let t=0;t<TILE_COUNT;t++){ if(pos.distanceTo(path[t])<3.4){ clear=false; break; } }
         if(!clear) continue;
         if(!plotClear(pos.x,pos.z,FOOT_BUILDING)) continue;  // don't stack on another building
+        if(overRiver(pos.x,pos.z,1.7)) continue;             // and never in the river
         const seed=placed*17+3;
         // grander halls nearer the castle, humbler homes out by the walls
         const lvl=Math.max(0, Math.min(era, era - Math.floor(ring*0.9)));
@@ -2095,9 +2191,9 @@ function rebuildTown(){
     }
   }
   /* OUTER DISTRICTS — once the inside is full the realm spreads beyond the road */
-  for(let ring=0; ring<9 && placed<houses; ring++){
-    const rad=BOARD_R*1.32 + ring*(BOARD_R*0.145);          // districts spread across the wider land
-    if(rad>37) break;
+  for(let ring=0; ring<12 && placed<houses; ring++){
+    const rad=BOARD_R*1.34 + ring*(BOARD_R*0.165);          // districts spread across the wider land
+    if(rad>45) break;
     const perRing=LANES+ring*3;                             // more plots per ring at larger radius
     for(let lane=0; lane<perRing && placed<houses; lane++){
       for(const sideSign of [-1,1]){
@@ -2108,6 +2204,7 @@ function rebuildTown(){
         for(let t=0;t<TILE_COUNT;t++){ if(pos.distanceTo(path[t])<3.4){ clear=false; break; } }
         if(!clear) continue;
         if(!plotClear(pos.x,pos.z,FOOT_BUILDING)) continue;
+        if(overRiver(pos.x,pos.z,1.7)) continue;
         const seed=placed*17+3;
         const g=makeStructure(Math.max(0,era-1-Math.floor(ring*0.7)),seed);
         g.position.set(pos.x,0,pos.z);
@@ -2132,25 +2229,49 @@ function rebuildDetail(){
   if(progress>=1){
     const roadMat=new THREE.MeshStandardMaterial({color:0x9a8f7c,roughness:1});
     const outer=BOARD_R*0.86, inner=3.4;
+    // a road only exists where it isn't wading through the river
+    const roadDry=(cx,cz,hx,hz,steps)=>{                 // sample along a road's length
+      for(let q=0;q<=steps;q++){
+        const f=(q/steps)-0.5;
+        if(overRiver(cx+hx*f, cz+hz*f, 1.1)) return false;
+      }
+      return true;
+    };
     for(let lane=0;lane<LANES;lane++){
       const a=(lane/LANES)*Math.PI*2;
       const len=outer-inner;
+      const cx=Math.cos(a)*(inner+len/2), cz=Math.sin(a)*(inner+len/2);
+      if(!roadDry(cx,cz,Math.cos(a)*len,Math.sin(a)*len,8)) continue;
       const road=new THREE.Mesh(new THREE.PlaneGeometry(1.5,len),roadMat);
       road.rotation.x=-Math.PI/2; road.rotation.z=-a;
-      road.position.set(Math.cos(a)*(inner+len/2),0.035,Math.sin(a)*(inner+len/2));
+      road.position.set(cx,0.035,cz);
       road.receiveShadow=true; detailGroup.add(road);
     }
-    const ring=new THREE.Mesh(new THREE.RingGeometry(BOARD_R*0.62,BOARD_R*0.62+1.4,48),roadMat);
-    ring.rotation.x=-Math.PI/2; ring.position.y=0.03; ring.receiveShadow=true; detailGroup.add(ring);
+    // ring roads are drawn as arcs that stop at the riverbank on either side
+    const ringArc=(R,w,segs,y)=>{
+      let start=0, len=Math.PI*2;
+      if(RIVER){
+        const gap=Math.asin(Math.min(1,(RIVER.halfW+1.3)/Math.max(R,0.1)));
+        const rx=(RIVER.ax+RIVER.bx)/2, rz=(RIVER.az+RIVER.bz)/2;
+        const worldAng=Math.atan2(rz,rx);
+        const inReach=(Math.hypot(RIVER.ax,RIVER.az)-1) < R && R < (Math.hypot(RIVER.bx,RIVER.bz)+1);
+        if(inReach){ start=-worldAng+gap; len=Math.PI*2-2*gap; }
+      }
+      const g=new THREE.Mesh(new THREE.RingGeometry(R,R+w,segs,1,start,len),roadMat);
+      g.rotation.x=-Math.PI/2; g.position.y=y; g.receiveShadow=true; detailGroup.add(g);
+    };
+    ringArc(BOARD_R*0.62,1.4,48,0.03);
     if(legacy()>REALM_SPAN*0.8){                  // outer districts get their own ring road + spurs
-      const oring=new THREE.Mesh(new THREE.RingGeometry(BOARD_R*1.30,BOARD_R*1.30+1.5,56),roadMat);
-      oring.rotation.x=-Math.PI/2; oring.position.y=0.03; oring.receiveShadow=true; detailGroup.add(oring);
+      ringArc(BOARD_R*1.30,1.5,56,0.03);
       for(let lane=0;lane<LANES;lane++){
         const a=(lane/LANES)*Math.PI*2;
-        const spur=new THREE.Mesh(new THREE.PlaneGeometry(1.4,BOARD_R*0.62),roadMat);
+        const sl=BOARD_R*0.62;
+        const mid=BOARD_R*1.02+sl/2;
+        const cx=Math.cos(a)*mid, cz=Math.sin(a)*mid;
+        if(!roadDry(cx,cz,Math.cos(a)*sl,Math.sin(a)*sl,6)) continue;
+        const spur=new THREE.Mesh(new THREE.PlaneGeometry(1.4,sl),roadMat);
         spur.rotation.x=-Math.PI/2; spur.rotation.z=-a;
-        const mid=BOARD_R*1.02+ (BOARD_R*0.62)/2;
-        spur.position.set(Math.cos(a)*mid,0.032,Math.sin(a)*mid);
+        spur.position.set(cx,0.032,cz);
         spur.receiveShadow=true; detailGroup.add(spur);
       }
     }
@@ -2175,7 +2296,7 @@ function rebuildDetail(){
     const p=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad);
     let onPath=false;
     for(let t=0;t<TILE_COUNT;t++){ if(p.distanceTo(path[t])<2.6){ onPath=true; break; } }
-    if(onPath) continue;
+    if(onPath || overRiver(p.x,p.z,0.35)) continue;
     const isRock=srand(s+2)<0.32;
     if(isRock && ri<ROCKS){
       dummy.position.set(p.x,0.05,p.z);
@@ -2209,10 +2330,11 @@ function rebuildDetail(){
     const p=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad);
     let blocked=false;
     for(let t=0;t<TILE_COUNT;t++){ if(p.distanceTo(path[t])<2.8){ blocked=true; break; } }
-    if(blocked) continue;
+    if(blocked || overRiver(p.x,p.z,0.35)) continue;
     const pick=srand(s2+2);
     if(pick<0.20 && ti<TR){
       if(!plotClear(p.x,p.z,FOOT_TREE)) continue;          // trees claim a plot like buildings do
+      if(overRiver(p.x,p.z,1.0)) continue;
       dummy.position.set(p.x,.5,p.z); dummy.rotation.set(0,srand(s2+3)*6,0);
       const sc=0.8+srand(s2+4)*0.7; dummy.scale.setScalar(sc);
       dummy.updateMatrix(); trunkI.setMatrixAt(ti,dummy.matrix);
@@ -2737,6 +2859,7 @@ function makePerson(kind,seed){
   return g;
 }
 function rebuildFolk(){
+  rebuildPlaces();
   while(folkGroup.children.length){ const c=folkGroup.children[0]; folkGroup.remove(c); disposeGroup(c); }
   FOLK.length=0;
   const progress=legacy();                                 // lifetime progress: crowds carry across realms
@@ -2884,8 +3007,8 @@ function addCrown(k,app,headY,gold,accent){
 function makeKing(app){
   app = app || KING_DEFAULT;
   const isQueen = app.gender==="queen";
-  const sizeF = app.size==="small"?0.85 : app.size==="large"?1.16 : 1.0;   // overall height
-  const widthF = app.size==="small"?0.90 : app.size==="large"?1.14 : 1.0;  // build/broadness
+  // Build changes broadness only — every monarch is the same height so they all clear the gate arch
+  const widthF = app.size==="small"?0.82 : app.size==="large"?1.26 : 1.0;  // build/broadness
   const k=new THREE.Group();
   const skin =new THREE.MeshStandardMaterial({color:app.skin,  roughness:.8});
   const robe =new THREE.MeshStandardMaterial({color:app.robe,  roughness:.85});
@@ -2950,7 +3073,7 @@ function makeKing(app){
     hipL:LL.hip, hipR:LR.hip, kneeL:LL.knee, kneeR:LR.knee,
     mats:{skin,robe,accent,hairMat}, isQueen
   };
-  k.scale.setScalar(sizeF);   // feet sit at local y=0, so scaling keeps the monarch planted on the tile
+  // no vertical scaling: monarch height is fixed regardless of build
   return k;
 }
 let king=makeKing(KING_APP); scene.add(king);
@@ -3088,20 +3211,21 @@ function updateGoal(){
   const cost=buildCost();
   const next=TIERS[Math.min(S.tier+1,TIERS.length-1)];
   let icon="🎯", main="", sub="";
+  const canBuild=S.coins>=cost;
   if(S.rolled===0){
     icon="🎲"; main="Tap the dice to roll"; sub="Land on tiles to collect gold";
-  } else if(S.coins<cost){
-    icon="🪙"; main="Collect "+cost.toLocaleString()+" gold to build";
-    sub="You have "+S.coins.toLocaleString()+" — keep rolling!";
-  } else if(S.tier>=TIERS.length-1 && S.builds>=BUILDS_PER_TIER-1){
+  } else if(canBuild && S.tier>=TIERS.length-1 && S.builds>=BUILDS_PER_TIER-1){
     icon="🌍"; main="Build to found a NEW REALM!"; sub="Your empire is complete";
-  } else {
-    icon="🔨"; main="You can build! Tap BUILD";
-    sub=(BUILDS_PER_TIER-S.builds)+" more "+bldFor(S.tier).n+"s → "+next;
   }
+  // otherwise stay quiet — the BUILD button already shows the cost and glows when
+  // it's affordable, and this bar used to sit on top of the reward popups
+  const gb=$("goalBar");
+  if(gb) gb.style.display = main ? "flex" : "none";
   $("goalIcon").textContent=icon;
   $("goalMain").textContent=main;
   $("goalSub").textContent=sub;
+  const bb=$("buildBtn");
+  if(bb) bb.classList.toggle("ready", canBuild && S.rolled>0);
   try{ checkBuildUnlock(); }catch(e){}
 }
 let _couldBuild=false;
@@ -3185,10 +3309,10 @@ function playIntro(done){
   function finish(){
     if(killed) return; killed=true;
     cap.classList.remove("show"); fade.classList.remove("clear");   // fade to black then hand off
-    setTimeout(()=>{ ov.classList.remove("show"); fade.classList.add("clear"); G.intro=false; done&&done(); }, 550);
+    setTimeout(()=>{ ov.classList.remove("show"); fade.classList.add("clear"); G.intro=false; showDie(true); done&&done(); }, 550);
   }
   $("introSkip").onclick=()=>{ if(killed)return; killed=true;
-    cap.classList.remove("show"); ov.classList.remove("show"); fade.classList.add("clear"); G.intro=false; done&&done(); };
+    cap.classList.remove("show"); ov.classList.remove("show"); fade.classList.add("clear"); G.intro=false; showDie(true); done&&done(); };
   (function frame(now){
     if(killed) return;
     const el=(now-start)/1000, p=Math.min(1,el/DUR);
@@ -3742,6 +3866,42 @@ const DECREES=[
      {label:"Tax all sales",      sub:"+2% tax · +4% crime",       tax:+2, crime:+4},
      {label:"Tax luxuries only",  sub:"+1% tax · +2% crime",       tax:+1, crime:+2},
      {label:"Free trade",         sub:"−1% tax · purse now",       tax:-1, crime:-8, gainPct:.5},
+   ]},
+  {g:"Taxes & Levies", t:"The Land Tax", d:"Every field and pasture could be measured, recorded, and taxed by the acre.",
+   opts:[
+     {label:"Tax all landholders", sub:"+3% tax · +5% crime",      tax:+3, crime:+5},
+     {label:"Tax the great estates only", sub:"+2% tax · −3% crime", tax:+2, crime:-3},
+     {label:"Leave the land untaxed", sub:"−1% tax · −10% crime",   tax:-1, crime:-10},
+   ]},
+  {g:"Taxes & Levies", t:"The Road Toll", d:"Merchants use your roads and bridges freely. A toll gate would change that.",
+   opts:[
+     {label:"Toll every road",     sub:"+2% tax · +6% crime",       tax:+2, crime:+6},
+     {label:"Toll the bridge only", sub:"+1% tax · +1% crime",      tax:+1, crime:+1},
+     {label:"Open roads for all",  sub:"−1% tax · −9% crime",       tax:-1, crime:-9},
+   ]},
+  {g:"Taxes & Levies", t:"The Tithe Barn", d:"The harvest tithe fills the granary. How large a share does the crown claim?",
+   opts:[
+     {label:"Claim a full share",  sub:"big purse · +7% crime",     gainPct:1.1, crime:+7},
+     {label:"Claim a modest share", sub:"+1% tax · +2% crime",      tax:+1, crime:+2},
+     {label:"Forgive the tithe",   sub:"−2% tax · −13% crime",      tax:-2, crime:-13},
+   ]},
+  {g:"Taxes & Levies", t:"The Tax Collectors", d:"Your collectors are efficient, feared, and not entirely honest.",
+   opts:[
+     {label:"Let them press harder", sub:"purse now · +8% crime",   gainPct:.9, crime:+8},
+     {label:"Audit the ledgers",   sub:"+1% tax · −7% crime",       tax:+1, crime:-7},
+     {label:"Dismiss the worst",   sub:"−1% tax · −14% crime",      tax:-1, crime:-14},
+   ]},
+  {g:"Taxes & Levies", t:"The Window Tax", d:"A clerk proposes taxing each window. The wealthy have many; the poor have none.",
+   opts:[
+     {label:"Tax every window",    sub:"+2% tax · +5% crime",       tax:+2, crime:+5},
+     {label:"Tax the manors only", sub:"+1% tax · −4% crime",       tax:+1, crime:-4},
+     {label:"Reject the notion",   sub:"no change · −8% crime",     tax:0,  crime:-8},
+   ]},
+  {g:"Taxes & Levies", t:"The Coin Debasement", d:"The mint could stretch the treasury by mixing cheaper metal into the coinage.",
+   opts:[
+     {label:"Debase the coin",     sub:"big purse · +9% crime",     gainPct:1.3, crime:+9},
+     {label:"A slight reduction",  sub:"purse now · +3% crime",     gainPct:.6, crime:+3},
+     {label:"Keep the coin pure",  sub:"−12% crime · costs gold",   crime:-12, costPct:.3},
    ]},
   /* ---- COMMODITIES & MONOPOLIES ---- */
   {g:"Commodities", t:"The Salt Monopoly", d:"Salt preserves the winter stores. Whoever controls it controls the table.",
@@ -4753,8 +4913,8 @@ async function enterGame(u){
   } else {
     proceed();
   }
-  if(had) msg("👑 Welcome back, "+u+"!",1600);
-  else msg("👑 Roll the dice to begin your rise!",2000);
+  if(had) msg("👑 Welcome back, "+u+"!",3200);
+  else msg("👑 Roll the dice to begin your rise!",3600);
   if(localStorage.getItem(DEV_KEY)==="1"){
     ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn"].forEach(id=>{const b=$(id); if(b) b.style.display="";});
     $("weekTestBtn").style.display=""; $("introTestBtn").style.display="";
@@ -5212,15 +5372,31 @@ function animate(){
         m.position.set(Math.cos(a)*p.radius, Math.abs(Math.sin(t*1.6+p.phase))*.03, Math.sin(a)*p.radius);
         m.rotation.y=-a;
       } else {
-        const fast = p.role==="play" ? 2.5 : (p.role==="market" ? 1.15 : .8);
-        const a=p.phase + t*p.speed*0.42*fast;
-        const wob = p.role==="play" ? Math.sin(a*2.3) : Math.sin(a*0.8);
-        m.position.x = p.hub.x + Math.cos(a)*p.radius;
-        m.position.z = p.hub.z + wob*p.radius;
-        m.position.y = Math.abs(Math.sin(t*p.speed*2.2*fast + p.phase)) * (p.role==="play"?.10:.045);
-        m.rotation.y = -a + Math.PI*0.5;
+        // citizens going about their day — walk somewhere, linger a while, then move on
+        if(!p.dest) p.dest=pickPlace(p.phase*131);
+        if(p.rest>0){
+          p.rest-=dt;                                        // stopped: trading, talking, working
+          m.position.y=Math.abs(Math.sin(t*1.7+p.phase))*0.02;
+          m.rotation.y+=Math.sin(t*0.45+p.phase)*0.005;
+        } else {
+          const dx=p.dest.x-m.position.x, dz=p.dest.z-m.position.z;
+          const d=Math.hypot(dx,dz);
+          if(d<0.45){
+            p.rest=1.5+srand(Math.floor(t*11)+p.phase*57)*3.6;
+            p.dest=pickPlace(Math.floor(t*7)+p.phase*211);
+          } else {
+            const fast=p.role==="play"?1.9:1.0;
+            const sp=Math.min(d, p.speed*1.2*fast*dt);
+            m.position.x+=dx/d*sp; m.position.z+=dz/d*sp;
+            m.rotation.y=Math.atan2(dx,dz);                  // facing where they're headed
+            m.position.y=Math.abs(Math.sin(t*p.speed*3.6*fast+p.phase))*(p.role==="play"?.10:.05);
+          }
+        }
       }
     }
+    // every branch above sets a small bob in y; lift each person onto whatever
+    // they are actually standing on, so crossing the board looks like stepping onto it
+    for(const q of FOLK){ const mm=q.mesh; mm.position.y+=surfaceUnder(mm.position.x,mm.position.z); }
   }
 
   /* keep the frame cheap in play: only structures and folk near the monarch are drawn.
@@ -5231,7 +5407,7 @@ function animate(){
     const R2=15*15, RF2=17*17;                       // folk carry a little further than buildings
     for(let i=0;i<townGroup.children.length;i++){
       const c=townGroup.children[i];
-      if(showAll){ c.visible=true; continue; }
+      if(showAll || c.userData.landmark){ c.visible=true; continue; }   // castle always in view
       const dx=c.position.x-kx, dz=c.position.z-kz;
       c.visible = (dx*dx+dz*dz) < R2;
     }
@@ -5258,6 +5434,11 @@ function animate(){
   } else {
     dieMesh.rotation.y+=dt*.5;
     dieMesh.position.y=Math.sin(clock.elapsedTime*1.6)*.06;
+  }
+  // safety net: if play is idle and nothing is covering the screen, the die must be visible.
+  // (a stalled intro or overlay once left it hidden and stranded the player)
+  if(G.state==="idle" && !G.intro && !G.map && !G.create && !G.fight){
+    const dd=$("dieDock"); if(dd && dd.classList.contains("hide")) dd.classList.remove("hide");
   }
   dieRenderer.render(dieScene,dieCam);
 
