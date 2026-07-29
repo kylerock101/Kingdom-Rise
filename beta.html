@@ -1093,6 +1093,50 @@ function fbErrMsg(e){
   if(c.includes("network")) return "Network error — check your connection.";
   return (e&&e.message)||"Something went wrong.";
 }
+let AUTH_NAME_IDENTITY={ok:false, reason:"not-checked"};
+function nameIdentityResult(ok, reason, extra){
+  const out=Object.assign({ok, reason:reason||null, uid:FB_UID||null, user:CURRENT_USER||null}, extra||{});
+  AUTH_NAME_IDENTITY=out;
+  saveDiag("auth name identity", out);
+  if(!ok) console.warn("[auth] Firebase name identity not ready", out);
+  return out;
+}
+async function verifyFirebaseNameClaim(user, expectedName, action){
+  if(!user) return nameIdentityResult(false,"missing-auth-user",{action});
+  if(!expectedName) return nameIdentityResult(false,"missing-expected-name",{action, displayName:user.displayName||null});
+  if(!user.displayName) return nameIdentityResult(false,"missing-displayName",{action});
+  if(user.displayName!==expectedName) return nameIdentityResult(false,"displayName-mismatch",{action, displayName:user.displayName, expectedName});
+  if(!user.getIdToken||!user.getIdTokenResult) return nameIdentityResult(false,"token-result-unavailable",{action, displayName:user.displayName});
+  try{
+    await user.getIdToken(true);
+    const token=await user.getIdTokenResult();
+    const tokenName=token&&token.claims&&token.claims.name;
+    if(tokenName!==expectedName) return nameIdentityResult(false,"token-name-mismatch",{action, displayName:user.displayName, expectedName, hasTokenName:!!tokenName});
+    return nameIdentityResult(true,null,{action, displayName:user.displayName, tokenNameMatches:true});
+  }catch(e){
+    return nameIdentityResult(false,"token-refresh-failed",{action, displayName:user.displayName, error:e&&e.message||String(e)});
+  }
+}
+async function repairFirebaseDisplayNameIfSafe(user, expectedName, action){
+  if(!user) return nameIdentityResult(false,"missing-auth-user",{action});
+  if(!expectedName) return nameIdentityResult(false,"missing-expected-name",{action, displayName:user.displayName||null});
+  if(user.displayName){
+    if(user.displayName!==expectedName) return nameIdentityResult(false,"displayName-mismatch",{action, displayName:user.displayName, expectedName});
+    return verifyFirebaseNameClaim(user, expectedName, action);
+  }
+  try{
+    await window.FB.updateProfile(user,{displayName:expectedName});
+    return verifyFirebaseNameClaim(user, expectedName, action+"-repaired");
+  }catch(e){
+    return nameIdentityResult(false,"displayName-repair-failed",{action, expectedName, error:e&&e.message||String(e)});
+  }
+}
+async function ensureFirebaseNameIdentity(action){
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return {ok:true, reason:"not-cloud-gift"};
+  const user=window.FB&&window.FB.auth&&window.FB.auth.currentUser;
+  if(!user||user.uid!==FB_UID) return nameIdentityResult(false,"auth-user-uid-mismatch",{action, authUid:user&&user.uid||null});
+  return verifyFirebaseNameClaim(user, CURRENT_USER, action||"gift");
+}
 const Auth = {
   async register(name,pw){
     if(fbOn()){
@@ -1100,7 +1144,10 @@ const Auth = {
         const cred = await window.FB.createUserWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
         FB_UID = cred.user.uid;
         saveDiag("auth mode", {mode:"firebase", uid:FB_UID, action:"register"});
-        try{ await window.FB.updateProfile(cred.user,{displayName:name}); }catch(e){}
+        try{
+          await window.FB.updateProfile(cred.user,{displayName:name});
+          await verifyFirebaseNameClaim(cred.user,name,"register");
+        }catch(e){ nameIdentityResult(false,"register-displayName-update-failed",{action:"register", error:e&&e.message||String(e)}); }
         try{ await window.FB.setDoc(window.FB.doc(window.FB.db,"players",FB_UID),{name,might:500,updatedAt:Date.now()},{merge:true}); }catch(e){}
         return {user:name};
       }catch(e){ throw new Error(fbErrMsg(e)); }
@@ -1117,7 +1164,8 @@ const Auth = {
         const cred = await window.FB.signInWithEmailAndPassword(window.FB.auth, nameToEmail(name), pw);
         FB_UID = cred.user.uid;
         saveDiag("auth mode", {mode:"firebase", uid:FB_UID, action:"login"});
-        return {user: cred.user.displayName || name};
+        await repairFirebaseDisplayNameIfSafe(cred.user,name,"login");
+        return {user:name};
       }catch(e){ throw new Error(fbErrMsg(e)); }
     }
     if(!localAuthAllowed()) throw new Error("Cloud sign-in is unavailable. Use Guest mode or try again when Firebase finishes loading.");
@@ -1137,9 +1185,24 @@ const Auth = {
     if(!remember) return null;              // user chose not to stay signed in
     if(fbOn()){
       return new Promise(res=>{
-        const un = window.FB.onAuthStateChanged(window.FB.auth, u=>{
+        const un = window.FB.onAuthStateChanged(window.FB.auth, async u=>{
           try{ un(); }catch(e){}
-          if(u){ FB_UID=u.uid; saveDiag("auth mode", {mode:"firebase-restore", uid:FB_UID}); res(u.displayName||null); } else res(null);
+          if(u){
+            FB_UID=u.uid; saveDiag("auth mode", {mode:"firebase-restore", uid:FB_UID});
+            if(u.displayName){
+              let stored=null; try{ stored=localStorage.getItem(CUR_KEY)||null; }catch(e){}
+              if(stored && u.email===nameToEmail(stored) && u.displayName!==stored){ nameIdentityResult(false,"restore-displayName-mismatch",{action:"restore", displayName:u.displayName, storedUser:stored}); res(stored); return; }
+              await verifyFirebaseNameClaim(u,u.displayName,"restore"); res(u.displayName); return;
+            }
+            let stored=null; try{ stored=localStorage.getItem(CUR_KEY)||null; }catch(e){}
+            if(stored && u.email===nameToEmail(stored)){
+              const fixed=await repairFirebaseDisplayNameIfSafe(u,stored,"restore");
+              res(fixed.ok?stored:stored);
+            }else{
+              nameIdentityResult(false,"restore-missing-displayName-unmatched",{action:"restore", authEmail:u.email||null, storedUser:stored});
+              res(null);
+            }
+          } else res(null);
         });
       });
     }
@@ -4298,7 +4361,9 @@ const Social = {
     return rows.map((r,i)=>({rank:i+1,...r}));
   },
   async inbox(){
-    if(fbOn()){
+    if(fbOn()&&FB_UID&&CURRENT_USER!=="Guest"){
+      const identity=await ensureFirebaseNameIdentity("gift-inbox");
+      if(!identity.ok){ msg("Gift identity needs attention. Log out and back in, then try again.",2200); return []; }
       try{
         const q=window.FB.query(window.FB.collection(window.FB.db,"gifts"),
           window.FB.where("to","==",CURRENT_USER));
@@ -4323,7 +4388,9 @@ const Social = {
     if(!d.giftLog)d.giftLog={};
     if(d.giftLog[to]===today()) return false;
     d.giftLog[to]=today();
-    if(fbOn()){
+    if(fbOn()&&FB_UID&&CURRENT_USER!=="Guest"){
+      const identity=await ensureFirebaseNameIdentity("gift-send");
+      if(!identity.ok){ delete d.giftLog[to]; saveSocial(d); msg("Gift identity needs attention. Log out and back in, then try again.",2200); return false; }
       try{
         await window.FB.addDoc(window.FB.collection(window.FB.db,"gifts"),
           {to,from:CURRENT_USER,type:"rolls",amount:2+((Math.random()*3)|0),ts:Date.now(),claimed:false});
@@ -4336,7 +4403,9 @@ const Social = {
     saveSocial(d); return true;
   },
   async claim(id){
-    if(fbOn()){
+    if(fbOn()&&FB_UID&&CURRENT_USER!=="Guest"){
+      const identity=await ensureFirebaseNameIdentity("gift-claim");
+      if(!identity.ok){ msg("Gift identity needs attention. Log out and back in, then try again.",2200); return null; }
       try{
         const ref=window.FB.doc(window.FB.db,"gifts",id);
         const snap=await window.FB.getDoc(ref);
