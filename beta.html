@@ -1190,15 +1190,21 @@ async function startCloudWrite(payload, reason){
       return;
     }
     const nextRevision=Math.max(LAST_CLOUD_REVISION, CLOUD_LATEST_SUCCESS_REVISION, remoteMeta.revision||0)+1;
-    const env=structuredSaveFromLegacyState(valid.data,{uid:FB_UID, username:CURRENT_USER, revision:nextRevision, clientUpdatedAt:payloadUpdatedAt||startedAt});
+    const finalClientUpdatedAt=payloadUpdatedAt||startedAt;
+    const finalLegacyData=Object.assign({}, valid.data, {revision:nextRevision, clientUpdatedAt:finalClientUpdatedAt});
+    const finalPayload=JSON.stringify(finalLegacyData);
+    const finalValid=validateSavePayload(finalPayload,"cloud-push-finalized");
+    if(!finalValid.ok){ rememberRejectedPayload(finalPayload, finalValid.reason, "cloud-push-finalized"); return; }
+    const env=structuredSaveFromLegacyState(finalValid.data,{uid:FB_UID, username:CURRENT_USER, revision:nextRevision, clientUpdatedAt:finalClientUpdatedAt});
     const structuredValid=validateStructuredSavePayload(env,"cloud-push-structured");
     if(!structuredValid.ok){ rememberRejectedPayload(JSON.stringify(env), structuredValid.reason, "cloud-push-structured"); return; }
-    const update=Object.assign({name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:payload, updatedAt:window.FB.serverTimestamp?window.FB.serverTimestamp():startedAt}, flattenStructuredSaveForFirestore(env));
+    const update=Object.assign({name:CURRENT_USER, might:myMight(), realm:S.realm, save3d:finalPayload, updatedAt:window.FB.serverTimestamp?window.FB.serverTimestamp():startedAt}, flattenStructuredSaveForFirestore(env));
     await window.FB.setDoc(ref, update,{merge:true});
     if(seq>CLOUD_LATEST_COMPLETED_SEQUENCE){
       CLOUD_LATEST_COMPLETED_SEQUENCE=seq;
       setCloudTrackingFromEnvelope(env);
-      LAST_CLOUD_SAVE_RAW=payload;
+      LAST_CLOUD_SAVE_RAW=finalPayload;
+      try{ localStorage.setItem(saveKeyFor(CURRENT_USER), finalPayload); }catch(e){}
       saveDiag(reason==="trailing"?"trailing write succeeded":"write succeeded", {uid:FB_UID, path:"players/"+FB_UID, revision:nextRevision, sequence:seq, schemaVersion:STRUCTURED_SAVE_VERSION});
     }else{
       saveDiag("stale write completion ignored", {uid:FB_UID, revision:nextRevision, sequence:seq, latestCompleted:CLOUD_LATEST_COMPLETED_SEQUENCE});
