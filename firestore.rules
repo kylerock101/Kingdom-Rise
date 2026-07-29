@@ -1,0 +1,129 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDisplayName() {
+      return request.auth.token.name;
+    }
+
+    function hasDisplayName() {
+      return signedIn() && request.auth.token.name is string && request.auth.token.name.size() > 0;
+    }
+
+    function validTimestampOrMillis(value) {
+      return value is timestamp || (value is int && value >= 0);
+    }
+
+    function optionalValidTimestampOrMillis(data, field) {
+      return !(field in data) || validTimestampOrMillis(data[field]);
+    }
+
+    function optionalNonNegativeInt(data, field, maxValue) {
+      return !(field in data) || (data[field] is int && data[field] >= 0 && data[field] <= maxValue);
+    }
+
+    function optionalString(data, field, maxLength) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function optionalMap(data, field) {
+      return !(field in data) || data[field] is map;
+    }
+
+    function validPlayerIdentity(uid, data) {
+      return optionalString(data, "name", 80)
+        && (!("uid" in data) || data.uid == uid)
+        && (!("profile" in data) || (
+          data.profile is map
+          && (!("uid" in data.profile) || data.profile.uid == uid)
+          && optionalString(data.profile, "username", 80)
+        ));
+    }
+
+    function validPlayerSaveShape(uid, data) {
+      return validPlayerIdentity(uid, data)
+        && (!("schemaVersion" in data) || data.schemaVersion == 2)
+        && optionalString(data, "gameVersion", 20)
+        && optionalNonNegativeInt(data, "revision", 1000000000000)
+        && optionalNonNegativeInt(data, "clientUpdatedAt", 4102444800000)
+        && optionalValidTimestampOrMillis(data, "updatedAt")
+        && optionalString(data, "migrationState", 40)
+        && optionalString(data, "save3d", 500000)
+        && optionalNonNegativeInt(data, "might", 1000000000000000)
+        && optionalNonNegativeInt(data, "realm", 1000)
+        && optionalMap(data, "profile")
+        && optionalMap(data, "economy")
+        && optionalMap(data, "progression")
+        && optionalMap(data, "kingdom")
+        && optionalMap(data, "settings")
+        && optionalMap(data, "stats")
+        && optionalMap(data, "legacyState");
+    }
+
+    function validGiftTypeAndAmount(data) {
+      return data.type in ["rolls", "coins"]
+        && data.amount is int
+        && (
+          (data.type == "rolls" && data.amount >= 1 && data.amount <= 100)
+          || (data.type == "coins" && data.amount >= 1 && data.amount <= 1000000)
+        );
+    }
+
+    function validGiftCreate(data) {
+      return data.keys().hasOnly(["to", "from", "type", "amount", "ts", "claimed"])
+        && hasDisplayName()
+        && data.to is string
+        && data.to.size() > 0
+        && data.to.size() <= 80
+        && data.from == userDisplayName()
+        && data.claimed == false
+        && validGiftTypeAndAmount(data)
+        && validTimestampOrMillis(data.ts);
+    }
+
+    match /players/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+
+      // Current leaderboard queries the players collection directly. Firestore rules
+      // cannot redact fields from these documents, so this preserves the current
+      // game behavior while the future publicProfiles migration remains pending.
+      allow list: if signedIn()
+        && request.query.limit != null
+        && request.query.limit <= 50;
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && validPlayerSaveShape(uid, request.resource.data);
+
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && validPlayerSaveShape(uid, request.resource.data);
+
+      allow delete: if false;
+    }
+
+    match /gifts/{giftId} {
+      allow get, list: if hasDisplayName()
+        && (resource.data.to == userDisplayName() || resource.data.from == userDisplayName());
+
+      allow create: if signedIn()
+        && validGiftCreate(request.resource.data);
+
+      allow update: if hasDisplayName()
+        && resource.data.to == userDisplayName()
+        && resource.data.claimed == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["claimed"])
+        && request.resource.data.claimed == true;
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
