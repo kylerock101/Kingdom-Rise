@@ -1,0 +1,16 @@
+{
+  "name": "kingdom-rise",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:auth": "node tests/auth-name-identity.test.mjs",
+    "test:official-gifts": "node tests/official-gifts-functions.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore \"node tests/firestore-rules.test.mjs && node tests/official-gifts-functions.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-admin": "^13.0.0"
+  }
+}

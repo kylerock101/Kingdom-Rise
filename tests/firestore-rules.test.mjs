@@ -204,6 +204,80 @@ await run("client gift deletes are denied", async () => {
   await assertFails(deleteDoc(doc(authed(otherUid, bobName), "gifts", "gift-for-bob-2")));
 });
 
+await run("player can read only their official gifts", async () => {
+  await testEnv.clearFirestore();
+  await seed("players/user_alice/officialGifts/gift_alice", {
+    recipientUid: "user_alice",
+    resource: "coins",
+    amount: 100,
+    title: "Official Gift",
+    message: "",
+    senderType: "system",
+    senderName: "Kingdom Rise",
+    claimed: false,
+    createdAt: 1700000000000,
+    claimedAt: null,
+    createdByAdminUid: "admin_uid",
+    presetId: null,
+    schemaVersion: 1,
+  });
+  await seed("players/user_bob/officialGifts/gift_bob", {
+    recipientUid: "user_bob",
+    resource: "coins",
+    amount: 100,
+    title: "Official Gift",
+    message: "",
+    senderType: "system",
+    senderName: "Kingdom Rise",
+    claimed: false,
+    createdAt: 1700000000000,
+    claimedAt: null,
+    createdByAdminUid: "admin_uid",
+    presetId: null,
+    schemaVersion: 1,
+  });
+  await assertSucceeds(getDoc(doc(authed("user_alice", aliceName), "players/user_alice/officialGifts/gift_alice")));
+  await assertFails(getDoc(doc(authed("user_alice", aliceName), "players/user_bob/officialGifts/gift_bob")));
+});
+
+await run("player cannot directly create, update, or delete official gifts", async () => {
+  await testEnv.clearFirestore();
+  const playerDb = authed("user_alice", aliceName);
+  const giftRef = doc(playerDb, "players/user_alice/officialGifts/gift_direct");
+  await assertFails(setDoc(giftRef, {
+    recipientUid: "user_alice",
+    resource: "coins",
+    amount: 100,
+    claimed: false,
+  }));
+  await seed("players/user_alice", saveDoc("user_alice", aliceName));
+  await seed("players/user_alice/officialGifts/gift_direct", {
+    recipientUid: "user_alice",
+    resource: "coins",
+    amount: 100,
+    title: "Official Gift",
+    message: "",
+    senderType: "system",
+    senderName: "Kingdom Rise",
+    claimed: false,
+    createdAt: 1700000000000,
+    claimedAt: null,
+    createdByAdminUid: "admin_uid",
+    presetId: null,
+    schemaVersion: 1,
+  });
+  await assertFails(updateDoc(giftRef, { claimed: true }));
+  await assertFails(updateDoc(doc(playerDb, "players/user_alice"), { coins: 999999 }));
+  await assertFails(deleteDoc(giftRef));
+});
+
+await run("official gift audits and presets are not client-readable or writable", async () => {
+  const playerDb = authed("user_alice", aliceName);
+  await assertFails(getDoc(doc(playerDb, "officialGiftAudits/audit_1")));
+  await assertFails(setDoc(doc(playerDb, "officialGiftAudits/audit_1"), { status: "created" }));
+  await assertFails(getDoc(doc(playerDb, "officialGiftPresets/returning_founder_gift")));
+  await assertFails(setDoc(doc(playerDb, "officialGiftPresets/returning_founder_gift"), { coins: 1 }));
+});
 await run("guest mode remains local and has no Firestore access", async () => {
   await assertFails(getDoc(doc(guest(), "players", ownUid)));
   await assertFails(addDoc(collection(guest(), "gifts"), {
