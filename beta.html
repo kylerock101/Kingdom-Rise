@@ -389,28 +389,6 @@
   .officialGiftRow .gt .officialMsg{display:block;color:#c7bee9;font-size:11px;font-weight:700;margin-top:2px;}
   .giftBtn.claimed{background:#3a3460;color:#a99cd6;box-shadow:none;}
   .socEmpty{text-align:center;color:#a99cd6;font-weight:700;font-size:13px;padding:14px;}
-  .adminGiftWarn{font-size:12px;line-height:1.35;color:#ffc93c;background:#2e2260;border:1px solid rgba(255,201,60,.35);border-radius:10px;padding:9px 10px;margin-bottom:10px;text-align:left;}
-  .adminGiftGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
-  .adminGiftGrid.full{grid-template-columns:1fr;}
-  .adminGiftField{width:100%;border:1px solid #4d3b86;background:#241d47;color:#f4efff;border-radius:10px;padding:10px;font-weight:800;box-sizing:border-box;}
-  textarea.adminGiftField{min-height:68px;resize:vertical;font-family:inherit;}
-  .adminGiftSearchRow{display:flex;gap:8px;margin:8px 0;}
-  .adminGiftSearchRow .adminGiftField{flex:1;}
-  .adminGiftList{max-height:150px;overflow:auto;border:1px solid #3b2c78;border-radius:10px;background:#1d173a;margin-bottom:8px;text-align:left;}
-  .adminGiftRow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;}
-  .adminGiftRow:last-child{border-bottom:none;}
-  .adminGiftRow button{margin-left:auto;border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:900;background:#5a3fa0;color:#fff;}
-  .adminGiftRow.selected button{background:#3a3460;color:#a99cd6;}
-  .adminGiftName{font-weight:900;color:#f4efff;}
-  .adminGiftMeta{color:#a99cd6;font-weight:700;font-size:11px;}
-  .adminGiftChips{display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin:6px 0 10px;}
-  .adminGiftChip{display:flex;align-items:center;gap:5px;background:#2e2260;border-radius:999px;padding:6px 8px;color:#f4efff;font-size:11px;font-weight:900;}
-  .adminGiftChip button{border:none;background:#4a4260;color:#fff;border-radius:999px;width:18px;height:18px;font-size:11px;line-height:18px;padding:0;}
-  .adminGiftPreview,.adminGiftResults{background:#1d173a;border:1px solid #3b2c78;border-radius:10px;padding:9px 10px;margin:8px 0;text-align:left;font-size:12px;color:#d9d0f5;line-height:1.4;}
-  .adminGiftResultOk{color:#72e89f;font-weight:900;}
-  .adminGiftResultFail{color:#ff9a8f;font-weight:900;}
-  .adminGiftActions{display:flex;gap:8px;margin-top:8px;}
-  .adminGiftActions button{flex:1;}
   /* daily calendar */
   #calGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
   .calCell{background:#2e2260;border-radius:14px;padding:9px 4px 8px;position:relative;overflow:hidden;}
@@ -564,7 +542,6 @@
   <button class="ghost" id="soundBtn">🔊 Sound</button>
   <button class="ghost" id="musicBtn">🎵 Music</button>
   <button class="ghost" id="signOutBtn">🚪 Sign Out</button>
-  <button class="ghost" id="officialAdminBtn" style="display:none">Official Gift Admin</button>
   <button class="ghost" id="freeRollsBtn" style="display:none">＋ Free Rolls (dev)</button>
   <button class="ghost" id="nextDayBtn" style="display:none">⏭️ Next Day (dev)</button>
   <button class="ghost" id="jumpBtn" style="display:none">⏫ Jump Realm (dev)</button>
@@ -576,37 +553,6 @@
   <div id="verRow">King's Rise 3D · Beta v0.1</div>
 </div></div>
 
-<div class="ov" id="officialAdminOv"><div class="panel">
-  <button class="pX" id="officialAdminX">✕</button>
-  <div class="pTitle">Official Gift Admin</div>
-  <div class="adminGiftWarn">Admin tools are hidden unless Firebase Auth returns an admin custom claim. The server callable still enforces admin access.</div>
-  <div class="adminGiftSearchRow">
-    <input class="adminGiftField" id="adminGiftSearch" maxlength="80" placeholder="Search player name or UID">
-    <button class="ghost" id="adminGiftSearchBtn">Search</button>
-  </div>
-  <div class="adminGiftActions">
-    <button class="ghost" id="adminGiftSelectFiltered">Select Filtered</button>
-    <button class="ghost" id="adminGiftClearSelected">Clear</button>
-  </div>
-  <div class="adminGiftList" id="adminGiftPlayers"></div>
-  <div class="giftSec">Selected Recipients</div>
-  <div class="adminGiftChips" id="adminGiftSelected"></div>
-  <div class="adminGiftGrid">
-    <select class="adminGiftField" id="adminGiftMode"><option value="preset">Preset</option><option value="single">Single Resource</option></select>
-    <select class="adminGiftField" id="adminGiftPreset"><option value="returning_founder_gift">Returning Founder Gift</option></select>
-  </div>
-  <div class="adminGiftGrid" id="adminGiftSingleFields" style="display:none">
-    <select class="adminGiftField" id="adminGiftResource"><option value="coins">Coins</option><option value="rolls">Rolls</option><option value="soldiers">Soldiers</option></select>
-    <input class="adminGiftField" id="adminGiftAmount" type="number" min="1" step="1" placeholder="Amount">
-  </div>
-  <div class="adminGiftGrid full" id="adminGiftTextFields" style="display:none">
-    <input class="adminGiftField" id="adminGiftTitle" maxlength="80" placeholder="Title" value="Official Kingdom Gift">
-    <textarea class="adminGiftField" id="adminGiftMessage" maxlength="500" placeholder="Message"></textarea>
-  </div>
-  <div class="adminGiftPreview" id="adminGiftPreview"></div>
-  <button class="goldBtn" id="adminGiftSend">Send Official Gift</button>
-  <div class="adminGiftResults" id="adminGiftResults" style="display:none"></div>
-</div></div>
 <div class="ov" id="storeOv"><div class="panel">
   <button class="pX" id="storeX">✕</button>
   <div class="pTitle">🛒 The Store</div>
@@ -1239,7 +1185,7 @@ const Auth = {
   },
   async signOut(){
     if(fbOn()){ try{ await window.FB.fbSignOut(window.FB.auth); }catch(e){} FB_UID=null; }
-    resetOfficialGiftState(); resetOfficialGiftAdminState();
+    resetOfficialGiftState();
     try{ localStorage.removeItem(CUR_KEY); }catch(e){}
   },
   async restore(){
@@ -4431,164 +4377,6 @@ function saveSocial(d){ try{ localStorage.setItem(socKey(),JSON.stringify(d)); }
 let OFFICIAL_GIFTS=[], OFFICIAL_GIFT_OWNER_UID=null;
 const OFFICIAL_GIFT_RESOURCES={coins:{icon:"🪙",label:"coins"},rolls:{icon:"🎲",label:"rolls"},soldiers:{icon:"⚔️",label:"soldiers"}};
 function resetOfficialGiftState(){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=null; const dot=$("giftDot"); if(dot) dot.classList.remove("show"); }
-let OFFICIAL_GIFT_ADMIN={ok:false,uid:null,checkedAt:0,reason:"unchecked"};
-let ADMIN_GIFT_PLAYERS=[];
-let ADMIN_GIFT_SELECTED=new Map();
-let ADMIN_GIFT_BUSY=false;
-const OFFICIAL_GIFT_ADMIN_PRESETS={returning_founder_gift:{id:"returning_founder_gift",name:"Returning Founder Gift",status:"draft",resources:{coins:1500,rolls:25,soldiers:6}}};
-function resetOfficialGiftAdminState(){
-  OFFICIAL_GIFT_ADMIN={ok:false,uid:null,checkedAt:0,reason:"reset"};
-  ADMIN_GIFT_PLAYERS=[]; ADMIN_GIFT_SELECTED.clear(); ADMIN_GIFT_BUSY=false;
-  const btn=$("officialAdminBtn"); if(btn) btn.style.display="none";
-  const ov=$("officialAdminOv"); if(ov) ov.classList.remove("show");
-  const players=$("adminGiftPlayers"); if(players) players.innerHTML="";
-  const selected=$("adminGiftSelected"); if(selected) selected.innerHTML="";
-  const results=$("adminGiftResults"); if(results){ results.style.display="none"; results.textContent=""; }
-}
-function showOfficialGiftAdminButton(show){ const btn=$("officialAdminBtn"); if(btn) btn.style.display=show?"":"none"; }
-async function ensureOfficialGiftAdminAccess(action){
-  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") { showOfficialGiftAdminButton(false); OFFICIAL_GIFT_ADMIN={ok:false,uid:null,checkedAt:Date.now(),reason:"not-authenticated"}; return OFFICIAL_GIFT_ADMIN; }
-  const user=window.FB&&window.FB.auth&&window.FB.auth.currentUser;
-  if(!user||user.uid!==FB_UID){ resetOfficialGiftAdminState(); OFFICIAL_GIFT_ADMIN={ok:false,uid:null,checkedAt:Date.now(),reason:"auth-uid-mismatch"}; console.warn("official gift admin identity mismatch",{action,authUid:user&&user.uid||null,uid:FB_UID}); return OFFICIAL_GIFT_ADMIN; }
-  try{
-    const token=await user.getIdTokenResult(true);
-    const ok=!!(token&&token.claims&&token.claims.admin===true);
-    OFFICIAL_GIFT_ADMIN={ok,uid:user.uid,checkedAt:Date.now(),reason:ok?"admin-claim":"missing-admin-claim"};
-    showOfficialGiftAdminButton(ok);
-    if(!ok){ const ov=$("officialAdminOv"); if(ov) ov.classList.remove("show"); ADMIN_GIFT_PLAYERS=[]; ADMIN_GIFT_SELECTED.clear(); renderAdminGiftRecipients(); renderAdminGiftPlayers(); }
-    console.log("[official-gifts-admin] claim check",{action,uid:user.uid,admin:ok});
-    return OFFICIAL_GIFT_ADMIN;
-  }catch(e){
-    showOfficialGiftAdminButton(false);
-    OFFICIAL_GIFT_ADMIN={ok:false,uid:user.uid,checkedAt:Date.now(),reason:"claim-refresh-failed"};
-    console.warn("official gift admin claim refresh failed",e&&e.code||e);
-    return OFFICIAL_GIFT_ADMIN;
-  }
-}
-function adminGiftPresetSummary(preset){
-  return Object.entries(preset.resources).map(([resource,amount])=>amount.toLocaleString()+" "+(OFFICIAL_GIFT_RESOURCES[resource]?OFFICIAL_GIFT_RESOURCES[resource].label:resource)).join(", ");
-}
-function adminGiftCurrentPreview(){
-  const count=ADMIN_GIFT_SELECTED.size;
-  const mode=$("adminGiftMode")?$("adminGiftMode").value:"preset";
-  if(!count) return "Select at least one recipient.";
-  if(mode==="preset"){
-    const preset=OFFICIAL_GIFT_ADMIN_PRESETS[$("adminGiftPreset").value];
-    return "Preset: "+preset.name+" ("+preset.status+") to "+count+" recipient"+(count===1?"":"s")+": "+adminGiftPresetSummary(preset)+".";
-  }
-  const resource=$("adminGiftResource").value;
-  const amount=Number($("adminGiftAmount").value||0);
-  const label=OFFICIAL_GIFT_RESOURCES[resource]?OFFICIAL_GIFT_RESOURCES[resource].label:resource;
-  return "Single gift: "+(Number.isSafeInteger(amount)&&amount>0?amount.toLocaleString():"invalid amount")+" "+label+" to "+count+" recipient"+(count===1?"":"s")+".";
-}
-function renderAdminGiftPreview(){ const el=$("adminGiftPreview"); if(el) el.textContent=adminGiftCurrentPreview(); }
-function renderAdminGiftRecipients(){
-  const box=$("adminGiftSelected"); if(!box) return;
-  box.innerHTML="";
-  if(!ADMIN_GIFT_SELECTED.size){ const empty=document.createElement("div"); empty.className="adminGiftMeta"; empty.textContent="No recipients selected."; box.appendChild(empty); renderAdminGiftPreview(); return; }
-  ADMIN_GIFT_SELECTED.forEach((p,uid)=>{
-    const chip=document.createElement("span"); chip.className="adminGiftChip";
-    const text=document.createElement("span"); text.textContent=(p.name||uid);
-    const x=document.createElement("button"); x.type="button"; x.textContent="x"; x.onclick=()=>{ ADMIN_GIFT_SELECTED.delete(uid); renderAdminGiftRecipients(); renderAdminGiftPlayers(); };
-    chip.appendChild(text); chip.appendChild(x); box.appendChild(chip);
-  });
-  renderAdminGiftPreview();
-}
-function renderAdminGiftPlayers(){
-  const box=$("adminGiftPlayers"); if(!box) return;
-  box.innerHTML="";
-  if(!ADMIN_GIFT_PLAYERS.length){ const empty=document.createElement("div"); empty.className="socEmpty"; empty.textContent="Search for players to grant official gifts."; box.appendChild(empty); return; }
-  ADMIN_GIFT_PLAYERS.forEach(p=>{
-    const row=document.createElement("div"); row.className="adminGiftRow"+(ADMIN_GIFT_SELECTED.has(p.uid)?" selected":"");
-    const meta=document.createElement("div"); meta.style.minWidth="0"; meta.style.flex="1";
-    const name=document.createElement("div"); name.className="adminGiftName"; name.textContent=p.name||"Unnamed kingdom";
-    const detail=document.createElement("div"); detail.className="adminGiftMeta"; detail.textContent=p.uid+(p.realm?" - Realm "+p.realm:"");
-    meta.appendChild(name); meta.appendChild(detail);
-    const btn=document.createElement("button"); btn.type="button"; btn.textContent=ADMIN_GIFT_SELECTED.has(p.uid)?"Selected":"Select";
-    btn.onclick=()=>{ if(ADMIN_GIFT_SELECTED.has(p.uid)) ADMIN_GIFT_SELECTED.delete(p.uid); else ADMIN_GIFT_SELECTED.set(p.uid,p); renderAdminGiftRecipients(); renderAdminGiftPlayers(); };
-    row.appendChild(meta); row.appendChild(btn); box.appendChild(row);
-  });
-}
-function adminGiftSetResults(html){ const el=$("adminGiftResults"); if(el){ el.style.display=""; el.innerHTML=html; } }
-function officialGiftAdminErrorMessage(e){ const c=(e&&e.code||"").toLowerCase(); if(c.includes("permission-denied")) return "Administrator access was denied."; if(c.includes("unauthenticated")) return "Sign in before using admin gifts."; if(c.includes("invalid-argument")) return "Gift request was rejected as invalid."; return "Official gift admin request failed."; }
-async function searchAdminGiftPlayers(){
-  const access=await ensureOfficialGiftAdminAccess("admin-search");
-  if(!access.ok){ msg("Admin gift access is not enabled for this account.",1800); return; }
-  if(!window.FB.functions||!window.FB.httpsCallable){ msg("Admin gift functions are unavailable.",1600); return; }
-  const q=($("adminGiftSearch").value||"").trim();
-  const list=$("adminGiftPlayers"); if(list){ list.innerHTML='<div class="socEmpty">Searching...</div>'; }
-  try{
-    const call=window.FB.httpsCallable(window.FB.functions,"listGrantablePlayers");
-    const result=await call({search:q,limit:25});
-    ADMIN_GIFT_PLAYERS=(result&&result.data&&Array.isArray(result.data.players)?result.data.players:[]).filter(p=>p&&typeof p.uid==="string");
-    renderAdminGiftPlayers();
-  }catch(e){ console.warn("official gift admin player search failed",e&&e.code||e); ADMIN_GIFT_PLAYERS=[]; renderAdminGiftPlayers(); msg(officialGiftAdminErrorMessage(e),2200); }
-}
-function selectedAdminGiftUids(){ return Array.from(ADMIN_GIFT_SELECTED.keys()); }
-function validateAdminGiftPayload(){
-  const recipientUids=selectedAdminGiftUids();
-  if(!recipientUids.length) return {ok:false,message:"Select at least one recipient."};
-  const mode=$("adminGiftMode").value;
-  if(mode==="preset"){
-    const presetId=$("adminGiftPreset").value;
-    if(!OFFICIAL_GIFT_ADMIN_PRESETS[presetId]) return {ok:false,message:"Choose a valid preset."};
-    return {ok:true,callable:"adminCreateOfficialGiftPreset",payload:{recipientUids,presetId},summary:adminGiftCurrentPreview()};
-  }
-  const resource=$("adminGiftResource").value;
-  const amount=Number($("adminGiftAmount").value);
-  if(!OFFICIAL_GIFT_RESOURCES[resource]) return {ok:false,message:"Choose a valid resource."};
-  if(!Number.isSafeInteger(amount)||amount<=0) return {ok:false,message:"Enter a positive whole-number amount."};
-  const title=($("adminGiftTitle").value||"").trim()||"Official Kingdom Gift";
-  const message=($("adminGiftMessage").value||"").trim();
-  return {ok:true,callable:"adminCreateOfficialGift",payload:{recipientUids,resource,amount,title,message},summary:adminGiftCurrentPreview()};
-}
-function renderAdminGiftResults(data){
-  const results=data&&Array.isArray(data.results)?data.results:[];
-  const ok=results.filter(r=>r.status==="created").length;
-  const failed=results.length-ok;
-  const lines=["<div><b>Result:</b> "+ok+" created"+(failed?", "+failed+" failed":"")+".</div>"];
-  results.slice(0,60).forEach(r=>{
-    const cls=r.status==="created"?"adminGiftResultOk":"adminGiftResultFail";
-    lines.push('<div class="'+cls+'">'+escapeHTML(r.recipientUid)+" - "+escapeHTML(r.resource||"")+" "+escapeHTML(String(r.amount||""))+" - "+escapeHTML(r.status||"")+(r.errorCode?" ("+escapeHTML(r.errorCode)+")":"")+"</div>");
-  });
-  if(results.length>60) lines.push("<div>"+(results.length-60)+" more results not shown.</div>");
-  adminGiftSetResults(lines.join(""));
-}
-async function sendAdminGift(){
-  if(ADMIN_GIFT_BUSY) return;
-  const access=await ensureOfficialGiftAdminAccess("admin-send");
-  if(!access.ok){ msg("Admin gift access is not enabled for this account.",1800); return; }
-  const valid=validateAdminGiftPayload();
-  if(!valid.ok){ msg(valid.message,1800); renderAdminGiftPreview(); return; }
-  if(!confirm(valid.summary+"\n\nSend this official gift now?")) return;
-  ADMIN_GIFT_BUSY=true; const sendBtn=$("adminGiftSend"); if(sendBtn){ sendBtn.disabled=true; sendBtn.textContent="Sending..."; }
-  try{
-    const call=window.FB.httpsCallable(window.FB.functions,valid.callable);
-    const result=await call(valid.payload);
-    renderAdminGiftResults(result&&result.data||{});
-    msg("Official gift request complete",1500);
-  }catch(e){ console.warn("official gift admin send failed",e&&e.code||e); adminGiftSetResults('<div class="adminGiftResultFail">'+escapeHTML(officialGiftAdminErrorMessage(e))+"</div>"); msg(officialGiftAdminErrorMessage(e),2200); }
-  finally{ ADMIN_GIFT_BUSY=false; if(sendBtn){ sendBtn.disabled=false; sendBtn.textContent="Send Official Gift"; } }
-}
-function syncAdminGiftMode(){
-  const mode=$("adminGiftMode")?$("adminGiftMode").value:"preset";
-  const single=$("adminGiftSingleFields"), text=$("adminGiftTextFields"), preset=$("adminGiftPreset");
-  if(single) single.style.display=mode==="single"?"":"none";
-  if(text) text.style.display=mode==="single"?"":"none";
-  if(preset) preset.style.display=mode==="preset"?"":"none";
-  renderAdminGiftPreview();
-}
-function bindOfficialGiftAdminUi(){
-  const open=$("officialAdminBtn"); if(open) open.addEventListener("click",async()=>{ const access=await ensureOfficialGiftAdminAccess("admin-open"); if(!access.ok){ msg("Admin gift access is not enabled for this account.",1800); return; } $("menuOv").classList.remove("show"); $("officialAdminOv").classList.add("show"); renderAdminGiftRecipients(); renderAdminGiftPlayers(); renderAdminGiftPreview(); });
-  const close=$("officialAdminX"); if(close) close.addEventListener("click",()=>$("officialAdminOv").classList.remove("show"));
-  const search=$("adminGiftSearchBtn"); if(search) search.addEventListener("click",searchAdminGiftPlayers);
-  const input=$("adminGiftSearch"); if(input) input.addEventListener("keydown",e=>{ if(e.key==="Enter") searchAdminGiftPlayers(); });
-  const selectAll=$("adminGiftSelectFiltered"); if(selectAll) selectAll.addEventListener("click",()=>{ ADMIN_GIFT_PLAYERS.forEach(p=>ADMIN_GIFT_SELECTED.set(p.uid,p)); renderAdminGiftRecipients(); renderAdminGiftPlayers(); });
-  const clear=$("adminGiftClearSelected"); if(clear) clear.addEventListener("click",()=>{ ADMIN_GIFT_SELECTED.clear(); renderAdminGiftRecipients(); renderAdminGiftPlayers(); });
-  ["adminGiftMode","adminGiftPreset","adminGiftResource","adminGiftAmount","adminGiftTitle","adminGiftMessage"].forEach(id=>{ const el=$(id); if(el) el.addEventListener("input",syncAdminGiftMode); });
-  const send=$("adminGiftSend"); if(send) send.addEventListener("click",sendAdminGift);
-  syncAdminGiftMode();
-}
 function officialGiftMillis(v){ if(!v) return 0; if(typeof v==="number") return v; if(typeof v.toMillis==="function") return v.toMillis(); if(typeof v.seconds==="number") return v.seconds*1000+Math.floor((v.nanoseconds||0)/1000000); return 0; }
 function officialGiftDate(v){ const ms=officialGiftMillis(v); return ms?new Date(ms).toLocaleDateString():"date pending"; }
 function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
@@ -4596,18 +4384,13 @@ function normalizeOfficialGiftDoc(docSnap){
   const v=docSnap&&typeof docSnap.data==="function"?docSnap.data():null;
   if(!v||typeof v!=="object") return null;
   if(v.recipientUid!==FB_UID) return null;
-  if(!OFFICIAL_GIFT_RESOURCES[v.resource]) return null;
-  if(typeof v.amount!=="number"||!Number.isSafeInteger(v.amount)||v.amount<=0) return null;
-  return {id:docSnap.id, recipientUid:v.recipientUid, resource:v.resource, amount:v.amount, title:typeof v.title==="string"&&v.title.trim()?v.title.trim():"Official Kingdom Gift", message:typeof v.message==="string"?v.message.trim():"", senderName:"Kingdom Rise", claimed:v.claimed===true, createdAt:v.createdAt||null, createdMs:officialGiftMillis(v.createdAt)};
-}
-function officialGiftErrorMessage(e){
-  const c=(e&&e.code||"").toLowerCase();
-  if(c.includes("unauthenticated")) return "Sign in to claim official gifts.";
-  if(c.includes("not-found")) return "That gift could not be found.";
-  if(c.includes("permission-denied")) return "That gift belongs to another kingdom.";
-  if(c.includes("invalid-argument")) return "That gift could not be claimed.";
-  if(c.includes("unavailable")||c.includes("deadline")||c.includes("network")) return "Official gifts are temporarily unavailable.";
-  return "Gift claim failed. Please try again.";
+  const resources=Array.isArray(v.resources)?v.resources.filter(r=>r&&OFFICIAL_GIFT_RESOURCES[r.resource]&&typeof r.amount==="number"&&Number.isSafeInteger(r.amount)&&r.amount>0):[];
+  if(!resources.length){
+    if(!OFFICIAL_GIFT_RESOURCES[v.resource]) return null;
+    if(typeof v.amount!=="number"||!Number.isSafeInteger(v.amount)||v.amount<=0) return null;
+    resources.push({resource:v.resource, amount:v.amount});
+  }
+  return {id:docSnap.id, recipientUid:v.recipientUid, resources, resource:resources[0].resource, amount:resources[0].amount, title:typeof v.title==="string"&&v.title.trim()?v.title.trim():"Official Kingdom Gift", message:typeof v.message==="string"?v.message.trim():"", senderName:"Kingdom Rise", deliveryStatus:v.deliveryStatus==="delivered"?"delivered":"delivered", deliveredAt:v.deliveredAt||v.createdAt||null, createdAt:v.createdAt||v.deliveredAt||null, createdMs:officialGiftMillis(v.deliveredAt||v.createdAt)};
 }
 const Social = {
   async leaderboard(){
@@ -4654,16 +4437,6 @@ const Social = {
       OFFICIAL_GIFTS=out;
       return out;
     }catch(e){ console.warn("official gifts load failed",e&&e.code||e); return []; }
-  },
-  async claimOfficial(giftId){
-    if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") throw new Error("not-signed-in");
-    if(!window.FB.functions||!window.FB.httpsCallable) throw new Error("functions-unavailable");
-    const call=window.FB.httpsCallable(window.FB.functions,"claimOfficialGift");
-    const result=await call({giftId});
-    const data=result&&result.data||{};
-    if(data.resource&&OFFICIAL_GIFT_RESOURCES[data.resource]&&typeof data.balance==="number"){ S[data.resource]=data.balance; refresh(); }
-    if(data.status==="claimed") await reloadAuthoritativePlayerSave("official-gift-claim");
-    return data;
   },
   async friends(){
     const rows=await Social.leaderboard();
@@ -4718,7 +4491,7 @@ async function updateGiftDot(){
   if(!dot) return;
   if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ dot.classList.remove("show"); return; }
   const inbox=OFFICIAL_GIFT_OWNER_UID===FB_UID?OFFICIAL_GIFTS:await Social.officialInbox();
-  const count=inbox.filter(g=>!g.claimed).length;
+  const count=inbox.filter(g=>g.deliveryStatus!=="delivered").length;
   if(count){ dot.textContent=count; dot.classList.add("show"); }
   else dot.classList.remove("show");
 }
@@ -4779,8 +4552,7 @@ async function renderGifts(){
     row.appendChild(b); body.appendChild(row);
   }
 }
-function officialGiftAmountText(g){ const m=OFFICIAL_GIFT_RESOURCES[g.resource]; return g.amount.toLocaleString()+" "+(m?m.label:g.resource); }
-function applyOfficialGiftClaimToCache(giftId, claimed){ OFFICIAL_GIFTS=OFFICIAL_GIFTS.map(g=>g.id===giftId?Object.assign({},g,{claimed:claimed!==false}):g); }
+function officialGiftAmountText(g){ const resources=Array.isArray(g.resources)&&g.resources.length?g.resources:[g]; return resources.map(r=>{ const m=OFFICIAL_GIFT_RESOURCES[r.resource]; return r.amount.toLocaleString()+" "+(m?m.label:r.resource); }).join(", "); }
 async function renderOfficialGifts(){
   const body=$("socBody"); body.innerHTML="";
   const sec=document.createElement("div"); sec.className="giftSec"; sec.textContent="Official Gifts"; body.appendChild(sec);
@@ -4791,29 +4563,12 @@ async function renderOfficialGifts(){
   loading.remove();
   if(!inbox.length){ const e=document.createElement("div"); e.className="socEmpty"; e.textContent="No official gifts right now."; body.appendChild(e); updateGiftDot(); return; }
   inbox.forEach(g=>{
-    const row=document.createElement("div"); row.className="giftRow officialGiftRow"+(g.claimed?" claimed":""); row.dataset.giftId=g.id;
+    const row=document.createElement("div"); row.className="giftRow officialGiftRow claimed"; row.dataset.giftId=g.id;
     const meta=OFFICIAL_GIFT_RESOURCES[g.resource];
     const title=escapeHTML(g.title);
-    const msgLine=g.message?"<span class=\"officialMsg\">"+escapeHTML(g.message)+"</span>":"";
-    row.innerHTML="<span class=\"gi\">🏰</span><div class=\"gt\"><span class=\"officialTitle\">"+title+"</span><small>from Kingdom Rise · "+officialGiftDate(g.createdAt)+"</small><span class=\"officialMeta\">"+(meta?meta.icon:"🎁")+" "+officialGiftAmountText(g)+"</span>"+msgLine+"</div>";
-    const b=document.createElement("button"); b.className="giftBtn"+(g.claimed?" claimed":""); b.textContent=g.claimed?"Claimed":"Claim"; b.disabled=!!g.claimed;
-    b.onclick=async()=>{
-      if(b.disabled) return;
-      b.disabled=true; b.textContent="Claiming...";
-      try{
-        const result=await Social.claimOfficial(g.id);
-        applyOfficialGiftClaimToCache(g.id,true);
-        b.classList.add("claimed"); b.textContent="Claimed"; row.classList.add("claimed");
-        updateGiftDot();
-        if(result.status==="already-claimed") msg("Official gift already claimed",1400);
-        else msg("Official gift claimed!",1300);
-      }catch(e){
-        console.warn("official gift claim failed",e&&e.code||e);
-        b.disabled=false; b.textContent="Claim";
-        msg(officialGiftErrorMessage(e),2200);
-      }
-    };
-    row.appendChild(b); body.appendChild(row);
+    const msgLine=g.message?'<span class="officialMsg">'+escapeHTML(g.message)+'</span>':"";
+    row.innerHTML='<span class="gi">🏰</span><div class="gt"><span class="officialTitle">'+title+'</span><small>from Kingdom Rise · Delivered · '+officialGiftDate(g.deliveredAt)+'</small><span class="officialMeta">'+(meta?meta.icon:"🎁")+" "+officialGiftAmountText(g)+'</span>'+msgLine+'</div><button class="giftBtn claimed" disabled>Delivered</button>';
+    body.appendChild(row);
   });
   updateGiftDot();
 }
@@ -4826,7 +4581,6 @@ function socTab(t){
   if(t==="board") renderBoard(); else if(t==="official") renderOfficialGifts(); else renderGifts();
 }
 $("socialBtn").addEventListener("click",()=>{ $("socOv").classList.add("show"); socTab("board"); });
-bindOfficialGiftAdminUi();
 $("socX").addEventListener("click",()=>$("socOv").classList.remove("show"));
 
 /* ================= GOALS TAB ================= */
@@ -5894,7 +5648,7 @@ $("buildBtn").addEventListener("click",()=>{ renderBuilder(); $("buildOv").class
 $("buildX").addEventListener("click",()=>$("buildOv").classList.remove("show"));
 
 /* ================= MENU ================= */
-$("menuBtn").addEventListener("click",()=>{ $("menuUser").textContent="Signed in as "+CURRENT_USER; ensureOfficialGiftAdminAccess("menu-open"); $("menuOv").classList.add("show"); });
+$("menuBtn").addEventListener("click",()=>{ $("menuUser").textContent="Signed in as "+CURRENT_USER; $("menuOv").classList.add("show"); });
 $("menuX").addEventListener("click",()=>$("menuOv").classList.remove("show"));
 function renderDefences(){
   const vr=$("vaultRow");
@@ -6208,7 +5962,6 @@ $("tabLogin").addEventListener("click",()=>setMode("login"));
 $("tabReg").addEventListener("click",()=>setMode("register"));
 async function enterGame(u){
   CURRENT_USER=u;
-  resetOfficialGiftAdminState();
   setTimeout(()=>{ syncAudioButtons(); if(S.music!==false&&S.sound!==false) musicStart(); },300);
   setTimeout(()=>{
     try{
@@ -6280,7 +6033,6 @@ async function enterGame(u){
   king.position.copy(standPos(S.pos));
   G.state="idle"; showDie(true);
   updateQuest(); updateGiftDot(); updateGoal(); updateGoalsDot();
-  ensureOfficialGiftAdminAccess("enter-game");
   const runOnboarding=()=>{
     if(S.rolled===0 && !S.seen.intro){
       coach("intro","👑 Welcome, ruler!","Your goal: roll the dice, collect gold, and build your camp into a mighty empire.");
@@ -6886,16 +6638,15 @@ showDie(false);
   }, 12000);
   try{
     const V="12.15.0";
-    const [appM,authM,fsM,funcM]=await Promise.all([
+    const [appM,authM,fsM]=await Promise.all([
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-firestore.js"),
-      import("https://www.gstatic.com/firebasejs/"+V+"/firebase-functions.js"),
     ]);
     if(settled) return;
     const app=appM.initializeApp(cfg);
     window.FB={
-      auth:authM.getAuth(app), db:fsM.getFirestore(app), functions:funcM.getFunctions(app,"us-central1"),
+      auth:authM.getAuth(app), db:fsM.getFirestore(app),
       createUserWithEmailAndPassword:authM.createUserWithEmailAndPassword,
       signInWithEmailAndPassword:authM.signInWithEmailAndPassword,
       onAuthStateChanged:authM.onAuthStateChanged,
@@ -6903,7 +6654,6 @@ showDie(false);
       doc:fsM.doc, getDoc:fsM.getDoc, setDoc:fsM.setDoc, updateDoc:fsM.updateDoc, serverTimestamp:fsM.serverTimestamp,
       collection:fsM.collection, addDoc:fsM.addDoc, getDocs:fsM.getDocs,
       query:fsM.query, where:fsM.where, orderBy:fsM.orderBy, limit:fsM.limit,
-      httpsCallable:funcM.httpsCallable,
     };
     settled=true;
     clearTimeout(failTimer);

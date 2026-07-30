@@ -214,10 +214,10 @@ await run("player can read only their official gifts", async () => {
     message: "",
     senderType: "system",
     senderName: "Kingdom Rise",
-    claimed: false,
+    deliveryStatus: "delivered",
     createdAt: 1700000000000,
-    claimedAt: null,
-    createdByAdminUid: "admin_uid",
+    deliveredAt: 1700000000000,
+    localAdminLabel: "codex-test",
     presetId: null,
     schemaVersion: 1,
   });
@@ -229,10 +229,10 @@ await run("player can read only their official gifts", async () => {
     message: "",
     senderType: "system",
     senderName: "Kingdom Rise",
-    claimed: false,
+    deliveryStatus: "delivered",
     createdAt: 1700000000000,
-    claimedAt: null,
-    createdByAdminUid: "admin_uid",
+    deliveredAt: 1700000000000,
+    localAdminLabel: "codex-test",
     presetId: null,
     schemaVersion: 1,
   });
@@ -248,7 +248,7 @@ await run("player cannot directly create, update, or delete official gifts", asy
     recipientUid: "user_alice",
     resource: "coins",
     amount: 100,
-    claimed: false,
+    deliveryStatus: "delivered",
   }));
   await seed("players/user_alice", saveDoc("user_alice", aliceName));
   await seed("players/user_alice/officialGifts/gift_direct", {
@@ -259,14 +259,15 @@ await run("player cannot directly create, update, or delete official gifts", asy
     message: "",
     senderType: "system",
     senderName: "Kingdom Rise",
-    claimed: false,
+    deliveryStatus: "delivered",
     createdAt: 1700000000000,
-    claimedAt: null,
-    createdByAdminUid: "admin_uid",
+    deliveredAt: 1700000000000,
+    localAdminLabel: "codex-test",
     presetId: null,
     schemaVersion: 1,
   });
-  await assertFails(updateDoc(giftRef, { claimed: true }));
+  await assertFails(updateDoc(giftRef, { deliveryStatus: "dismissed" }));
+  await assertFails(updateDoc(giftRef, { amount: 999999, resource: "coins" }));
   await assertFails(updateDoc(doc(playerDb, "players/user_alice"), { coins: 999999 }));
   await assertFails(deleteDoc(giftRef));
 });
