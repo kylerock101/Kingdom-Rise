@@ -381,6 +381,13 @@
     background:linear-gradient(180deg,#6fe89f,#2f9c5e);color:#08331c;box-shadow:0 3px 0 #1d6b3e;}
   .giftBtn.send{background:linear-gradient(180deg,#ffd95e,#e0a41f);color:#3a2800;box-shadow:0 3px 0 #9c6f0a;}
   .giftBtn:disabled{filter:grayscale(.6) brightness(.85);}
+  .officialGiftRow{background:linear-gradient(180deg,#3b2b68,#251947);border:1px solid rgba(255,201,60,.35);}
+  .officialGiftRow.claimed{opacity:.68;}
+  .officialGiftRow .gi{width:32px;text-align:center;}
+  .officialGiftRow .gt .officialTitle{display:block;color:#f4efff;font-size:13px;}
+  .officialGiftRow .gt .officialMeta{display:block;color:#ffc93c;font-size:11px;font-weight:900;margin-top:2px;}
+  .officialGiftRow .gt .officialMsg{display:block;color:#c7bee9;font-size:11px;font-weight:700;margin-top:2px;}
+  .giftBtn.claimed{background:#3a3460;color:#a99cd6;box-shadow:none;}
   .socEmpty{text-align:center;color:#a99cd6;font-weight:700;font-size:13px;padding:14px;}
   /* daily calendar */
   #calGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
@@ -483,6 +490,7 @@
   <div id="socTabs">
     <button class="socTab active" id="tabBoard">🏆 Leaderboard</button>
     <button class="socTab" id="tabGifts">🎁 Gifts</button>
+    <button class="socTab" id="tabOfficialGifts">🏰 Official</button>
   </div>
   <div id="socBody"></div>
 </div></div>
@@ -1177,6 +1185,7 @@ const Auth = {
   },
   async signOut(){
     if(fbOn()){ try{ await window.FB.fbSignOut(window.FB.auth); }catch(e){} FB_UID=null; }
+    resetOfficialGiftState();
     try{ localStorage.removeItem(CUR_KEY); }catch(e){}
   },
   async restore(){
@@ -1353,6 +1362,30 @@ function load(){
     accrueRolls();
     return true;
   }catch(e){ return false; }
+}
+async function reloadAuthoritativePlayerSave(reason){
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return false;
+  try{
+    const snap=await window.FB.getDoc(window.FB.doc(window.FB.db,"players",FB_UID));
+    if(!snap.exists()) return false;
+    const player=snap.data()||{};
+    let raw=null, env=structuredEnvelopeFromPlayerDoc(player);
+    if(env){
+      const structuredValid=validateStructuredSavePayload(env,reason||"official-gift-cloud-reload");
+      if(structuredValid.ok){ structuredValid.legacy.revision=env.revision; structuredValid.legacy.clientUpdatedAt=env.clientUpdatedAt; raw=JSON.stringify(structuredValid.legacy); setCloudTrackingFromEnvelope(env); }
+    }
+    if(!raw && player.save3d){
+      const valid=validateSavePayload(player.save3d,reason||"official-gift-cloud-reload-legacy");
+      if(valid.ok){ raw=player.save3d; LAST_CLOUD_REVISION=Number.isSafeInteger(valid.data.revision)?valid.data.revision:LAST_CLOUD_REVISION; LAST_CLOUD_CLIENT_UPDATED_AT=Number.isSafeInteger(valid.data.clientUpdatedAt)?valid.data.clientUpdatedAt:LAST_CLOUD_CLIENT_UPDATED_AT; }
+    }
+    if(!raw) return false;
+    LAST_CLOUD_SAVE_RAW=raw;
+    replaceLocalSave(CURRENT_USER,raw,reason||"official-gift-cloud-reload");
+    const ok=load();
+    if(ok){ applyRealmScene(); rebuildTown(); rebuildFolk(); rebuildDetail(); refresh(); }
+    saveDiag("save source selected", {source:reason||"official-gift-cloud-reload", uid:FB_UID, revision:LAST_CLOUD_REVISION});
+    return ok;
+  }catch(e){ console.warn("official gift save reload failed",e); return false; }
 }
 document.addEventListener("visibilitychange",()=>{ if(document.hidden) flushNewestSaveForExit(); else { accrueRolls(); refresh(); } });
 window.addEventListener("pagehide", flushNewestSaveForExit);
@@ -4341,6 +4374,29 @@ function socialData(){
   saveSocial(seed); return seed;
 }
 function saveSocial(d){ try{ localStorage.setItem(socKey(),JSON.stringify(d)); }catch(e){} }
+let OFFICIAL_GIFTS=[], OFFICIAL_GIFT_OWNER_UID=null;
+const OFFICIAL_GIFT_RESOURCES={coins:{icon:"🪙",label:"coins"},rolls:{icon:"🎲",label:"rolls"},soldiers:{icon:"⚔️",label:"soldiers"}};
+function resetOfficialGiftState(){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=null; const dot=$("giftDot"); if(dot) dot.classList.remove("show"); }
+function officialGiftMillis(v){ if(!v) return 0; if(typeof v==="number") return v; if(typeof v.toMillis==="function") return v.toMillis(); if(typeof v.seconds==="number") return v.seconds*1000+Math.floor((v.nanoseconds||0)/1000000); return 0; }
+function officialGiftDate(v){ const ms=officialGiftMillis(v); return ms?new Date(ms).toLocaleDateString():"date pending"; }
+function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function normalizeOfficialGiftDoc(docSnap){
+  const v=docSnap&&typeof docSnap.data==="function"?docSnap.data():null;
+  if(!v||typeof v!=="object") return null;
+  if(v.recipientUid!==FB_UID) return null;
+  if(!OFFICIAL_GIFT_RESOURCES[v.resource]) return null;
+  if(typeof v.amount!=="number"||!Number.isSafeInteger(v.amount)||v.amount<=0) return null;
+  return {id:docSnap.id, recipientUid:v.recipientUid, resource:v.resource, amount:v.amount, title:typeof v.title==="string"&&v.title.trim()?v.title.trim():"Official Kingdom Gift", message:typeof v.message==="string"?v.message.trim():"", senderName:"Kingdom Rise", claimed:v.claimed===true, createdAt:v.createdAt||null, createdMs:officialGiftMillis(v.createdAt)};
+}
+function officialGiftErrorMessage(e){
+  const c=(e&&e.code||"").toLowerCase();
+  if(c.includes("unauthenticated")) return "Sign in to claim official gifts.";
+  if(c.includes("not-found")) return "That gift could not be found.";
+  if(c.includes("permission-denied")) return "That gift belongs to another kingdom.";
+  if(c.includes("invalid-argument")) return "That gift could not be claimed.";
+  if(c.includes("unavailable")||c.includes("deadline")||c.includes("network")) return "Official gifts are temporarily unavailable.";
+  return "Gift claim failed. Please try again.";
+}
 const Social = {
   async leaderboard(){
     if(fbOn()){
@@ -4374,6 +4430,28 @@ const Social = {
       }catch(e){ return []; }
     }
     return socialData().inbox.slice();
+  },
+  async officialInbox(){
+    if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"||!window.FB.collection) { resetOfficialGiftState(); return []; }
+    try{
+      const q=window.FB.query(window.FB.collection(window.FB.db,"players",FB_UID,"officialGifts"), window.FB.orderBy("createdAt","desc"));
+      const snap=await window.FB.getDocs(q);
+      const out=[];
+      snap.forEach(d=>{ const g=normalizeOfficialGiftDoc(d); if(g) out.push(g); });
+      if(OFFICIAL_GIFT_OWNER_UID!==FB_UID){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=FB_UID; }
+      OFFICIAL_GIFTS=out;
+      return out;
+    }catch(e){ console.warn("official gifts load failed",e&&e.code||e); return []; }
+  },
+  async claimOfficial(giftId){
+    if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") throw new Error("not-signed-in");
+    if(!window.FB.functions||!window.FB.httpsCallable) throw new Error("functions-unavailable");
+    const call=window.FB.httpsCallable(window.FB.functions,"claimOfficialGift");
+    const result=await call({giftId});
+    const data=result&&result.data||{};
+    if(data.resource&&OFFICIAL_GIFT_RESOURCES[data.resource]&&typeof data.balance==="number"){ S[data.resource]=data.balance; refresh(); }
+    if(data.status==="claimed") await reloadAuthoritativePlayerSave("official-gift-claim");
+    return data;
   },
   async friends(){
     const rows=await Social.leaderboard();
@@ -4424,9 +4502,12 @@ const Social = {
 };
 function fmtMight(n){ return n>=1000?(n/1000).toFixed(n>=10000?0:1)+"k":""+n; }
 async function updateGiftDot(){
-  const inbox=await Social.inbox();
   const dot=$("giftDot");
-  if(inbox.length){ dot.textContent=inbox.length; dot.classList.add("show"); }
+  if(!dot) return;
+  if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ dot.classList.remove("show"); return; }
+  const inbox=OFFICIAL_GIFT_OWNER_UID===FB_UID?OFFICIAL_GIFTS:await Social.officialInbox();
+  const count=inbox.filter(g=>!g.claimed).length;
+  if(count){ dot.textContent=count; dot.classList.add("show"); }
   else dot.classList.remove("show");
 }
 async function renderBoard(){
@@ -4486,12 +4567,51 @@ async function renderGifts(){
     row.appendChild(b); body.appendChild(row);
   }
 }
+function officialGiftAmountText(g){ const m=OFFICIAL_GIFT_RESOURCES[g.resource]; return g.amount.toLocaleString()+" "+(m?m.label:g.resource); }
+function applyOfficialGiftClaimToCache(giftId, claimed){ OFFICIAL_GIFTS=OFFICIAL_GIFTS.map(g=>g.id===giftId?Object.assign({},g,{claimed:claimed!==false}):g); }
+async function renderOfficialGifts(){
+  const body=$("socBody"); body.innerHTML="";
+  const sec=document.createElement("div"); sec.className="giftSec"; sec.textContent="Official Gifts"; body.appendChild(sec);
+  if(!CURRENT_USER||CURRENT_USER==="Guest"){ const e=document.createElement("div"); e.className="socEmpty"; e.textContent="Sign in to receive official Kingdom Rise gifts."; body.appendChild(e); return; }
+  if(!fbOn()||!FB_UID){ const e=document.createElement("div"); e.className="socEmpty"; e.textContent="Official gifts are unavailable while cloud sign-in is offline."; body.appendChild(e); return; }
+  const loading=document.createElement("div"); loading.className="socEmpty"; loading.textContent="Loading official gifts..."; body.appendChild(loading);
+  const inbox=await Social.officialInbox();
+  loading.remove();
+  if(!inbox.length){ const e=document.createElement("div"); e.className="socEmpty"; e.textContent="No official gifts right now."; body.appendChild(e); updateGiftDot(); return; }
+  inbox.forEach(g=>{
+    const row=document.createElement("div"); row.className="giftRow officialGiftRow"+(g.claimed?" claimed":""); row.dataset.giftId=g.id;
+    const meta=OFFICIAL_GIFT_RESOURCES[g.resource];
+    const title=escapeHTML(g.title);
+    const msgLine=g.message?"<span class=\"officialMsg\">"+escapeHTML(g.message)+"</span>":"";
+    row.innerHTML="<span class=\"gi\">🏰</span><div class=\"gt\"><span class=\"officialTitle\">"+title+"</span><small>from Kingdom Rise · "+officialGiftDate(g.createdAt)+"</small><span class=\"officialMeta\">"+(meta?meta.icon:"🎁")+" "+officialGiftAmountText(g)+"</span>"+msgLine+"</div>";
+    const b=document.createElement("button"); b.className="giftBtn"+(g.claimed?" claimed":""); b.textContent=g.claimed?"Claimed":"Claim"; b.disabled=!!g.claimed;
+    b.onclick=async()=>{
+      if(b.disabled) return;
+      b.disabled=true; b.textContent="Claiming...";
+      try{
+        const result=await Social.claimOfficial(g.id);
+        applyOfficialGiftClaimToCache(g.id,true);
+        b.classList.add("claimed"); b.textContent="Claimed"; row.classList.add("claimed");
+        updateGiftDot();
+        if(result.status==="already-claimed") msg("Official gift already claimed",1400);
+        else msg("Official gift claimed!",1300);
+      }catch(e){
+        console.warn("official gift claim failed",e&&e.code||e);
+        b.disabled=false; b.textContent="Claim";
+        msg(officialGiftErrorMessage(e),2200);
+      }
+    };
+    row.appendChild(b); body.appendChild(row);
+  });
+  updateGiftDot();
+}
 let SOC_TAB="board";
 function socTab(t){
   SOC_TAB=t;
   $("tabBoard").classList.toggle("active",t==="board");
   $("tabGifts").classList.toggle("active",t==="gifts");
-  t==="board"?renderBoard():renderGifts();
+  $("tabOfficialGifts").classList.toggle("active",t==="official");
+  if(t==="board") renderBoard(); else if(t==="official") renderOfficialGifts(); else renderGifts();
 }
 $("socialBtn").addEventListener("click",()=>{ $("socOv").classList.add("show"); socTab("board"); });
 $("socX").addEventListener("click",()=>$("socOv").classList.remove("show"));
@@ -4645,6 +4765,7 @@ $("mapBtn").addEventListener("click",e=>{ e.stopPropagation(); G.map?closeMap():
 
 $("tabBoard").addEventListener("click",()=>socTab("board"));
 $("tabGifts").addEventListener("click",()=>socTab("gifts"));
+$("tabOfficialGifts").addEventListener("click",()=>socTab("official"));
 
 /* roll */
 $("dieDock").addEventListener("pointerdown",()=>{
@@ -6550,15 +6671,16 @@ showDie(false);
   }, 12000);
   try{
     const V="12.15.0";
-    const [appM,authM,fsM]=await Promise.all([
+    const [appM,authM,fsM,funcM]=await Promise.all([
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/"+V+"/firebase-firestore.js"),
+      import("https://www.gstatic.com/firebasejs/"+V+"/firebase-functions.js"),
     ]);
     if(settled) return;
     const app=appM.initializeApp(cfg);
     window.FB={
-      auth:authM.getAuth(app), db:fsM.getFirestore(app),
+      auth:authM.getAuth(app), db:fsM.getFirestore(app), functions:funcM.getFunctions(app,"us-central1"),
       createUserWithEmailAndPassword:authM.createUserWithEmailAndPassword,
       signInWithEmailAndPassword:authM.signInWithEmailAndPassword,
       onAuthStateChanged:authM.onAuthStateChanged,
@@ -6566,6 +6688,7 @@ showDie(false);
       doc:fsM.doc, getDoc:fsM.getDoc, setDoc:fsM.setDoc, updateDoc:fsM.updateDoc, serverTimestamp:fsM.serverTimestamp,
       collection:fsM.collection, addDoc:fsM.addDoc, getDocs:fsM.getDocs,
       query:fsM.query, where:fsM.where, orderBy:fsM.orderBy, limit:fsM.limit,
+      httpsCallable:funcM.httpsCallable,
     };
     settled=true;
     clearTimeout(failTimer);
