@@ -4,7 +4,7 @@ import admin from "firebase-admin";
 
 const require = createRequire(import.meta.url);
 const { createOfficialGiftService } = require("../functions/src/official-gifts.js");
-const { OFFICIAL_GIFT_RESOURCES } = require("../functions/src/official-gift-config.js");
+const { OFFICIAL_GIFT_RESOURCES, OFFICIAL_GIFT_PRESETS } = require("../functions/src/official-gift-config.js");
 
 const PROJECT_ID = "kingdom-rise-8e21e";
 process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8080";
@@ -193,6 +193,71 @@ for (const [name, data] of [
     await assert.rejects(service.adminCreateOfficialGift({ data, ...authed("admin_uid", { admin: true }) }));
   });
 }
+
+await run("preset grant expands trusted server-side resources", async () => {
+  await seedPlayers();
+  const result = await service.adminCreateOfficialGiftPreset({
+    data: { recipientUids: ["user_alice"], presetId: "returning_founder_gift" },
+    ...authed("admin_uid", { admin: true }),
+  });
+  const preset = OFFICIAL_GIFT_PRESETS.returning_founder_gift;
+  assert.equal(result.presetId, preset.id);
+  assert.equal(result.presetName, preset.name);
+  assert.equal(result.status, "draft");
+  assert.deepEqual(result.resources, [
+    { resource: "coins", amount: 1500 },
+    { resource: "rolls", amount: 25 },
+    { resource: "soldiers", amount: 6 },
+  ]);
+  assert.equal(result.results.length, 3);
+  assert.equal(result.results.filter((r) => r.status === "created").length, 3);
+  const gifts = await db.collection("players/user_alice/officialGifts").get();
+  assert.equal(gifts.size, 3);
+  const created = gifts.docs.map((d) => d.data()).sort((a, b) => a.resource.localeCompare(b.resource));
+  assert.deepEqual(created.map((g) => [g.resource, g.amount, g.presetId, g.title]), [
+    ["coins", 1500, preset.id, preset.name],
+    ["rolls", 25, preset.id, preset.name],
+    ["soldiers", 6, preset.id, preset.name],
+  ]);
+});
+
+await run("preset grant rejects tampered client resource fields", async () => {
+  await seedPlayers();
+  await assert.rejects(
+    service.adminCreateOfficialGiftPreset({
+      data: { recipientUids: ["user_alice"], presetId: "returning_founder_gift", resource: "coins", amount: 999999 },
+      ...authed("admin_uid", { admin: true }),
+    }),
+    /Unsupported preset request field/
+  );
+});
+
+await run("ordinary authenticated player preset grant rejected", async () => {
+  await seedPlayers();
+  await assert.rejects(
+    service.adminCreateOfficialGiftPreset({ data: { recipientUids: ["user_alice"], presetId: "returning_founder_gift" }, ...authed("user_alice", {}) }),
+    /Administrator access required/
+  );
+});
+
+await run("preset grant reports failed recipients per resource", async () => {
+  await seedPlayers();
+  const result = await service.adminCreateOfficialGiftPreset({
+    data: { recipientUids: ["missing_uid"], presetId: "returning_founder_gift" },
+    ...authed("admin_uid", { admin: true }),
+  });
+  assert.equal(result.results.length, 3);
+  assert.equal(result.results.filter((r) => r.status === "failed" && r.errorCode === "recipient-not-found").length, 3);
+  assert.equal((await db.collection("players/missing_uid/officialGifts").get()).size, 0);
+});
+
+await run("grantable player search omits private save and might fields", async () => {
+  await seedPlayers();
+  const result = await service.listGrantablePlayers({ data: { search: "Alice", limit: 10 }, ...authed("admin_uid", { admin: true }) });
+  assert.equal(result.players.length, 1);
+  assert.deepEqual(Object.keys(result.players[0]).sort(), ["name", "realm", "uid"]);
+  assert.equal(result.players[0].uid, "user_alice");
+});
 
 await run("player cannot claim another player's gift", async () => {
   await seedPlayers();

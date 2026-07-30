@@ -4,6 +4,7 @@ const {
   OFFICIAL_GIFT_SCHEMA_VERSION,
   OFFICIAL_GIFT_RESOURCES,
   OFFICIAL_GIFT_LIMITS,
+  OFFICIAL_GIFT_PRESETS,
 } = require("./official-gift-config");
 
 function createHttpsError(code, message, details) {
@@ -70,16 +71,13 @@ function validateResourceAndAmount(resource, amount, functions) {
   return { resource, amount };
 }
 
-function validateGrantPayload(data, functions) {
-  if (!onlyKeys(data, ["recipientUids", "resource", "amount", "title", "message", "presetId"])) {
-    throw callableError(functions, "invalid-argument", "Unsupported grant request field.");
-  }
-  if (!Array.isArray(data.recipientUids)) {
+function normalizeRecipientUids(value, functions) {
+  if (!Array.isArray(value)) {
     throw callableError(functions, "invalid-argument", "recipientUids must be an array.");
   }
   const recipientUids = [];
   const seen = new Set();
-  for (const uid of data.recipientUids) {
+  for (const uid of value) {
     if (typeof uid !== "string" || !uid.trim()) {
       throw callableError(functions, "invalid-argument", "Each recipient UID must be a non-empty string.");
     }
@@ -93,6 +91,14 @@ function validateGrantPayload(data, functions) {
   if (recipientUids.length > OFFICIAL_GIFT_LIMITS.maxRecipients) {
     throw callableError(functions, "invalid-argument", "Too many recipients.");
   }
+  return recipientUids;
+}
+
+function validateGrantPayload(data, functions) {
+  if (!onlyKeys(data, ["recipientUids", "resource", "amount", "title", "message", "presetId"])) {
+    throw callableError(functions, "invalid-argument", "Unsupported grant request field.");
+  }
+  const recipientUids = normalizeRecipientUids(data.recipientUids, functions);
   const { resource, amount } = validateResourceAndAmount(data.resource, data.amount, functions);
   return {
     recipientUids,
@@ -102,6 +108,21 @@ function validateGrantPayload(data, functions) {
     message: normalizeString(data.message || "", OFFICIAL_GIFT_LIMITS.maxMessageLength, "message", functions, false),
     presetId: normalizeString(data.presetId || "", 80, "presetId", functions, false) || null,
   };
+}
+
+function validatePresetPayload(data, functions) {
+  if (!onlyKeys(data, ["recipientUids", "presetId"])) {
+    throw callableError(functions, "invalid-argument", "Unsupported preset request field.");
+  }
+  const presetId = normalizeString(data.presetId, 80, "presetId", functions, true);
+  const preset = OFFICIAL_GIFT_PRESETS[presetId];
+  if (!preset) throw callableError(functions, "invalid-argument", "Unknown official gift preset.");
+  const resources = [];
+  for (const [resource, amount] of Object.entries(preset.resources || {})) {
+    resources.push(validateResourceAndAmount(resource, amount, functions));
+  }
+  if (!resources.length) throw callableError(functions, "failed-precondition", "Official gift preset has no resources.");
+  return { recipientUids: normalizeRecipientUids(data.recipientUids, functions), preset, resources };
 }
 
 function defaultLegacySave(nowMillis) {
@@ -225,21 +246,18 @@ function createOfficialGiftService({ db, FieldValue, functions, nowMillis }) {
   const serverTimestamp = () => (FieldValue && typeof FieldValue.serverTimestamp === "function" ? FieldValue.serverTimestamp() : new Date());
   const now = () => (typeof nowMillis === "function" ? nowMillis() : Date.now());
 
-  async function adminCreateOfficialGift(requestOrContext) {
-    const auth = requireAdmin(requestOrContext, functions);
-    const payload = validateGrantPayload(requestOrContext.data || {}, functions);
+  async function createOfficialGiftBatch(auth, grants, action) {
     const results = [];
     const batch = db.batch();
 
-    for (const recipientUid of payload.recipientUids) {
-      const playerRef = db.collection("players").doc(recipientUid);
+    for (const grant of grants) {
+      const playerRef = db.collection("players").doc(grant.recipientUid);
       const giftRef = playerRef.collection("officialGifts").doc();
       const auditRef = db.collection("officialGiftAudits").doc();
       let status = "created";
       let errorCode = null;
-      let playerSnap = null;
       try {
-        playerSnap = await playerRef.get();
+        const playerSnap = await playerRef.get();
         if (!playerSnap.exists) {
           status = "failed";
           errorCode = "recipient-not-found";
@@ -251,38 +269,73 @@ function createOfficialGiftService({ db, FieldValue, functions, nowMillis }) {
 
       if (status === "created") {
         batch.set(giftRef, {
-          recipientUid,
-          resource: payload.resource,
-          amount: payload.amount,
-          title: payload.title,
-          message: payload.message,
+          recipientUid: grant.recipientUid,
+          resource: grant.resource,
+          amount: grant.amount,
+          title: grant.title,
+          message: grant.message,
           senderType: "system",
           senderName: "Kingdom Rise",
           claimed: false,
           createdAt: serverTimestamp(),
           claimedAt: null,
           createdByAdminUid: auth.uid,
-          presetId: payload.presetId,
+          presetId: grant.presetId || null,
           schemaVersion: OFFICIAL_GIFT_SCHEMA_VERSION,
         });
       }
 
       batch.set(auditRef, {
-        action: "adminCreateOfficialGift",
+        action,
         adminUid: auth.uid,
-        recipientUid,
+        recipientUid: grant.recipientUid,
         giftId: status === "created" ? giftRef.id : null,
-        resource: payload.resource,
-        amount: payload.amount,
+        resource: grant.resource,
+        amount: grant.amount,
         status,
         errorCode,
         createdAt: serverTimestamp(),
       });
-      results.push({ recipientUid, giftId: status === "created" ? giftRef.id : null, status, errorCode });
+      results.push({ recipientUid: grant.recipientUid, giftId: status === "created" ? giftRef.id : null, resource: grant.resource, amount: grant.amount, status, errorCode });
     }
 
     await batch.commit();
+    return results;
+  }
+
+  async function adminCreateOfficialGift(requestOrContext) {
+    const auth = requireAdmin(requestOrContext, functions);
+    const payload = validateGrantPayload(requestOrContext.data || {}, functions);
+    const grants = payload.recipientUids.map((recipientUid) => ({
+      recipientUid,
+      resource: payload.resource,
+      amount: payload.amount,
+      title: payload.title,
+      message: payload.message,
+      presetId: payload.presetId,
+    }));
+    const results = await createOfficialGiftBatch(auth, grants, "adminCreateOfficialGift");
     return { ok: true, resource: payload.resource, amount: payload.amount, results };
+  }
+
+  async function adminCreateOfficialGiftPreset(requestOrContext) {
+    const auth = requireAdmin(requestOrContext, functions);
+    const payload = validatePresetPayload(requestOrContext.data || {}, functions);
+    const grants = [];
+    for (const recipientUid of payload.recipientUids) {
+      for (const item of payload.resources) {
+        grants.push({
+          recipientUid,
+          resource: item.resource,
+          amount: item.amount,
+          title: payload.preset.name,
+          message: "A thank-you package from Kingdom Rise.",
+          presetId: payload.preset.id,
+        });
+      }
+    }
+    const results = await createOfficialGiftBatch(auth, grants, "adminCreateOfficialGiftPreset");
+    return { ok: true, presetId: payload.preset.id, presetName: payload.preset.name, status: payload.preset.status, resources: payload.resources, results };
   }
 
   async function claimOfficialGift(requestOrContext) {
@@ -354,18 +407,18 @@ function createOfficialGiftService({ db, FieldValue, functions, nowMillis }) {
         uid: doc.id,
         name,
         realm: typeof d.realm === "number" ? d.realm : typeof d.progression?.realm === "number" ? d.progression.realm : null,
-        might: typeof d.might === "number" ? d.might : null,
       });
     });
     return { ok: true, players: players.slice(0, max) };
   }
 
-  return { adminCreateOfficialGift, claimOfficialGift, listGrantablePlayers };
+  return { adminCreateOfficialGift, adminCreateOfficialGiftPreset, claimOfficialGift, listGrantablePlayers };
 }
 
 module.exports = {
   createOfficialGiftService,
   validateGrantPayload,
+  validatePresetPayload,
   validateResourceAndAmount,
   applyGiftToPlayer,
   parseLegacySave,

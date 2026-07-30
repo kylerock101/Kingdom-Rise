@@ -13,5 +13,6 @@ const service = createOfficialGiftService({
 });
 
 exports.adminCreateOfficialGift = onCall({ region: "us-central1" }, (request) => service.adminCreateOfficialGift(request));
+exports.adminCreateOfficialGiftPreset = onCall({ region: "us-central1" }, (request) => service.adminCreateOfficialGiftPreset(request));
 exports.claimOfficialGift = onCall({ region: "us-central1" }, (request) => service.claimOfficialGift(request));
 exports.listGrantablePlayers = onCall({ region: "us-central1" }, (request) => service.listGrantablePlayers(request));

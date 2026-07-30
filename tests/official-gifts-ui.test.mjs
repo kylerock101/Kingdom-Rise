@@ -29,9 +29,21 @@ has(/await reloadAuthoritativePlayerSave\("official-gift-claim"\)/, "successful 
 has(/if\(data\.resource&&OFFICIAL_GIFT_RESOURCES\[data\.resource\]&&typeof data\.balance==="number"\)\{ S\[data\.resource\]=data\.balance; refresh\(\); \}/, "claim response balance patches visible resource immediately");
 has(/if\(result\.status==="already-claimed"\) msg\("Official gift already claimed"/, "already-claimed response is handled gently");
 has(/catch\(e\)\{\s*console\.warn\("official gift claim failed"[\s\S]*?b\.disabled=false; b\.textContent="Claim";/, "network or server errors restore claim button");
-has(/resetOfficialGiftState\(\);\s*try\{ localStorage\.removeItem\(CUR_KEY\)/, "sign-out clears official gift state");
+has(/resetOfficialGiftState\(\); resetOfficialGiftAdminState\(\);\s*try\{ localStorage\.removeItem\(CUR_KEY\)/, "sign-out clears official gift and admin state");
 has(/OFFICIAL_GIFT_OWNER_UID===FB_UID\?OFFICIAL_GIFTS:await Social\.officialInbox\(\)/, "badge state is account-scoped");
 has(/async sendGift\(to\)[\s\S]*?collection\(window\.FB\.db,"gifts"\)/, "existing normal player-to-player gift send remains present");
 has(/async claim\(id\)[\s\S]*?window\.FB\.doc\(window\.FB\.db,"gifts",id\)/, "existing normal player-to-player gift claim remains present");
+
+assert.match(html, /id="officialAdminBtn"[^>]*display:none/, "official gift admin button is hidden by default");
+assert.match(html, /id="officialAdminOv"/, "official gift admin overlay is present");
+has(/getIdTokenResult\(true\)[\s\S]*?token&&token\.claims&&token\.claims\.admin===true/, "admin visibility uses a forced Firebase admin claim refresh");
+has(/CURRENT_USER=u;\s*resetOfficialGiftAdminState\(\);/, "admin state resets on account entry");
+has(/ensureOfficialGiftAdminAccess\("enter-game"\)/, "admin claim is checked after login or restore");
+has(/ensureOfficialGiftAdminAccess\("menu-open"\)/, "admin claim is refreshed when menu opens");
+has(/httpsCallable\(window\.FB\.functions,"listGrantablePlayers"\)/, "admin player search uses the grantable-player callable");
+has(/callable:"adminCreateOfficialGiftPreset",payload:\{recipientUids,presetId\}/, "preset grants send only recipientUids and presetId");
+has(/OFFICIAL_GIFT_ADMIN_PRESETS=\{returning_founder_gift:[\s\S]*?coins:1500[\s\S]*?rolls:25[\s\S]*?soldiers:6/, "returning founder preset preview shows the configured draft resources");
+has(/validateAdminGiftPayload\(\)[\s\S]*?callable:"adminCreateOfficialGift"/, "single-resource admin grants still use the explicit grant callable");
+has(/confirm\(valid\.summary\+"\\n\\nSend this official gift now\?"\)/, "admin gift sending requires explicit confirmation");
 
 console.log("PASS official gifts UI contract checks");
