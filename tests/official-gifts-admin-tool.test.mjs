@@ -88,6 +88,72 @@ function playerDoc(name, overrides = {}) {
   };
 }
 
+
+function rewardTesterProductionDoc() {
+  const legacy = {
+    clientUpdatedAt: 1785546000000,
+    revision: 22,
+    coins: 200,
+    rolls: 103,
+    multi: 1,
+    pos: 0,
+    tier: 0,
+    builds: 0,
+    realm: 1,
+    soldiers: 5,
+    blessed: false,
+    raidStreak: 0,
+    realmCoins: 0,
+    sound: true,
+    lastRoll: 1785546000000,
+    streak: 0,
+    dailyClaimed: false,
+    lastDay: "2026-07-31",
+    qi: 0,
+    qp: 0,
+    qDone: false,
+    seen: {},
+    rolled: 0,
+    weekProg: 0,
+    weekStart: null,
+    weekClaimed: false,
+    weekReady: false,
+    taxRate: 0,
+    crime: 0,
+    music: true,
+    defences: ["wall", "redoubt"],
+    vault: 0,
+    defLog: [],
+    lastDefSim: 1785546000000,
+    log: [],
+    appearance: { gender: "king", crown: "crown" },
+    ownedSkins: ["default"],
+    activeSkin: "default",
+    slayerTurns: 0,
+    dragonSlain: 0,
+    dragonHP: 0,
+    dragonHPMax: 0,
+    ownedItems: [],
+  };
+  return {
+    name: "RewardTester",
+    might: 500,
+    realm: 1,
+    schemaVersion: 2,
+    gameVersion: "0.1",
+    revision: 22,
+    clientUpdatedAt: legacy.clientUpdatedAt,
+    profile: { uid: "user_rewardtester", username: "RewardTester", appearance: legacy.appearance, ownedSkins: ["default"], activeSkin: "default", ownedItems: [], legacyUnknown: {} },
+    economy: { coins: 200, rolls: 103, multi: 1, realmCoins: 0, vault: 0, taxRate: 0, crime: 0 },
+    progression: { pos: 0, tier: 0, builds: 0, realm: 1, lastRoll: legacy.lastRoll, streak: 0, dailyClaimed: false, lastDay: legacy.lastDay, qi: 0, qp: 0, qDone: false, seen: {}, rolled: 0, weekProg: 0, weekStart: null, weekClaimed: false, weekReady: false },
+    kingdom: { soldiers: 5, blessed: false, raidStreak: 0, defences: legacy.defences, defLog: [], lastDefSim: legacy.lastDefSim, log: [] },
+    settings: { sound: true, music: true },
+    stats: { slayerTurns: 0, dragonSlain: 0, dragonHP: 0, dragonHPMax: 0 },
+    legacyState: Object.assign({}, legacy),
+    save3d: JSON.stringify(legacy),
+    migrationState: "dual-write",
+  };
+}
 async function seedPlayers() {
   await db.doc("players/user_alice").set(playerDoc("AliceKingdom"));
   await db.doc("players/user_bob").set(playerDoc("BobKingdom"));
@@ -189,6 +255,50 @@ await run("one notification is created per successful recipient", async () => {
   assert.equal(gift.resources.length, 3);
 });
 
+
+await run("production-shaped RewardTester coin reward synchronizes to 210", async () => {
+  await db.doc("players/user_rewardtester").set(rewardTesterProductionDoc());
+  const plan = buildGrantPlan({ uids: "user_rewardtester", resource: "coins", amount: 10, title: "Prod Shape" });
+  const result = await deliver(plan);
+  assert.equal(result.results[0].status, "delivered");
+  const player = await getPlayer("user_rewardtester");
+  const legacy = JSON.parse(player.save3d);
+  assert.equal(player.economy.coins, 210);
+  assert.equal(player.legacyState.coins, 210);
+  assert.equal(legacy.coins, 210);
+  assert.equal(player.revision, 23);
+  assert.equal(player.legacyState.revision, 23);
+  assert.equal(legacy.revision, 23);
+  assert.equal(player.clientUpdatedAt, NOW);
+  assert.equal(player.legacyState.clientUpdatedAt, NOW);
+  assert.equal(legacy.clientUpdatedAt, NOW);
+  assert.equal(player.economy.rolls, 103);
+  assert.equal(player.kingdom.soldiers, 5);
+  assert.equal((await db.collection("players/user_rewardtester/officialGifts").get()).size, 1);
+});
+
+await run("production-shaped next normal save preserves rewarded coins", async () => {
+  await db.doc("players/user_rewardtester").set(rewardTesterProductionDoc());
+  const plan = buildGrantPlan({ uids: "user_rewardtester", resource: "coins", amount: 10, title: "Prod Shape" });
+  await deliver(plan);
+  const rewarded = await getPlayer("user_rewardtester");
+  const legacy = JSON.parse(rewarded.save3d);
+  const nextRevision = rewarded.revision + 1;
+  legacy.revision = nextRevision;
+  legacy.clientUpdatedAt = NOW + 5000;
+  await db.doc("players/user_rewardtester").set({
+    save3d: JSON.stringify(legacy),
+    revision: nextRevision,
+    clientUpdatedAt: legacy.clientUpdatedAt,
+    economy: Object.assign({}, rewarded.economy, { coins: legacy.coins }),
+    legacyState: Object.assign({}, rewarded.legacyState, { coins: legacy.coins, revision: nextRevision, clientUpdatedAt: legacy.clientUpdatedAt }),
+  }, { merge: true });
+  const after = await getPlayer("user_rewardtester");
+  assert.equal(after.economy.coins, 210);
+  assert.equal(after.legacyState.coins, 210);
+  assert.equal(JSON.parse(after.save3d).coins, 210);
+  assert.equal((await db.collection("players/user_rewardtester/officialGifts").get()).size, 1);
+});
 await run("failed recipient does not corrupt successful recipients", async () => {
   await seedPlayers();
   const plan = buildGrantPlan({ uids: "user_alice,missing_uid", resource: "coins", amount: 40 });

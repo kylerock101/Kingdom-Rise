@@ -1036,7 +1036,8 @@ function setCloudTrackingFromEnvelope(env){ const f=cloudFreshnessFromStructured
 function legacyPayloadUpdatedAt(raw){ try{ const d=JSON.parse(raw); return Number.isSafeInteger(d&&d.clientUpdatedAt)?d.clientUpdatedAt:(Number.isSafeInteger(d&&d.lastRoll)?d.lastRoll:0); }catch(e){ return 0; } }
 function localSaveFreshness(raw){ const valid=validateSavePayload(raw,"local-freshness"); if(!valid.ok) return {ok:false, reason:valid.reason, clientUpdatedAt:0, revision:0}; return {ok:true, data:valid.data, clientUpdatedAt:Number.isSafeInteger(valid.data.clientUpdatedAt)?valid.data.clientUpdatedAt:(Number.isSafeInteger(valid.data.lastRoll)?valid.data.lastRoll:0), revision:Number.isSafeInteger(valid.data.revision)?valid.data.revision:0}; }
 function cloudRawFreshness(raw, env){ const structured=cloudFreshnessFromStructured(env); return {revision:structured.revision, clientUpdatedAt:structured.clientUpdatedAt||legacyPayloadUpdatedAt(raw), serverUpdatedAt:structured.serverUpdatedAt}; }
-function isLocalNewerThanCloud(localRaw, cloudRaw, cloudEnv){ const local=localSaveFreshness(localRaw); if(!local.ok) return {newer:false, reason:local.reason}; const cloud=cloudRawFreshness(cloudRaw, cloudEnv); if(local.revision>cloud.revision) return {newer:true, local, cloud, reason:"revision"}; if(local.revision===cloud.revision && local.clientUpdatedAt>cloud.clientUpdatedAt) return {newer:true, local, cloud, reason:"clientUpdatedAt"}; return {newer:false, local, cloud}; }
+function isLocalNewerThanCloud(localRaw, cloudRaw, cloudEnv){ const local=localSaveFreshness(localRaw); if(!local.ok) return {newer:false, reason:local.reason}; const cloud=cloudRawFreshness(cloudRaw, cloudEnv); if(cloud.serverUpdatedAt && local.clientUpdatedAt && cloud.serverUpdatedAt>local.clientUpdatedAt) return {newer:false, local, cloud, reason:"cloud-server-newer"}; if(local.revision>cloud.revision) return {newer:true, local, cloud, reason:"revision"}; if(local.revision===cloud.revision && local.clientUpdatedAt>cloud.clientUpdatedAt) return {newer:true, local, cloud, reason:"clientUpdatedAt"}; return {newer:false, local, cloud}; }
+function hasUnseenRemoteRevision(remoteMeta){ return remoteMeta && Number.isSafeInteger(remoteMeta.revision) && remoteMeta.revision>LAST_CLOUD_REVISION; }
 function backupExistingLocalSave(user, reason){
   if(!user) return;
   try{
@@ -1257,8 +1258,9 @@ async function startCloudWrite(payload, reason){
     const remote=snap.exists()?snap.data():null;
     const remoteMeta=cloudMetaFromPlayerData(remote);
     const payloadUpdatedAt=legacyPayloadUpdatedAt(payload);
-    if(remote && remoteMeta.revision>LAST_CLOUD_REVISION && remoteMeta.clientUpdatedAt>=payloadUpdatedAt){
-      saveDiag("cloud write conflict", {reason:"remote-newer", localRevision:LAST_CLOUD_REVISION, remoteRevision:remoteMeta.revision, uid:FB_UID});
+    if(remote && hasUnseenRemoteRevision(remoteMeta)){
+      saveDiag("cloud write conflict", {reason:"remote-newer", localRevision:LAST_CLOUD_REVISION, remoteRevision:remoteMeta.revision, remoteServerUpdatedAt:remoteMeta.serverUpdatedAt, uid:FB_UID});
+      await reloadAuthoritativePlayerSave("cloud-write-remote-newer");
       return;
     }
     const nextRevision=Math.max(LAST_CLOUD_REVISION, CLOUD_LATEST_SUCCESS_REVISION, remoteMeta.revision||0)+1;
