@@ -28,6 +28,11 @@ has(/OFFICIAL_GIFT_OWNER_UID===FB_UID\?OFFICIAL_GIFTS:await Social\.officialInbo
 has(/async sendGift\(to\)[\s\S]*?collection\(window\.FB\.db,"gifts"\)/, "existing normal player-to-player gift send remains present");
 has(/async claim\(id\)[\s\S]*?window\.FB\.doc\(window\.FB\.db,"gifts",id\)/, "existing normal player-to-player gift claim remains present");
 
+has(/\$\("coinN"\)\.textContent = fmtCoin\(S\.coins\)/, "top-left coin HUD renders from loaded S.coins");
+has(/if\(structuredValid\.ok\)\{ structuredValid\.legacy\.revision=env\.revision; structuredValid\.legacy\.clientUpdatedAt=env\.clientUpdatedAt; selectedRaw=JSON\.stringify\(structuredValid\.legacy\); selectedSource="structured-cloud"/, "refresh load uses validated structured cloud save before legacy fallback");
+has(/function isLocalNewerThanCloud\(localRaw, cloudRaw, cloudEnv\)[\s\S]*cloud\.serverUpdatedAt>local\.clientUpdatedAt[\s\S]*reason:"cloud-server-newer"/, "cloud server timestamp can prevent stale local refresh overwrite");
+has(/function hasUnseenRemoteRevision\(remoteMeta\)[\s\S]*remoteMeta\.revision>LAST_CLOUD_REVISION/, "unseen remote revisions are detected before cloud writes");
+has(/if\(remote && hasUnseenRemoteRevision\(remoteMeta\)\)[\s\S]*reloadAuthoritativePlayerSave\("cloud-write-remote-newer"\)[\s\S]*return;/, "stale save writes reload authoritative cloud state instead of overwriting rewards");
 has(/deliveryStatus:v\.deliveryStatus==="delivered"/, "official notifications are normalized as delivered");
 has(/<button class=\"giftBtn claimed\" disabled>Delivered<\/button>/, "official gift rows show delivered read-only status");
 has(/function officialGiftAmountText\(g\)[\s\S]*?resources\.map/, "official gift UI supports bundled delivered resources");
