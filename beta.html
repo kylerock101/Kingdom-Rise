@@ -3025,16 +3025,21 @@ function rebuildDetail(){
 
     // Visual Pass 3: road trim is batched into a few instanced meshes so paths feel hand-laid without changing routes.
     const edgeStoneGeo=new THREE.DodecahedronGeometry(.075,0);
-    const edgeStoneMat=new THREE.MeshStandardMaterial({color:0xb2a48e,roughness:1});
-    const rutGeo=new THREE.PlaneGeometry(.10,.55);
-    const rutMat=new THREE.MeshStandardMaterial({color:0x6f624f,roughness:1,transparent:true,opacity:.58,depthWrite:false});
-    const roadGrassGeo=new THREE.ConeGeometry(.045,.20,3);
+    const edgeStoneMat=new THREE.MeshStandardMaterial({color:0xb2a48e,roughness:1,vertexColors:true});
+    const rutGeo=new THREE.PlaneGeometry(.14,.66);
+    const rutMat=new THREE.MeshStandardMaterial({color:0x5f5242,roughness:1,transparent:true,opacity:.70,depthWrite:false});
+    const edgeBlendGeo=new THREE.PlaneGeometry(.18,.72);
+    const edgeBlendMat=new THREE.MeshStandardMaterial({color:0x7d705b,roughness:1,transparent:true,opacity:.34,depthWrite:false});
+    const roadGrassGeo=new THREE.ConeGeometry(.055,.24,3);
     const roadGrassMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x5f9b4a),roughness:1});
-    const maxStones=LANES*18+48, maxRuts=LANES*8+24, maxGrass=LANES*12+36;
+    const maxStones=LANES*14+36, maxRuts=LANES*8+24, maxGrass=LANES*14+40, maxEdgeBlend=LANES*18+48;
     const edgeStones=new THREE.InstancedMesh(edgeStoneGeo,edgeStoneMat,maxStones);
     const ruts=new THREE.InstancedMesh(rutGeo,rutMat,maxRuts);
+    const edgeBlend=new THREE.InstancedMesh(edgeBlendGeo,edgeBlendMat,maxEdgeBlend);
     const edgeGrass=new THREE.InstancedMesh(roadGrassGeo,roadGrassMat,maxGrass);
-    const dRoad=new THREE.Object3D(); let es=0, ru=0, eg=0;
+    edgeStones.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(maxStones*3),3);
+    const stoneTint=new THREE.Color();
+    const dRoad=new THREE.Object3D(); let es=0, ru=0, eb=0, eg=0;
     for(let lane=0;lane<LANES;lane++){
       const a=(lane/LANES)*Math.PI*2, len=outer-inner;
       const cx=Math.cos(a)*(inner+len/2), cz=Math.sin(a)*(inner+len/2);
@@ -3043,41 +3048,49 @@ function rebuildDetail(){
       const halfW=isMain?1.18:.74;
       for(let q=0;q<9;q++){
         const f=q/8, dist=inner+f*len;
-        const wig=(srand(lane*101+q*17)-.5)*.22;
-        for(const side of [-1,1]) if(es<maxStones && srand(lane*211+q*29+(side>0?3:7))>.22){
-          const lateral=halfW+wig+(srand(lane*37+q*13)-.5)*.18;
+        const wig=(srand(lane*101+q*17)-.5)*.24;
+        for(const side of [-1,1]){
+          const lateral=halfW+wig+(srand(lane*37+q*13+(side>0?2:5))-.5)*.20;
           const px=Math.cos(a)*dist + Math.cos(a+Math.PI/2)*lateral*side;
           const pz=Math.sin(a)*dist + Math.sin(a+Math.PI/2)*lateral*side;
-          if(!overRiver(px,pz,.35)){
-            dRoad.position.set(px,.065,pz); dRoad.rotation.set(srand(q+lane)*3,srand(q*5+lane)*6,srand(q*7+lane)*3);
-            dRoad.scale.setScalar(.65+srand(q*11+lane)*.85); dRoad.updateMatrix(); edgeStones.setMatrixAt(es++,dRoad.matrix);
+          if(overRiver(px,pz,.35)) continue;
+          if(eb<maxEdgeBlend && srand(lane*197+q*31+(side>0?11:17))>.12){
+            dRoad.position.set(px,.041,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(lane*223+q)-.5)*.06);
+            dRoad.scale.set(isMain?1.15:.92,.75+srand(lane*229+q)*.55,1); dRoad.updateMatrix(); edgeBlend.setMatrixAt(eb++,dRoad.matrix);
+          }
+          if(es<maxStones && srand(lane*211+q*29+(side>0?3:7))>.44){
+            dRoad.position.set(px,.067,pz); dRoad.rotation.set(srand(q+lane)*3,srand(q*5+lane)*6,srand(q*7+lane)*3);
+            dRoad.scale.setScalar(.58+srand(q*11+lane)*.95); dRoad.updateMatrix(); edgeStones.setMatrixAt(es,dRoad.matrix);
+            stoneTint.setHSL(.10+srand(lane*17+q*19)*.025,.18,.58+srand(lane*41+q)*.12); edgeStones.setColorAt(es,stoneTint); es++;
           }
         }
-        if(q<8 && ru<maxRuts && srand(lane*61+q)>.10){
+        if(q<8 && ru<maxRuts && srand(lane*61+q)>.06){
           const px=Math.cos(a)*(inner+(f+.045)*len), pz=Math.sin(a)*(inner+(f+.045)*len);
-          dRoad.position.set(px,.044,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(lane*23+q)-.5)*.08);
-          dRoad.scale.set(isMain?1.2:.85,1+srand(lane*19+q)*.55,1); dRoad.updateMatrix(); ruts.setMatrixAt(ru++,dRoad.matrix);
+          dRoad.position.set(px,.045,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(lane*23+q)-.5)*.09);
+          dRoad.scale.set(isMain?1.26:.92,1.05+srand(lane*19+q)*.55,1); dRoad.updateMatrix(); ruts.setMatrixAt(ru++,dRoad.matrix);
         }
-        if(eg<maxGrass && srand(lane*151+q*17)>.35){
-          const side=srand(lane*71+q)>0.5?1:-1, lateral=halfW+.08+srand(lane*43+q)*.25;
+        if(eg<maxGrass && srand(lane*151+q*17)>.26){
+          const side=srand(lane*71+q)>0.5?1:-1, lateral=halfW+.06+srand(lane*43+q)*.30;
           const px=Math.cos(a)*dist + Math.cos(a+Math.PI/2)*lateral*side;
           const pz=Math.sin(a)*dist + Math.sin(a+Math.PI/2)*lateral*side;
           if(!overRiver(px,pz,.25)){
-            dRoad.position.set(px,.13,pz); dRoad.rotation.set(0,srand(lane*53+q)*6,(srand(lane*59+q)-.5)*.35);
-            dRoad.scale.setScalar(.75+srand(lane*67+q)*.7); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix);
+            dRoad.position.set(px,.145,pz); dRoad.rotation.set(0,srand(lane*53+q)*6,(srand(lane*59+q)-.5)*.38);
+            dRoad.scale.setScalar(.82+srand(lane*67+q)*.75); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix);
           }
         }
       }
     }
     for(let q=0;q<48;q++){
-      const a=(q/48)*Math.PI*2, dist=BOARD_R*.62+.85+(srand(500+q)-.5)*.55;
+      const a=(q/48)*Math.PI*2, dist=BOARD_R*.62+.85+(srand(500+q)-.5)*.58;
       const px=Math.cos(a)*dist, pz=Math.sin(a)*dist;
       if(overRiver(px,pz,.35)) continue;
-      if(es<maxStones && srand(700+q)>.35){ dRoad.position.set(px,.065,pz); dRoad.rotation.set(0,srand(710+q)*6,0); dRoad.scale.setScalar(.55+srand(720+q)*.8); dRoad.updateMatrix(); edgeStones.setMatrixAt(es++,dRoad.matrix); }
-      if(eg<maxGrass && srand(730+q)>.45){ dRoad.position.set(px,.13,pz); dRoad.rotation.set(0,srand(740+q)*6,0); dRoad.scale.setScalar(.65+srand(750+q)*.75); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix); }
+      if(eb<maxEdgeBlend && srand(690+q)>.25){ dRoad.position.set(px,.041,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(695+q)-.5)*.09); dRoad.scale.set(.95,.7+srand(696+q)*.55,1); dRoad.updateMatrix(); edgeBlend.setMatrixAt(eb++,dRoad.matrix); }
+      if(es<maxStones && srand(700+q)>.54){ dRoad.position.set(px,.067,pz); dRoad.rotation.set(0,srand(710+q)*6,0); dRoad.scale.setScalar(.50+srand(720+q)*.9); dRoad.updateMatrix(); edgeStones.setMatrixAt(es,dRoad.matrix); stoneTint.setHSL(.10+srand(721+q)*.025,.18,.57+srand(722+q)*.13); edgeStones.setColorAt(es,stoneTint); es++; }
+      if(eg<maxGrass && srand(730+q)>.38){ dRoad.position.set(px,.145,pz); dRoad.rotation.set(0,srand(740+q)*6,0); dRoad.scale.setScalar(.72+srand(750+q)*.82); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix); }
     }
-    edgeStones.count=es; ruts.count=ru; edgeGrass.count=eg;
-    [edgeStones,ruts,edgeGrass].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; detailGroup.add(m); });
+    edgeStones.count=es; ruts.count=ru; edgeBlend.count=eb; edgeGrass.count=eg;
+    [edgeStones,ruts,edgeBlend,edgeGrass].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; detailGroup.add(m); });
+    if(edgeStones.instanceColor) edgeStones.instanceColor.needsUpdate=true;
   }
   /* MARKET STALLS — grouped canopies at MARKET_POS, once the settlement exists.
      Traders (FOLK) already bustle here; this gives the district actual buildings
