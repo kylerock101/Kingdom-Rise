@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kingdom Rise Official Rewards</title>
+<style>
+:root{color-scheme:dark;--bg:#11100d;--panel:#1b1712;--panel2:#241d15;--gold:#d7a945;--gold2:#f2d27c;--line:#4b3921;--text:#f7eedb;--muted:#b8aa91;--bad:#ff8a7a;--good:#8ce0a0;--field:#120f0c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 18% 0,#3a2917 0,#15110c 38%,#0b0a08 100%);font-family:Segoe UI,Arial,sans-serif;color:var(--text);min-height:100vh}.wrap{max-width:1160px;margin:0 auto;padding:28px 18px 40px}header{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:18px}h1{font-size:30px;margin:0;color:var(--gold2);font-weight:800}.sub{color:var(--muted);margin-top:6px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:linear-gradient(180deg,var(--panel),#15110d);border:1px solid var(--line);border-radius:8px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.card h2{font-size:18px;margin:0 0 12px;color:var(--gold2)}label{display:block;color:var(--muted);font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;background:var(--field);border:1px solid #5b4527;border-radius:6px;color:var(--text);padding:11px 12px;font-size:15px}textarea{min-height:84px;resize:vertical}button{border:0;border-radius:6px;padding:11px 14px;font-size:15px;font-weight:800;cursor:pointer;color:#20160a;background:linear-gradient(180deg,var(--gold2),var(--gold))}button.secondary{background:#302518;color:var(--text);border:1px solid var(--line)}button.danger{background:#4b1f18;color:#ffe4df;border:1px solid #7b352b}button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.status{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#130f0b;color:var(--muted)}.status.good{color:var(--good);border-color:#3e7a4e}.status.bad{color:var(--bad);border-color:#784035}.players{display:grid;gap:8px;max-height:360px;overflow:auto}.player{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid var(--line);border-radius:6px;padding:10px;background:#15110d}.player.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(215,169,69,.2)}.name{font-weight:800;color:var(--gold2)}.uid,.small{font-size:12px;color:var(--muted);word-break:break-all}.balances{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}.chip{border:1px solid #5b4527;background:#211910;border-radius:999px;padding:4px 8px;font-size:12px;color:#eadbbe}.preview{display:grid;gap:8px}.previewLine{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding:8px 0}.history{display:grid;gap:8px;max-height:300px;overflow:auto}.hist{border:1px solid var(--line);border-radius:6px;padding:9px;background:#14100c}.full{grid-column:1/-1}.hide{display:none}.warn{color:#f6c06a;font-size:13px;line-height:1.45}.error{color:var(--bad)}@media(max-width:850px){.grid{grid-template-columns:1fr}header{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><h1>Kingdom Rise Official Rewards</h1><div class="sub">Local-only admin panel. Admin SDK stays on this computer.</div></div><div id="connectionStatus" class="status">Not connected</div></header>
+<div class="grid">
+<section class="card">
+<h2>Connection</h2>
+<p class="warn">Enter the service-account JSON path stored outside the repository. The file contents never go to the browser.</p>
+<label for="keyPath">Service-account key path</label>
+<div class="row"><input id="keyPath" autocomplete="off"><button id="connectBtn">Connect</button></div>
+<label><input id="rememberPath" type="checkbox" style="width:auto"> Remember this local path in this browser</label>
+<div id="connectMessage" class="small"></div>
+</section>
+<section class="card">
+<h2>Selected Player</h2>
+<div id="selectedBox" class="status">No player selected</div>
+</section>
+<section class="card">
+<h2>Player Search</h2>
+<label for="search">Name or UID</label>
+<div class="row"><input id="search" placeholder="RewardTester or UID"><button id="loadPlayersBtn" class="secondary">Load players</button></div>
+<div id="players" class="players" style="margin-top:12px"></div>
+</section>
+<section class="card">
+<h2>Reward</h2>
+<label for="rewardType">Reward type</label>
+<select id="rewardType"><option value="coins">Coins</option><option value="rolls">Rolls</option><option value="soldiers">Soldiers</option><option value="returning-founder">Returning Founder preset</option></select>
+<div id="amountWrap"><label for="amount">Amount</label><input id="amount" type="number" min="1" step="1" value="10"></div>
+<label for="title">Title</label><input id="title" maxlength="80" value="Official Kingdom Gift">
+<label for="message">Message</label><textarea id="message" maxlength="500" placeholder="Optional message for the player"></textarea>
+<button id="previewBtn" style="margin-top:12px">Preview Reward</button>
+</section>
+<section class="card">
+<h2>Preview & Confirmation</h2>
+<div id="preview" class="preview"><div class="status">Preview a valid reward first.</div></div>
+<label for="confirmText">Type SEND to confirm</label><input id="confirmText" autocomplete="off" placeholder="SEND">
+<button id="deliverBtn" class="danger" disabled style="margin-top:12px">Deliver Official Reward</button>
+<div id="deliverMessage" class="small"></div>
+</section>
+<section class="card">
+<h2>Session History</h2>
+<div id="history" class="history"><div class="status">No rewards sent this session.</div></div>
+</section>
+</div>
+</div>
+<script>
+const CSRF="__CSRF_TOKEN__";
+const DEFAULT_KEY_PATH="__DEFAULT_KEY_PATH__";
+let connected=false, selected=null, preview=null, requestKey=null, sending=false;
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString();
+function makeRequestKey(){ const a=new Uint8Array(18); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(36).padStart(2,"0")).join("").slice(0,32); }
+async function api(path, options={}){ const res=await fetch(path,Object.assign({headers:{"content-type":"application/json","x-kr-admin-csrf":CSRF}},options)); const data=await res.json().catch(()=>({ok:false,error:"Invalid server response"})); if(!res.ok||!data.ok) throw new Error(data.error||"Request failed"); return data; }
+function setStatus(ok,msg){ connected=!!ok; const el=$("connectionStatus"); el.className="status "+(ok?"good":"bad"); el.textContent=msg; updateButtons(); }
+function updateButtons(){ const validReward=!!selected && connected && validInput(); $("previewBtn").disabled=!validReward; $("deliverBtn").disabled=!preview || $("confirmText").value.trim()!=="SEND" || sending; }
+function validInput(){ const type=$("rewardType").value; if(type==="returning-founder") return true; const n=Number($("amount").value); return Number.isSafeInteger(n)&&n>0; }
+function playerHtml(p){ return `<div><div class="name">${esc(p.name||"(unnamed)")}</div><div class="uid">${esc(p.uid)}</div><div class="balances"><span class="chip">Realm ${esc(p.realm||"?")}</span><span class="chip">Coins ${fmt(p.coins)}</span><span class="chip">Rolls ${fmt(p.rolls)}</span><span class="chip">Soldiers ${fmt(p.soldiers)}</span></div></div><button class="secondary" data-uid="${esc(p.uid)}">Select</button>`; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function renderSelected(){ $("selectedBox").innerHTML=selected?`<div class="name">${esc(selected.name||"(unnamed)")}</div><div class="uid">${esc(selected.uid)}</div><div class="balances"><span class="chip">Coins ${fmt(selected.coins)}</span><span class="chip">Rolls ${fmt(selected.rolls)}</span><span class="chip">Soldiers ${fmt(selected.soldiers)}</span></div>`:"No player selected"; }
+function renderPreview(p){ preview=p; requestKey=makeRequestKey(); $("preview").innerHTML=`<div class="previewLine"><span>Player</span><strong>${esc(p.player.name)} (${esc(p.player.shortUid)})</strong></div>${p.reward.map(r=>`<div class="previewLine"><span>${esc(r.label)}</span><strong>${fmt(r.before)} -> ${fmt(r.after)} (+${fmt(r.amount)})</strong></div>`).join("")}<div class="previewLine"><span>Title</span><strong>${esc(p.title)}</strong></div><div class="previewLine"><span>Message</span><strong>${esc(p.message||"(none)")}</strong></div>`; updateButtons(); }
+async function refreshStatus(){ try{ const s=await api("/api/status"); connected=s.connected; setStatus(connected, connected?"Connected using "+(s.keyPathMasked||"service account"):"Not connected"); renderHistory(s.history||[]); }catch(e){ setStatus(false,"Not connected"); } }
+function renderHistory(rows){ $("history").innerHTML=rows.length?rows.map(h=>`<div class="hist"><div><strong>${esc(h.ok?"Delivered":"Failed")}</strong> ${esc(h.reward.map(r=>r.amount+" "+r.resource).join(", "))}</div><div class="small">${esc(h.player.name)} · ${esc(h.player.uid)} · ${esc(h.giftId||h.error||"")}</div><div class="small">${esc(h.timestamp)}</div></div>`).join(""):'<div class="status">No rewards sent this session.</div>'; }
+$("keyPath").value=localStorage.getItem("krAdminKeyPath")||DEFAULT_KEY_PATH;
+$("rememberPath").checked=!!localStorage.getItem("krAdminKeyPath");
+$("connectBtn").onclick=async()=>{ $("connectMessage").textContent="Connecting..."; try{ const keyPath=$("keyPath").value.trim(); if($("rememberPath").checked) localStorage.setItem("krAdminKeyPath",keyPath); else localStorage.removeItem("krAdminKeyPath"); const r=await api("/api/connect",{method:"POST",body:JSON.stringify({keyPath})}); setStatus(true,"Connected using "+r.keyPathMasked); $("connectMessage").textContent="Connected."; }catch(e){ setStatus(false,"Connection failed"); $("connectMessage").textContent=e.message; } };
+$("loadPlayersBtn").onclick=async()=>{ const box=$("players"); box.innerHTML='<div class="status">Loading...</div>'; try{ const r=await api("/api/players?search="+encodeURIComponent($("search").value)); box.innerHTML=r.players.length?r.players.map(p=>`<div class="player" data-row="${esc(p.uid)}">${playerHtml(p)}</div>`).join(""):'<div class="status">No players found.</div>'; box.querySelectorAll("button[data-uid]").forEach(btn=>btn.onclick=()=>{ selected=r.players.find(p=>p.uid===btn.dataset.uid); preview=null; $("preview").innerHTML='<div class="status">Preview a valid reward first.</div>'; renderSelected(); updateButtons(); }); }catch(e){ box.innerHTML='<div class="status bad">'+esc(e.message)+'</div>'; } };
+$("rewardType").onchange=()=>{ $("amountWrap").classList.toggle("hide",$("rewardType").value==="returning-founder"); preview=null; updateButtons(); };
+["amount","title","message","confirmText"].forEach(id=>$(id).addEventListener("input",()=>{ if(id!=="confirmText") preview=null; updateButtons(); }));
+$("previewBtn").onclick=async()=>{ try{ const body={uid:selected.uid,rewardType:$("rewardType").value,amount:$("amount").value,title:$("title").value,message:$("message").value}; const r=await api("/api/preview",{method:"POST",body:JSON.stringify(body)}); renderPreview(r.preview); $("confirmText").value=""; }catch(e){ $("preview").innerHTML='<div class="status bad">'+esc(e.message)+'</div>'; preview=null; updateButtons(); } };
+$("deliverBtn").onclick=async()=>{ if(sending) return; sending=true; updateButtons(); $("deliverMessage").textContent="Delivering..."; try{ const body={uid:selected.uid,rewardType:$("rewardType").value,amount:$("amount").value,title:$("title").value,message:$("message").value,confirmation:$("confirmText").value,idempotencyKey:requestKey}; const r=await api("/api/deliver",{method:"POST",body:JSON.stringify(body)}); const delivered=r.result.results[0]; $("deliverMessage").textContent="Delivered. Gift ID: "+(delivered.giftId||"unknown"); preview=null; requestKey=null; $("confirmText").value=""; await refreshStatus(); }catch(e){ $("deliverMessage").textContent=e.message; } finally{ sending=false; updateButtons(); } };
+refreshStatus(); updateButtons();
+</script>
+</body>
+</html>
