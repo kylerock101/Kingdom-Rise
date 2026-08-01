@@ -1771,7 +1771,7 @@ const TILE_DEFS=(()=>{
   return defs;
 })();
 /* ---- a river across the land, and a humpback bridge carrying the road over it ---- */
-let WATER=null, WATER_Y=0.026;      // baseline height the shimmer bobs around
+let WATER=null, WATER_Y=0.026, RIVER_FLOW=[];      // baseline height the shimmer bobs around
 let RIVER=null;                     // {ax,az,bx,bz,halfW} — the water's footprint on the ground
 let BRIDGE_CROSS_POINT=null;        // where citizens funnel through to cross on foot
 function riverSide(x,z){
@@ -1797,7 +1797,8 @@ function buildRiverAndBridge(){
   const wood2=new THREE.MeshStandardMaterial({color:0x6f4526,roughness:.8});
   const stone=new THREE.MeshStandardMaterial({color:0x9a9186,roughness:.9});
   const earth=new THREE.MeshStandardMaterial({color:0x5f7a3c,roughness:1});
-  const sand =new THREE.MeshStandardMaterial({color:0x8f7f52,roughness:1});
+  const sand =new THREE.MeshStandardMaterial({color:0xbda76a,roughness:1});
+  const damp =new THREE.MeshStandardMaterial({color:0x6b7048,roughness:1,transparent:true,opacity:.72,depthWrite:false});
 
   /* ---- the crossing curve: spans the WHOLE hump and settles onto flat ground ---- */
   const ctrl=[];
@@ -1824,15 +1825,56 @@ function buildRiverAndBridge(){
     scene.add(m); BRIDGE_PARTS.push(m); return m;
   };
   // the meadow's top surface is y=0, so the river is laid just above it like the cobble apron
-  layer(RIVER_L,RIVER_W+3.0,new THREE.MeshStandardMaterial({color:0x7d6a45,roughness:1}),0.008);
-  layer(RIVER_L,RIVER_W+1.1,sand,0.016);
+  layer(RIVER_L,RIVER_W+3.35,damp,0.009);
+  layer(RIVER_L,RIVER_W+1.35,sand,0.016);
   const water=layer(RIVER_L,RIVER_W,
-    new THREE.MeshStandardMaterial({color:0x2e86c1,roughness:.15,metalness:.25,transparent:true,opacity:.92}),0.026);
-  WATER_Y=0.026; WATER=water;
+    new THREE.MeshStandardMaterial({color:0x2fb7d5,emissive:0x0b5f7a,emissiveIntensity:.12,roughness:.38,metalness:0,transparent:true,opacity:.86,depthWrite:false}),0.028);
+  WATER_Y=0.028; WATER=water; RIVER_FLOW=[];
   RIVER={ ax:cx-flow.x*RIVER_L/2, az:cz-flow.z*RIVER_L/2,
           bx:cx+flow.x*RIVER_L/2, bz:cz+flow.z*RIVER_L/2, halfW:RIVER_W/2 };
-  BRIDGE_CROSS_POINT=curve.getPoint(0.5).clone();      // the deck's midpoint — the one dry way across
 
+  // Bright storybook flow strokes, shore props and reeds all share low-cost geometry/materials.
+  const side=new THREE.Vector3(-flow.z,0,flow.x);
+  const flowMat=new THREE.MeshStandardMaterial({color:0xc8fbff,emissive:0x75dff0,emissiveIntensity:.18,roughness:.6,transparent:true,opacity:.50,depthWrite:false});
+  for(let i=0;i<6;i++){
+    const u=-.42+i*.17+srand(1800+i)*.04, lateral=(srand(1810+i)-.5)*(RIVER_W*.55);
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(4.8+srand(1820+i)*2.4,.075),flowMat);
+    m.rotation.x=-Math.PI/2; m.rotation.z=spin+(srand(1830+i)-.5)*.035;
+    m.position.set(cx+flow.x*u*RIVER_L+side.x*lateral,WATER_Y+.011,cz+flow.z*u*RIVER_L+side.z*lateral);
+    scene.add(m); BRIDGE_PARTS.push(m); RIVER_FLOW.push({m,base:u,lat:lateral,phase:srand(1840+i)*6.28});
+  }
+  const reedMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x567f35),roughness:1});
+  const shoreRockMat=new THREE.MeshStandardMaterial({color:0xa7a086,roughness:1});
+  const lilyMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x477f4a),roughness:1,side:THREE.DoubleSide});
+  const driftMat=new THREE.MeshStandardMaterial({color:0x8a5a32,roughness:.92});
+  const reeds=new THREE.InstancedMesh(new THREE.ConeGeometry(.045,.42,4),reedMat,44);
+  const shoreRocks=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(.12,0),shoreRockMat,26);
+  const lilies=new THREE.InstancedMesh(new THREE.CircleGeometry(.18,10),lilyMat,16);
+  const drift=new THREE.InstancedMesh(new THREE.CylinderGeometry(.055,.07,.62,6),driftMat,9);
+  const dShore=new THREE.Object3D(); let rc=0,sc=0,lc=0,dc=0;
+  for(let i=0;i<72;i++){
+    const u=-.47+srand(1900+i)*.94, sgn=srand(1910+i)>.5?1:-1;
+    const along=RIVER_L*u, edge=sgn*(RIVER_W*.5+.38+srand(1920+i)*.55);
+    const x=cx+flow.x*along+side.x*edge, z=cz+flow.z*along+side.z*edge;
+    if(overRiver(x,z,-.08)) continue;
+    if(rc<44 && srand(1930+i)>.30){
+      dShore.position.set(x,.19,z); dShore.rotation.set(0,srand(1940+i)*6.28,(srand(1950+i)-.5)*.42);
+      dShore.scale.setScalar(.75+srand(1960+i)*.75); dShore.updateMatrix(); reeds.setMatrixAt(rc++,dShore.matrix);
+    }
+    if(sc<26 && srand(1970+i)>.62){
+      dShore.position.set(x,.055,z); dShore.rotation.set(srand(1980+i)*3,srand(1990+i)*6.28,srand(2000+i)*3);
+      dShore.scale.setScalar(.6+srand(2010+i)*1.2); dShore.updateMatrix(); shoreRocks.setMatrixAt(sc++,dShore.matrix);
+    }
+  }
+  for(let i=0;i<20;i++){
+    const u=-.43+srand(2100+i)*.86, lateral=(srand(2110+i)-.5)*(RIVER_W*.62);
+    const x=cx+flow.x*u*RIVER_L+side.x*lateral, z=cz+flow.z*u*RIVER_L+side.z*lateral;
+    if(lc<16 && srand(2120+i)>.18){ dShore.position.set(x,WATER_Y+.018,z); dShore.rotation.set(-Math.PI/2,0,srand(2130+i)*6.28); dShore.scale.set(.75+srand(2140+i)*.65,.55+srand(2150+i)*.45,1); dShore.updateMatrix(); lilies.setMatrixAt(lc++,dShore.matrix); }
+    if(dc<9 && srand(2160+i)>.65){ dShore.position.set(x,WATER_Y+.035,z); dShore.rotation.set(Math.PI/2,0,spin+(srand(2170+i)-.5)*.7); dShore.scale.setScalar(.85+srand(2180+i)*.45); dShore.updateMatrix(); drift.setMatrixAt(dc++,dShore.matrix); }
+  }
+  reeds.count=rc; shoreRocks.count=sc; lilies.count=lc; drift.count=dc;
+  [reeds,shoreRocks,lilies,drift].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; scene.add(m); BRIDGE_PARTS.push(m); });
+  BRIDGE_CROSS_POINT=curve.getPoint(0.5).clone();      // the deck's midpoint - the one dry way across
   /* ---- the earthen embankment the road climbs, with a gap left for the arch ---- */
   const GY=-0.30, MHALF=1.42, ARCH_HALF_U=0.085;
   const mp=[], mn=[], mi=[], rowU=[];
@@ -1917,6 +1959,16 @@ function buildRiverAndBridge(){
   const deck=new THREE.Mesh(dg,wood2);
   deck.castShadow=deck.receiveShadow=true;
   scene.add(deck); BRIDGE_PARTS.push(deck);
+  const plankMat=new THREE.MeshStandardMaterial({color:0x9a6638,roughness:.86});
+  const planks=new THREE.InstancedMesh(new THREE.BoxGeometry(3.05,.035,.18),plankMat,18);
+  const dPlank=new THREE.Object3D(); let pc=0;
+  for(let k=5;k<N-4;k+=4){
+    const p=pts[k], t=curve.getTangent(k/N); t.y=0; t.normalize();
+    dPlank.position.set(p.x,p.y-DROP+.035,p.z); dPlank.rotation.set(0,Math.atan2(t.x,t.z)+Math.PI/2,0);
+    dPlank.scale.set(1,.9+srand(2200+k)*.4,1); dPlank.updateMatrix(); planks.setMatrixAt(pc++,dPlank.matrix);
+  }
+  planks.count=pc; planks.instanceMatrix.needsUpdate=true; planks.castShadow=planks.receiveShadow=true;
+  scene.add(planks); BRIDGE_PARTS.push(planks);
 
   /* ---- slim handrails, only along the raised part, with posts down to the deck ---- */
   const RAIL_Y=0.46, RAIL_OUT=1.47, POST_H=RAIL_Y+DROP;   // rails track the wider deck
@@ -1945,8 +1997,14 @@ function buildRiverAndBridge(){
 }
 function tickWater(t){
   if(!WATER) return;
-  WATER.material.opacity=0.88+Math.sin(t*0.9)*0.045;      // a slow shimmer
-  WATER.position.y=WATER_Y+Math.sin(t*0.7)*0.006;         // bob around wherever the river was laid
+  WATER.material.opacity=0.84+Math.sin(t*0.9)*0.035;      // a slow shimmer
+  WATER.position.y=WATER_Y+Math.sin(t*0.7)*0.004;         // bob around wherever the river was laid
+  for(let i=0;i<RIVER_FLOW.length;i++){
+    const p=RIVER_FLOW[i], m=p.m;
+    if(!m) continue;
+    m.material.opacity=0.36+Math.sin(t*1.15+p.phase)*0.10;
+    m.position.y=WATER_Y+.012+Math.sin(t*1.7+p.phase)*0.003;
+  }
 }
 /* ================= Visual Pass 1: painted medieval tile emblems =================
    Custom CanvasTextures drawn as engraved kingdom icons — no OS emoji.
