@@ -1794,7 +1794,7 @@ function buildRiverAndBridge(){
   const mid=path[idx(1)].clone().add(path[idx(2)]).multiplyScalar(.5);
 
   const wood =new THREE.MeshStandardMaterial({color:0x8a5a32,roughness:.7});
-  const wood2=new THREE.MeshStandardMaterial({color:0x6f4526,roughness:.8});
+  const wood2=new THREE.MeshStandardMaterial({color:0x5f3a22,roughness:.82});
   const stone=new THREE.MeshStandardMaterial({color:0x9a9186,roughness:.9});
   const earth=new THREE.MeshStandardMaterial({color:0x5f7a3c,roughness:1});
   const sand =new THREE.MeshStandardMaterial({color:0xbda76a,roughness:1});
@@ -1835,10 +1835,10 @@ function buildRiverAndBridge(){
 
   // Bright storybook flow strokes, shore props and reeds all share low-cost geometry/materials.
   const side=new THREE.Vector3(-flow.z,0,flow.x);
-  const flowMat=new THREE.MeshStandardMaterial({color:0xc8fbff,emissive:0x75dff0,emissiveIntensity:.18,roughness:.6,transparent:true,opacity:.50,depthWrite:false});
+  const flowMat=new THREE.MeshStandardMaterial({color:0xc8fbff,emissive:0x75dff0,emissiveIntensity:.18,roughness:.6,transparent:true,opacity:.56,depthWrite:false});
   for(let i=0;i<6;i++){
     const u=-.42+i*.17+srand(1800+i)*.04, lateral=(srand(1810+i)-.5)*(RIVER_W*.55);
-    const m=new THREE.Mesh(new THREE.PlaneGeometry(4.8+srand(1820+i)*2.4,.075),flowMat);
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(4.8+srand(1820+i)*2.4,.084),flowMat);
     m.rotation.x=-Math.PI/2; m.rotation.z=spin+(srand(1830+i)-.5)*.035;
     m.position.set(cx+flow.x*u*RIVER_L+side.x*lateral,WATER_Y+.011,cz+flow.z*u*RIVER_L+side.z*lateral);
     scene.add(m); BRIDGE_PARTS.push(m); RIVER_FLOW.push({m,base:u,lat:lateral,phase:srand(1840+i)*6.28});
@@ -1959,7 +1959,7 @@ function buildRiverAndBridge(){
   const deck=new THREE.Mesh(dg,wood2);
   deck.castShadow=deck.receiveShadow=true;
   scene.add(deck); BRIDGE_PARTS.push(deck);
-  const plankMat=new THREE.MeshStandardMaterial({color:0x9a6638,roughness:.86});
+  const plankMat=new THREE.MeshStandardMaterial({color:0xa87342,roughness:.86});
   const planks=new THREE.InstancedMesh(new THREE.BoxGeometry(3.05,.035,.18),plankMat,18);
   const dPlank=new THREE.Object3D(); let pc=0;
   for(let k=5;k<N-4;k+=4){
@@ -2002,7 +2002,7 @@ function tickWater(t){
   for(let i=0;i<RIVER_FLOW.length;i++){
     const p=RIVER_FLOW[i], m=p.m;
     if(!m) continue;
-    m.material.opacity=0.36+Math.sin(t*1.15+p.phase)*0.10;
+    m.material.opacity=0.40+Math.sin(t*1.15+p.phase)*0.11;
     m.position.y=WATER_Y+.012+Math.sin(t*1.7+p.phase)*0.003;
   }
 }
