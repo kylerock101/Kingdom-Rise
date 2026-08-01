@@ -383,10 +383,23 @@
   .giftBtn:disabled{filter:grayscale(.6) brightness(.85);}
   .officialGiftRow{background:linear-gradient(180deg,#3b2b68,#251947);border:1px solid rgba(255,201,60,.35);}
   .officialGiftRow.claimed{opacity:.68;}
+  .officialGiftRow.unread{box-shadow:0 0 0 1px rgba(255,201,60,.6), 0 0 14px rgba(255,201,60,.18);}
   .officialGiftRow .gi{width:32px;text-align:center;}
   .officialGiftRow .gt .officialTitle{display:block;color:#f4efff;font-size:13px;}
   .officialGiftRow .gt .officialMeta{display:block;color:#ffc93c;font-size:11px;font-weight:900;margin-top:2px;}
   .officialGiftRow .gt .officialMsg{display:block;color:#c7bee9;font-size:11px;font-weight:700;margin-top:2px;}
+  .socCount{display:none;margin-left:5px;min-width:16px;padding:2px 5px;border-radius:999px;background:#ff5c4d;color:#fff;font-size:10px;line-height:1;font-weight:900;vertical-align:middle;}
+  .socCount.show{display:inline-block;}
+  #ravenDeliveryFx{position:fixed;inset:0;z-index:38;pointer-events:none;display:none;overflow:hidden;}
+  #ravenDeliveryFx.show{display:block;}
+  .ravenBird{position:absolute;left:-90px;top:18%;width:68px;height:44px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.45));animation:ravenFlight 2.4s cubic-bezier(.2,.74,.22,1) forwards;}
+  .ravenBird::before{content:"";position:absolute;left:22px;top:14px;width:34px;height:22px;border-radius:55% 45% 50% 50%;background:#14101c;box-shadow:inset 7px -5px 0 #251b32;}
+  .ravenBird::after{content:"";position:absolute;left:52px;top:17px;border-left:12px solid #100c16;border-top:5px solid transparent;border-bottom:5px solid transparent;}
+  .ravenWing{position:absolute;left:11px;top:0;width:42px;height:28px;background:#100c16;border-radius:70% 25% 65% 25%;transform-origin:70% 75%;animation:ravenWing .28s ease-in-out infinite alternate;}
+  .ravenScrollMini{position:absolute;left:23px;top:34px;width:18px;height:13px;border-radius:4px;background:linear-gradient(#f1dfb8,#d8bc83);border:1px solid #9d7a45;box-shadow:0 3px 5px rgba(0,0,0,.25);}
+  @keyframes ravenWing{from{transform:rotate(19deg) scaleY(.75);}to{transform:rotate(-22deg) scaleY(1.05);}}
+  @keyframes ravenFlight{0%{transform:translate3d(0,0,0) rotate(-6deg);}38%{transform:translate3d(58vw,15vh,0) rotate(18deg);}68%{transform:translate3d(42vw,38vh,0) rotate(-20deg);}100%{transform:translate3d(calc(50vw + 6px),46vh,0) rotate(0deg);}}
+  @media (max-width:520px){.ravenBird{width:54px;height:36px}.ravenBird::before{left:18px;width:28px;height:18px}.ravenBird::after{left:44px}.ravenWing{width:34px;height:22px}.ravenScrollMini{left:19px;top:29px}}
   .giftBtn.claimed{background:#3a3460;color:#a99cd6;box-shadow:none;}
   .socEmpty{text-align:center;color:#a99cd6;font-weight:700;font-size:13px;padding:14px;}
   /* daily calendar */
@@ -448,6 +461,8 @@
   </div>
 </div>
 
+<div id="ravenDeliveryFx" aria-hidden="true"><div class="ravenBird"><div class="ravenWing"></div><div class="ravenScrollMini"></div></div></div>
+
 <!-- generic card -->
 <div class="ov" id="cardOv"><div class="panel">
   <div class="rod rodTop"></div>
@@ -490,7 +505,7 @@
   <div id="socTabs">
     <button class="socTab active" id="tabBoard">🏆 Leaderboard</button>
     <button class="socTab" id="tabGifts">🎁 Gifts</button>
-    <button class="socTab" id="tabOfficialGifts">🏰 Official</button>
+    <button class="socTab" id="tabOfficialGifts">🏰 Official <span class="socCount" id="officialGiftUnread"></span></button>
   </div>
   <div id="socBody"></div>
 </div></div>
@@ -4376,9 +4391,16 @@ function socialData(){
   saveSocial(seed); return seed;
 }
 function saveSocial(d){ try{ localStorage.setItem(socKey(),JSON.stringify(d)); }catch(e){} }
-let OFFICIAL_GIFTS=[], OFFICIAL_GIFT_OWNER_UID=null;
-const OFFICIAL_GIFT_RESOURCES={coins:{icon:"🪙",label:"coins"},rolls:{icon:"🎲",label:"rolls"},soldiers:{icon:"⚔️",label:"soldiers"}};
-function resetOfficialGiftState(){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=null; const dot=$("giftDot"); if(dot) dot.classList.remove("show"); }
+let OFFICIAL_GIFTS=[], OFFICIAL_GIFT_OWNER_UID=null, OFFICIAL_GIFT_PRESENTING=false, OFFICIAL_GIFT_QUEUE=[];
+const OFFICIAL_GIFT_VIEW_PREFIX="kingsRise3d.officialGiftViewed.";
+const OFFICIAL_GIFT_RESOURCES={coins:{icon:"\uD83E\uDE99",label:"coins"},rolls:{icon:"\uD83C\uDFB2",label:"rolls"},soldiers:{icon:"\u2694\uFE0F",label:"soldiers"}};
+function officialGiftViewedKey(){ return OFFICIAL_GIFT_VIEW_PREFIX+(FB_UID||CURRENT_USER||"guest"); }
+function officialGiftViewedSet(){ try{ const raw=localStorage.getItem(officialGiftViewedKey()); const parsed=JSON.parse(raw||"[]"); if(Array.isArray(parsed)) return new Set(parsed.filter(v=>typeof v==="string")); if(parsed&&typeof parsed==="object") return new Set(Object.keys(parsed).filter(k=>parsed[k])); }catch(e){} return new Set(); }
+function isOfficialGiftViewed(g){ return !!(g&&typeof g.id==="string"&&officialGiftViewedSet().has(g.id)); }
+function markOfficialGiftViewed(g){ if(!g||typeof g.id!=="string") return false; const viewed=officialGiftViewedSet(); viewed.add(g.id); try{ localStorage.setItem(officialGiftViewedKey(),JSON.stringify(Array.from(viewed).slice(-200))); }catch(e){ console.warn("official gift viewed marker failed",e); } if(OFFICIAL_GIFT_OWNER_UID===FB_UID) OFFICIAL_GIFTS.forEach(x=>{ if(x.id===g.id) x.viewed=true; }); return true; }
+function unreadOfficialGifts(inbox){ return (inbox||[]).filter(g=>g&&!isOfficialGiftViewed(g)); }
+function updateOfficialGiftUnreadUi(inbox){ const unread=unreadOfficialGifts(inbox||OFFICIAL_GIFTS); const count=unread.length; const dot=$("giftDot"); if(dot){ if(count){ dot.textContent=count; dot.classList.add("show"); } else dot.classList.remove("show"); } const badge=$("officialGiftUnread"); if(badge){ if(count){ badge.textContent=count; badge.classList.add("show"); } else badge.classList.remove("show"); } $("socialBtn")?.classList.toggle("ready",count>0); return count; }
+function resetOfficialGiftState(){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=null; OFFICIAL_GIFT_QUEUE=[]; OFFICIAL_GIFT_PRESENTING=false; const fx=$("ravenDeliveryFx"); if(fx) fx.classList.remove("show"); updateOfficialGiftUnreadUi([]); }
 function officialGiftMillis(v){ if(!v) return 0; if(typeof v==="number") return v; if(typeof v.toMillis==="function") return v.toMillis(); if(typeof v.seconds==="number") return v.seconds*1000+Math.floor((v.nanoseconds||0)/1000000); return 0; }
 function officialGiftDate(v){ const ms=officialGiftMillis(v); return ms?new Date(ms).toLocaleDateString():"date pending"; }
 function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
@@ -4392,8 +4414,15 @@ function normalizeOfficialGiftDoc(docSnap){
     if(typeof v.amount!=="number"||!Number.isSafeInteger(v.amount)||v.amount<=0) return null;
     resources.push({resource:v.resource, amount:v.amount});
   }
-  return {id:docSnap.id, recipientUid:v.recipientUid, resources, resource:resources[0].resource, amount:resources[0].amount, title:typeof v.title==="string"&&v.title.trim()?v.title.trim():"Official Kingdom Gift", message:typeof v.message==="string"?v.message.trim():"", senderName:"Kingdom Rise", deliveryStatus:v.deliveryStatus==="delivered"?"delivered":"delivered", deliveredAt:v.deliveredAt||v.createdAt||null, createdAt:v.createdAt||v.deliveredAt||null, createdMs:officialGiftMillis(v.deliveredAt||v.createdAt)};
+  const g={id:docSnap.id, recipientUid:v.recipientUid, resources, resource:resources[0].resource, amount:resources[0].amount, title:typeof v.title==="string"&&v.title.trim()?v.title.trim():"Official Kingdom Gift", message:typeof v.message==="string"?v.message.trim():"", senderName:"Kingdom Rise", deliveryStatus:v.deliveryStatus==="delivered"?"delivered":"delivered", deliveredAt:v.deliveredAt||v.createdAt||null, createdAt:v.createdAt||v.deliveredAt||null, createdMs:officialGiftMillis(v.deliveredAt||v.createdAt)};
+  g.viewed=isOfficialGiftViewed(g);
+  return g;
 }
+function officialGiftPresentationBlocked(){ return !fbOn()||!FB_UID||CURRENT_USER==="Guest"||$("authOv")?.classList.contains("show")||$("cardOv")?.classList.contains("show")||$("socOv")?.classList.contains("show")||G.state==="decree"; }
+function queueOfficialGiftPresentations(inbox){ if(!fbOn()||!FB_UID||CURRENT_USER==="Guest") return; const unread=unreadOfficialGifts(inbox).sort((a,b)=>(b.createdMs||0)-(a.createdMs||0)); if(!unread.length) return; const known=new Set(OFFICIAL_GIFT_QUEUE.map(g=>g.id)); unread.forEach(g=>{ if(!known.has(g.id)) OFFICIAL_GIFT_QUEUE.push(g); }); setTimeout(playNextOfficialGiftPresentation,500); }
+function playNextOfficialGiftPresentation(){ if(OFFICIAL_GIFT_PRESENTING) return; while(OFFICIAL_GIFT_QUEUE.length&&isOfficialGiftViewed(OFFICIAL_GIFT_QUEUE[0])) OFFICIAL_GIFT_QUEUE.shift(); if(!OFFICIAL_GIFT_QUEUE.length) return; if(officialGiftPresentationBlocked()){ setTimeout(playNextOfficialGiftPresentation,1200); return; } const g=OFFICIAL_GIFT_QUEUE.shift(); showOfficialGiftRaven(g); }
+function showOfficialGiftRaven(g){ if(!g||isOfficialGiftViewed(g)) { setTimeout(playNextOfficialGiftPresentation,200); return; } OFFICIAL_GIFT_PRESENTING=true; const fx=$("ravenDeliveryFx"); if(fx){ fx.classList.remove("show"); void fx.offsetWidth; fx.classList.add("show"); } setTimeout(()=>openOfficialGiftScroll(g),2300); }
+function openOfficialGiftScroll(g){ const details=officialGiftAmountText(g); const message=g.message?escapeHTML(g.message):"A royal reward has been delivered to your kingdom."; const delivered=officialGiftDate(g.deliveredAt); $("cardOv").classList.add("scroll"); showCard("Raven", g.title, '<span style="font-size:11px;font-weight:900;letter-spacing:.06em;color:#6d5426">FROM KINGDOM RISE</span><br>'+message+'<br><br><b>Reward: '+escapeHTML(details)+'</b><br><span style="font-size:11px;font-weight:900;color:#6d5426">Delivered '+escapeHTML(delivered)+'</span>', "Open Scroll", ()=>{ markOfficialGiftViewed(g); const fx=$("ravenDeliveryFx"); if(fx) fx.classList.remove("show"); $("cardOv").classList.remove("scroll"); updateOfficialGiftUnreadUi(OFFICIAL_GIFTS); if(SOC_TAB==="official") renderOfficialGifts(); OFFICIAL_GIFT_PRESENTING=false; setTimeout(playNextOfficialGiftPresentation,350); }); }
 const Social = {
   async leaderboard(){
     if(fbOn()){
@@ -4437,6 +4466,8 @@ const Social = {
       snap.forEach(d=>{ const g=normalizeOfficialGiftDoc(d); if(g) out.push(g); });
       if(OFFICIAL_GIFT_OWNER_UID!==FB_UID){ OFFICIAL_GIFTS=[]; OFFICIAL_GIFT_OWNER_UID=FB_UID; }
       OFFICIAL_GIFTS=out;
+      updateOfficialGiftUnreadUi(out);
+      queueOfficialGiftPresentations(out);
       return out;
     }catch(e){ console.warn("official gifts load failed",e&&e.code||e); return []; }
   },
@@ -4493,9 +4524,7 @@ async function updateGiftDot(){
   if(!dot) return;
   if(!fbOn()||!FB_UID||CURRENT_USER==="Guest"){ dot.classList.remove("show"); return; }
   const inbox=OFFICIAL_GIFT_OWNER_UID===FB_UID?OFFICIAL_GIFTS:await Social.officialInbox();
-  const count=inbox.filter(g=>g.deliveryStatus!=="delivered").length;
-  if(count){ dot.textContent=count; dot.classList.add("show"); }
-  else dot.classList.remove("show");
+  updateOfficialGiftUnreadUi(inbox);
 }
 async function renderBoard(){
   const rows=await Social.leaderboard();
@@ -4565,11 +4594,11 @@ async function renderOfficialGifts(){
   loading.remove();
   if(!inbox.length){ const e=document.createElement("div"); e.className="socEmpty"; e.textContent="No official gifts right now."; body.appendChild(e); updateGiftDot(); return; }
   inbox.forEach(g=>{
-    const row=document.createElement("div"); row.className="giftRow officialGiftRow claimed"; row.dataset.giftId=g.id;
+    const row=document.createElement("div"); row.className="giftRow officialGiftRow "+(g.viewed?"claimed":"unread"); row.dataset.giftId=g.id;
     const meta=OFFICIAL_GIFT_RESOURCES[g.resource];
     const title=escapeHTML(g.title);
     const msgLine=g.message?'<span class="officialMsg">'+escapeHTML(g.message)+'</span>':"";
-    row.innerHTML='<span class="gi">🏰</span><div class="gt"><span class="officialTitle">'+title+'</span><small>from Kingdom Rise · Delivered · '+officialGiftDate(g.deliveredAt)+'</small><span class="officialMeta">'+(meta?meta.icon:"🎁")+" "+officialGiftAmountText(g)+'</span>'+msgLine+'</div><button class="giftBtn claimed" disabled>Delivered</button>';
+    row.innerHTML='<span class="gi">🏰</span><div class="gt"><span class="officialTitle">'+title+'</span><small>from Kingdom Rise · Delivered · '+officialGiftDate(g.deliveredAt)+'</small><span class="officialMeta">'+(meta?meta.icon:"🎁")+" "+officialGiftAmountText(g)+'</span>'+msgLine+'</div><button class="giftBtn claimed" disabled>'+(g.viewed?"Delivered":"Unread")+'</button>';
     body.appendChild(row);
   });
   updateGiftDot();
