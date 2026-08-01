@@ -156,6 +156,15 @@ await run("server binds only to 127.0.0.1", async () => {
   await close(server);
 });
 
+await run("health endpoint identifies the local admin service", async () => {
+  const server = createServer();
+  const address = await listen(server);
+  const res = await request(address, "GET", "/health", null, "test-csrf-token");
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body, { ok: true, service: "kingdom-rise-official-reward-admin" });
+  await close(server);
+});
+
 await run("unauthenticated unconnected reward attempts fail", async () => {
   const server = createServer();
   const address = await listen(server);
