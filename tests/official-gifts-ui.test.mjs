@@ -34,9 +34,19 @@ has(/function isLocalNewerThanCloud\(localRaw, cloudRaw, cloudEnv\)[\s\S]*cloud\
 has(/function hasUnseenRemoteRevision\(remoteMeta\)[\s\S]*remoteMeta\.revision>LAST_CLOUD_REVISION/, "unseen remote revisions are detected before cloud writes");
 has(/if\(remote && hasUnseenRemoteRevision\(remoteMeta\)\)[\s\S]*reloadAuthoritativePlayerSave\("cloud-write-remote-newer"\)[\s\S]*return;/, "stale save writes reload authoritative cloud state instead of overwriting rewards");
 has(/deliveryStatus:v\.deliveryStatus==="delivered"/, "official notifications are normalized as delivered");
-has(/<button class=\"giftBtn claimed\" disabled>Delivered<\/button>/, "official gift rows show delivered read-only status");
+has(/<button class=\"giftBtn claimed\" disabled>\'\+\(g\.viewed\?\"Delivered\":\"Unread\"\)\+\'<\/button>/, "official gift rows show delivered/unread read-only status");
 has(/function officialGiftAmountText\(g\)[\s\S]*?resources\.map/, "official gift UI supports bundled delivered resources");
 has(/from Kingdom Rise . Delivered . /, "official gift rows show delivered sender/status/date");
+has(/const OFFICIAL_GIFT_VIEW_PREFIX="kingsRise3d\.officialGiftViewed\."/, "official gift viewed state is local and account-scoped");
+has(/function markOfficialGiftViewed\(g\)[\s\S]*?localStorage\.setItem\(officialGiftViewedKey\(\)/, "opening the official scroll marks only local viewed state");
+has(/function unreadOfficialGifts\(inbox\)[\s\S]*?!isOfficialGiftViewed\(g\)/, "unread official gifts are derived from local viewed markers");
+has(/function queueOfficialGiftPresentations\(inbox\)[\s\S]*?OFFICIAL_GIFT_QUEUE\.push\(g\)/, "unread official gifts are queued one at a time");
+has(/function showOfficialGiftRaven\(g\)[\s\S]*?ravenDeliveryFx[\s\S]*?openOfficialGiftScroll/, "raven delivery animation precedes the scroll panel");
+has(/function openOfficialGiftScroll\(g\)[\s\S]*?showCard\("Raven",[\s\S]*?"Open Scroll"[\s\S]*?markOfficialGiftViewed\(g\)/, "scroll button marks viewed without claiming rewards");
+has(/updateOfficialGiftUnreadUi\(out\);[\s\S]*?queueOfficialGiftPresentations\(out\);/, "official inbox refreshes unread badges and presentation queue");
+assert.match(html, /id="ravenDeliveryFx"/, "raven delivery visual layer is present");
+assert.match(html, /id="officialGiftUnread"/, "official tab unread count is present");
+assert.doesNotMatch(main, /officialGifts"\)[\s\S]{0,500}(updateDoc|setDoc|addDoc)/, "player client does not write official gift documents");
 assert.doesNotMatch(main, /Claiming\.\.\.|Official gift claimed|official gift claim failed/, "official gifts no longer expose a player claim flow");
 
 console.log("PASS official gifts UI contract checks");
