@@ -232,6 +232,9 @@ function createOfficialGiftAdminUiServer(options = {}) {
       requireLocal(req);
       requireCsrf(req);
       const url = new URL(req.url || "/", `http://${host}:${port}`);
+      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
+        return json(res, 200, { ok: true, service: "kingdom-rise-official-reward-admin" });
+      }
       if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
         const html = fs.readFileSync(uiPath, "utf8").replace(/__CSRF_TOKEN__/g, csrfToken).replace(/__DEFAULT_KEY_PATH__/g, DEFAULT_KEY_PATH.replace(/\\/g, "\\\\"));
         return text(res, 200, html, "text/html; charset=utf-8");
