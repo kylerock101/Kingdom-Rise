@@ -1612,17 +1612,21 @@ let skyDome=null, skyTop=new THREE.Color(0x2a1a5c), skyBot=new THREE.Color(0x6a5
 const groundMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,vertexColors:true});
 const groundGeo=new THREE.CylinderGeometry(48,48,.6,80,4,false);
 {
-  // gentle mottled greens across the meadow — baked per-vertex, costs nothing at runtime
+  // gentle mottled greens and tiny rolling height shifts baked per-vertex, costs nothing at runtime
   const posn=groundGeo.attributes.position, cols=[], base=new THREE.Color(0x2f7047), tmp=new THREE.Color();
   for(let i=0;i<posn.count;i++){
     const vx=posn.getX(i), vz=posn.getZ(i), vy=posn.getY(i);
     if(vy>0){                                              // only the top surface is grass
-      const n=Math.sin(vx*0.5)*Math.cos(vz*0.5)*0.5 + Math.sin(vx*1.7+vz)*0.5;
-      tmp.copy(base).offsetHSL(0.02*n, 0.05*n, 0.06*n);
+      const rr=Math.hypot(vx,vz)/48;
+      const n=Math.sin(vx*0.42)*Math.cos(vz*0.36)*0.55 + Math.sin(vx*1.25+vz*.72)*0.25 + Math.cos((vx-vz)*.18)*0.20;
+      const lift=(n*0.014 - 0.006) * Math.min(1,Math.max(0,(rr-.08)*1.25));
+      posn.setY(i,vy+lift);
+      tmp.copy(base).offsetHSL(0.025*n, 0.055*n, 0.065*n);
     } else tmp.copy(base).multiplyScalar(0.7);
     cols.push(tmp.r,tmp.g,tmp.b);
   }
   groundGeo.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
+  groundGeo.computeVertexNormals();
 }
 const ground=new THREE.Mesh(groundGeo,groundMat);
 ground.position.y=-.3; ground.receiveShadow=true; scene.add(ground);
@@ -2318,27 +2322,62 @@ function makeFarm(level,seed){
 function makeLumber(level,seed){
   const g=new THREE.Group();
   const trunkMat=new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.95});
-  const leafMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x2f7a45),roughness:.95});
-  const standing=Math.max(1,4-level);                        // the woodlot is felled as the realm grows
+  const leafMats=[0x2f7a45,0x3f8d50,0x27663f,0x5c9a4a].map(c=>new THREE.MeshStandardMaterial({color:skinLeaf(c),roughness:.95}));
+  const floorMat=new THREE.MeshStandardMaterial({color:0x2c5436,roughness:1,transparent:true,opacity:.78,depthWrite:false});
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(3.25,22),floorMat);
+  floor.rotation.x=-Math.PI/2; floor.position.y=.018; floor.receiveShadow=true; g.add(floor);
+  const standing=Math.max(2,6-level);                        // the woodlot thins as the realm grows
   for(let i=0;i<standing;i++){
-    const a=srand(seed+i)*6.28, r=1.0+srand(seed+i+9)*1.8;
+    const a=srand(seed+i)*6.28, edge=srand(seed+i+21), r=.55+edge*2.35;
+    const variant=Math.floor(srand(seed+i+43)*4), sc=.82+srand(seed+i+9)*.62+(1-edge)*.22;
     const t=new THREE.Group();
-    const tr=new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.7,7),trunkMat);
-    tr.position.y=.85; tr.castShadow=true;
-    const lf=new THREE.Mesh(new THREE.ConeGeometry(.95,1.8,8),leafMat);
-    lf.position.y=2.3; lf.castShadow=true;
-    t.add(tr,lf); t.position.set(Math.cos(a)*r,0,Math.sin(a)*r); g.add(t);
+    const tr=new THREE.Mesh(new THREE.CylinderGeometry(.13,.21,1.25+variant*.12,7),trunkMat);
+    tr.position.y=(1.25+variant*.12)/2; tr.castShadow=true; t.add(tr);
+    if(variant===0){
+      const lf=new THREE.Mesh(new THREE.ConeGeometry(.82,1.65,8),leafMats[i%leafMats.length]);
+      lf.position.y=1.95; lf.castShadow=true; t.add(lf);
+    }else if(variant===1){
+      const lf=new THREE.Mesh(new THREE.SphereGeometry(.72,8,6),leafMats[i%leafMats.length]);
+      lf.scale.set(1.05,.78,1.05); lf.position.y=1.85; lf.castShadow=true; t.add(lf);
+    }else if(variant===2){
+      const low=new THREE.Mesh(new THREE.ConeGeometry(.88,1.1,7),leafMats[i%leafMats.length]);
+      low.position.y=1.55; low.castShadow=true; t.add(low);
+      const top=new THREE.Mesh(new THREE.ConeGeometry(.62,1.15,7),leafMats[(i+1)%leafMats.length]);
+      top.position.y=2.22; top.castShadow=true; t.add(top);
+    }else{
+      const lf=new THREE.Mesh(new THREE.ConeGeometry(.62,1.95,6),leafMats[i%leafMats.length]);
+      lf.position.y=2.15; lf.castShadow=true; t.add(lf);
+    }
+    t.position.set(Math.cos(a)*r,0,Math.sin(a)*r); t.scale.setScalar(sc); t.rotation.y=srand(seed+i+31)*6.28; g.add(t);
   }
   const stumps=Math.min(5,level+1);                          // stumps where trees came down
   for(let i=0;i<stumps;i++){
-    const a=srand(seed+30+i)*6.28, r=1.2+srand(seed+40+i)*2.0;
+    const a=srand(seed+30+i)*6.28, r=1.1+srand(seed+40+i)*2.05;
     const st=new THREE.Mesh(new THREE.CylinderGeometry(.22,.26,.3,7),trunkMat);
     st.position.set(Math.cos(a)*r,.15,Math.sin(a)*r); st.castShadow=true; g.add(st);
   }
+  const bushMat=new THREE.MeshStandardMaterial({color:skinBush(0x365f39),roughness:1});
+  const bush=new THREE.InstancedMesh(new THREE.SphereGeometry(.22,6,5),bushMat,8);
+  const d=new THREE.Object3D();
+  for(let i=0;i<8;i++){
+    const a=srand(seed+70+i)*6.28, r=1.55+srand(seed+80+i)*1.75;
+    d.position.set(Math.cos(a)*r,.16,Math.sin(a)*r); d.rotation.set(0,srand(seed+90+i)*6.28,0);
+    d.scale.set(1+srand(seed+100+i)*.65,.55+srand(seed+110+i)*.35,1+srand(seed+120+i)*.55);
+    d.updateMatrix(); bush.setMatrixAt(i,d.matrix);
+  }
+  bush.instanceMatrix.needsUpdate=true; bush.castShadow=true; g.add(bush);
+  const capMat=new THREE.MeshStandardMaterial({color:0xc04b45,roughness:.9});
+  const caps=new THREE.InstancedMesh(new THREE.SphereGeometry(.06,6,4),capMat,5);
+  for(let i=0;i<5;i++){
+    const a=srand(seed+130+i)*6.28, r=.9+srand(seed+140+i)*2.1;
+    d.position.set(Math.cos(a)*r,.08,Math.sin(a)*r); d.rotation.set(0,0,0); d.scale.set(1.15,.55,1.15);
+    d.updateMatrix(); caps.setMatrixAt(i,d.matrix);
+  }
+  caps.instanceMatrix.needsUpdate=true; g.add(caps);
   if(level>=1){                                              // stacked logs by the cutting yard
-    for(let i=0;i<3;i++){
+    for(let i=0;i<4;i++){
       const lg=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,1.6,7),trunkMat);
-      lg.rotation.z=Math.PI/2; lg.position.set(1.9,.18+i*0.33,-1.2+(i%2)*0.2);
+      lg.rotation.z=Math.PI/2; lg.position.set(1.9,.18+i*0.28,-1.2+(i%2)*0.2);
       lg.castShadow=true; g.add(lg);
     }
   }
@@ -2983,6 +3022,62 @@ function rebuildDetail(){
       : roadMat;
     const plaza=new THREE.Mesh(new THREE.CircleGeometry(4.2,26),plazaMat);
     plaza.rotation.x=-Math.PI/2; plaza.position.y=0.028; plaza.receiveShadow=true; detailGroup.add(plaza);
+
+    // Visual Pass 3: road trim is batched into a few instanced meshes so paths feel hand-laid without changing routes.
+    const edgeStoneGeo=new THREE.DodecahedronGeometry(.075,0);
+    const edgeStoneMat=new THREE.MeshStandardMaterial({color:0xb2a48e,roughness:1});
+    const rutGeo=new THREE.PlaneGeometry(.10,.55);
+    const rutMat=new THREE.MeshStandardMaterial({color:0x6f624f,roughness:1,transparent:true,opacity:.58,depthWrite:false});
+    const roadGrassGeo=new THREE.ConeGeometry(.045,.20,3);
+    const roadGrassMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x5f9b4a),roughness:1});
+    const maxStones=LANES*18+48, maxRuts=LANES*8+24, maxGrass=LANES*12+36;
+    const edgeStones=new THREE.InstancedMesh(edgeStoneGeo,edgeStoneMat,maxStones);
+    const ruts=new THREE.InstancedMesh(rutGeo,rutMat,maxRuts);
+    const edgeGrass=new THREE.InstancedMesh(roadGrassGeo,roadGrassMat,maxGrass);
+    const dRoad=new THREE.Object3D(); let es=0, ru=0, eg=0;
+    for(let lane=0;lane<LANES;lane++){
+      const a=(lane/LANES)*Math.PI*2, len=outer-inner;
+      const cx=Math.cos(a)*(inner+len/2), cz=Math.sin(a)*(inner+len/2);
+      if(!roadDry(cx,cz,Math.cos(a)*len,Math.sin(a)*len,8)) continue;
+      const isMain=Math.abs(((a-gateAngle+Math.PI)%(2*Math.PI))-Math.PI) < (Math.PI/LANES);
+      const halfW=isMain?1.18:.74;
+      for(let q=0;q<9;q++){
+        const f=q/8, dist=inner+f*len;
+        const wig=(srand(lane*101+q*17)-.5)*.22;
+        for(const side of [-1,1]) if(es<maxStones && srand(lane*211+q*29+(side>0?3:7))>.22){
+          const lateral=halfW+wig+(srand(lane*37+q*13)-.5)*.18;
+          const px=Math.cos(a)*dist + Math.cos(a+Math.PI/2)*lateral*side;
+          const pz=Math.sin(a)*dist + Math.sin(a+Math.PI/2)*lateral*side;
+          if(!overRiver(px,pz,.35)){
+            dRoad.position.set(px,.065,pz); dRoad.rotation.set(srand(q+lane)*3,srand(q*5+lane)*6,srand(q*7+lane)*3);
+            dRoad.scale.setScalar(.65+srand(q*11+lane)*.85); dRoad.updateMatrix(); edgeStones.setMatrixAt(es++,dRoad.matrix);
+          }
+        }
+        if(q<8 && ru<maxRuts && srand(lane*61+q)>.10){
+          const px=Math.cos(a)*(inner+(f+.045)*len), pz=Math.sin(a)*(inner+(f+.045)*len);
+          dRoad.position.set(px,.044,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(lane*23+q)-.5)*.08);
+          dRoad.scale.set(isMain?1.2:.85,1+srand(lane*19+q)*.55,1); dRoad.updateMatrix(); ruts.setMatrixAt(ru++,dRoad.matrix);
+        }
+        if(eg<maxGrass && srand(lane*151+q*17)>.35){
+          const side=srand(lane*71+q)>0.5?1:-1, lateral=halfW+.08+srand(lane*43+q)*.25;
+          const px=Math.cos(a)*dist + Math.cos(a+Math.PI/2)*lateral*side;
+          const pz=Math.sin(a)*dist + Math.sin(a+Math.PI/2)*lateral*side;
+          if(!overRiver(px,pz,.25)){
+            dRoad.position.set(px,.13,pz); dRoad.rotation.set(0,srand(lane*53+q)*6,(srand(lane*59+q)-.5)*.35);
+            dRoad.scale.setScalar(.75+srand(lane*67+q)*.7); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix);
+          }
+        }
+      }
+    }
+    for(let q=0;q<48;q++){
+      const a=(q/48)*Math.PI*2, dist=BOARD_R*.62+.85+(srand(500+q)-.5)*.55;
+      const px=Math.cos(a)*dist, pz=Math.sin(a)*dist;
+      if(overRiver(px,pz,.35)) continue;
+      if(es<maxStones && srand(700+q)>.35){ dRoad.position.set(px,.065,pz); dRoad.rotation.set(0,srand(710+q)*6,0); dRoad.scale.setScalar(.55+srand(720+q)*.8); dRoad.updateMatrix(); edgeStones.setMatrixAt(es++,dRoad.matrix); }
+      if(eg<maxGrass && srand(730+q)>.45){ dRoad.position.set(px,.13,pz); dRoad.rotation.set(0,srand(740+q)*6,0); dRoad.scale.setScalar(.65+srand(750+q)*.75); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix); }
+    }
+    edgeStones.count=es; ruts.count=ru; edgeGrass.count=eg;
+    [edgeStones,ruts,edgeGrass].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; detailGroup.add(m); });
   }
   /* MARKET STALLS — grouped canopies at MARKET_POS, once the settlement exists.
      Traders (FOLK) already bustle here; this gives the district actual buildings
@@ -3069,6 +3164,42 @@ function rebuildDetail(){
       detailGroup.add(well);
     }
   }
+  /* TERRAIN PATCHES - low flat instanced shapes that break up the meadow without touching gameplay space */
+  const patchGeo=new THREE.CircleGeometry(1,14);
+  const bareMat=new THREE.MeshStandardMaterial({color:0x7b6344,roughness:1,transparent:true,opacity:.42,depthWrite:false});
+  const grassPatchMat=new THREE.MeshStandardMaterial({color:0x4f8c48,roughness:1,transparent:true,opacity:.36,depthWrite:false});
+  const forestPatchMat=new THREE.MeshStandardMaterial({color:0x25462f,roughness:1,transparent:true,opacity:.48,depthWrite:false});
+  const PATCH_BARE=30, PATCH_GRASS=36, PATCH_DARK=18;
+  const barePatch=new THREE.InstancedMesh(patchGeo,bareMat,PATCH_BARE);
+  const grassPatch=new THREE.InstancedMesh(patchGeo,grassPatchMat,PATCH_GRASS);
+  const forestPatch=new THREE.InstancedMesh(patchGeo,forestPatchMat,PATCH_DARK);
+  const dPatch=new THREE.Object3D(), patchReach=legacy()>REALM_SPAN*0.8 ? 1.72 : 1.18;
+  let bp=0,gp=0,dp=0,pt=0;
+  while((bp<PATCH_BARE||gp<PATCH_GRASS||dp<PATCH_DARK) && pt<900){
+    pt++;
+    const s=pt*23+5;
+    const a=srand(s)*Math.PI*2, rad=3.9+srand(s+1)*(BOARD_R*patchReach);
+    const px=Math.cos(a)*rad, pz=Math.sin(a)*rad;
+    let close=false;
+    for(let t=0;t<TILE_COUNT;t++){ if(Math.hypot(px-path[t].x,pz-path[t].z)<2.45){ close=true; break; } }
+    if(close || overRiver(px,pz,.65)) continue;
+    const nearWood=WORK_SITES.some(w=>w.kind==="," && Math.hypot(px-w.x,pz-w.z)<5.2);
+    const nearFarm=WORK_SITES.some(w=>w.kind===":" && Math.hypot(px-w.x,pz-w.z)<4.6);
+    const kind=srand(s+2);
+    let mesh=null;
+    if((nearWood||kind<.16) && dp<PATCH_DARK) mesh=forestPatch;
+    else if((nearFarm||kind<.48) && bp<PATCH_BARE) mesh=barePatch;
+    else if(gp<PATCH_GRASS) mesh=grassPatch;
+    if(!mesh) continue;
+    dPatch.position.set(px,.021,pz); dPatch.rotation.set(-Math.PI/2,0,srand(s+3)*6.28);
+    dPatch.scale.set(.55+srand(s+4)*1.55,.38+srand(s+5)*1.05,1);
+    dPatch.updateMatrix();
+    if(mesh===barePatch) barePatch.setMatrixAt(bp++,dPatch.matrix);
+    else if(mesh===forestPatch) forestPatch.setMatrixAt(dp++,dPatch.matrix);
+    else grassPatch.setMatrixAt(gp++,dPatch.matrix);
+  }
+  barePatch.count=bp; grassPatch.count=gp; forestPatch.count=dp;
+  [barePatch,grassPatch,forestPatch].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.receiveShadow=true; detailGroup.add(m); });
   /* GRASS TUFTS + LOOSE ROCKS — one draw call each, scattered off the roads */
   const grassGeo=new THREE.ConeGeometry(0.055,0.32,3);
   const grassMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x4f8f46),roughness:1});
@@ -3101,20 +3232,24 @@ function rebuildDetail(){
       dummy.updateMatrix(); gm.setMatrixAt(gi++,dummy.matrix);
     }
   }
-  /* flowers, bushes and stray trees — three more instanced meshes, three draw calls */
-  const FL=90, BU=46, TR=34;
+  /* flowers, bushes and stray trees - still instanced, now with varied storybook tree silhouettes */
+  const FL=104, BU=56, TR=42;
   const flMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.9,vertexColors:false});
   const flower=new THREE.InstancedMesh(new THREE.SphereGeometry(.055,5,4),flMat,FL);
   const bush=new THREE.InstancedMesh(new THREE.SphereGeometry(.30,7,6),
     new THREE.MeshStandardMaterial({color:skinBush(0x3f7a44),roughness:1}),BU);
   const trunkI=new THREE.InstancedMesh(new THREE.CylinderGeometry(.10,.14,1.0,6),
     new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.95}),TR);
-  const leafI=new THREE.InstancedMesh(new THREE.ConeGeometry(.62,1.35,7),
+  const leafConeI=new THREE.InstancedMesh(new THREE.ConeGeometry(.62,1.35,7),
     new THREE.MeshStandardMaterial({color:skinLeaf(0x2f7a45),roughness:.95}),TR);
+  const leafRoundI=new THREE.InstancedMesh(new THREE.SphereGeometry(.58,7,6),
+    new THREE.MeshStandardMaterial({color:skinLeaf(0x3f8d50),roughness:.95}),TR);
+  const leafTallI=new THREE.InstancedMesh(new THREE.ConeGeometry(.48,1.72,6),
+    new THREE.MeshStandardMaterial({color:skinLeaf(0x27663f),roughness:.95}),TR);
   const FLC=skinFlowers([0xff6f8a,0xffd95e,0xf0f0ff,0xb78cff]);
   flower.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(FL*3),3);
-  let fi=0,bi=0,ti=0, tries2=0;
-  while((fi<FL||bi<BU||ti<TR) && tries2<2400){
+  let fi=0,bi=0,ti=0,lc=0,lr=0,lt=0, tries2=0;
+  while((fi<FL||bi<BU||ti<TR) && tries2<2800){
     tries2++;
     const s2=tries2*13+7;
     const a=srand(s2)*Math.PI*2, rad=3.8+srand(s2+1)*(BOARD_R*reach);
@@ -3123,16 +3258,22 @@ function rebuildDetail(){
     for(let t=0;t<TILE_COUNT;t++){ if(p.distanceTo(path[t])<2.8){ blocked=true; break; } }
     if(blocked || overRiver(p.x,p.z,0.35)) continue;
     const pick=srand(s2+2);
-    if(pick<0.20 && ti<TR){
+    if(pick<0.22 && ti<TR){
       if(!plotClear(p.x,p.z,FOOT_TREE)) continue;          // trees claim a plot like buildings do
       if(overRiver(p.x,p.z,1.0)) continue;
+      const sc=0.75+srand(s2+4)*0.78, variant=Math.floor(srand(s2+8)*3);
       dummy.position.set(p.x,.5,p.z); dummy.rotation.set(0,srand(s2+3)*6,0);
-      const sc=0.8+srand(s2+4)*0.7; dummy.scale.setScalar(sc);
-      dummy.updateMatrix(); trunkI.setMatrixAt(ti,dummy.matrix);
-      dummy.position.set(p.x,1.35*sc,p.z); dummy.updateMatrix(); leafI.setMatrixAt(ti,dummy.matrix);
+      dummy.scale.setScalar(sc); dummy.updateMatrix(); trunkI.setMatrixAt(ti,dummy.matrix);
+      if(variant===0){
+        dummy.position.set(p.x,1.35*sc,p.z); dummy.rotation.set(0,srand(s2+12)*6,0); dummy.scale.setScalar(sc); dummy.updateMatrix(); leafConeI.setMatrixAt(lc++,dummy.matrix);
+      }else if(variant===1){
+        dummy.position.set(p.x,1.15*sc,p.z); dummy.rotation.set(0,srand(s2+12)*6,0); dummy.scale.set(1.05*sc,.78*sc,1.05*sc); dummy.updateMatrix(); leafRoundI.setMatrixAt(lr++,dummy.matrix);
+      }else{
+        dummy.position.set(p.x,1.45*sc,p.z); dummy.rotation.set(0,srand(s2+12)*6,0); dummy.scale.setScalar(sc); dummy.updateMatrix(); leafTallI.setMatrixAt(lt++,dummy.matrix);
+      }
       claimPlot(p.x,p.z,FOOT_TREE);
       ti++;
-    } else if(pick<0.48 && bi<BU){
+    } else if(pick<0.50 && bi<BU){
       dummy.position.set(p.x,.20,p.z); dummy.rotation.set(0,srand(s2+3)*6,0);
       dummy.scale.set(.8+srand(s2+4)*.7,.65+srand(s2+5)*.5,.8+srand(s2+6)*.7);
       dummy.updateMatrix(); bush.setMatrixAt(bi++,dummy.matrix);
@@ -3145,8 +3286,8 @@ function rebuildDetail(){
       fi++;
     }
   }
-  flower.count=fi; bush.count=bi; trunkI.count=ti; leafI.count=ti;
-  [flower,bush,trunkI,leafI].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; detailGroup.add(m); });
+  flower.count=fi; bush.count=bi; trunkI.count=ti; leafConeI.count=lc; leafRoundI.count=lr; leafTallI.count=lt;
+  [flower,bush,trunkI,leafConeI,leafRoundI,leafTallI].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; detailGroup.add(m); });
   if(flower.instanceColor) flower.instanceColor.needsUpdate=true;
 
   gm.count=gi; rm.count=ri;
