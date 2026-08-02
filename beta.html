@@ -2691,6 +2691,7 @@ function rebuildWildlife(){
       const a=srand(sd)*Math.PI*2, rad=rMin+srand(sd+1)*(rMax-rMin);
       const p=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad);
       if(!far(p,minClear)) continue;
+      if(kind!=="bird" && !visualLandClear(p,minClear)) continue;
       const m = kind==="deer"?makeDeer(sd) : kind==="hare"?makeHare(sd) : makeBird(sd);
       m.position.copy(p);
       if(kind==="bird") m.position.y=2.6+srand(sd+2)*1.6;
@@ -2732,6 +2733,9 @@ function tickWildlife(dt,t){
       m.position.x+=drift; m.position.z+=Math.cos(t*0.22+w.phase)*0.004;
       m.position.y=0;
       m.rotation.x=(w.kind==="deer" && Math.sin(t*0.35+w.phase)>0.5)?0.42:0;   // head down, grazing
+    }
+    if(w.kind!=="bird" && (overRiver(m.position.x,m.position.z,1.1) || nearBoardTile(m.position.x,m.position.z,0.65) || nearCastleDistrict(m.position.x,m.position.z,0.55))){
+      m.position.copy(w.home); m.position.y=0;
     }
   }
 }
@@ -3174,7 +3178,7 @@ function rebuildDetail(){
             dRoad.position.set(px,.041,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(lane*223+q)-.5)*.06);
             dRoad.scale.set(isMain?1.15:.92,.75+srand(lane*229+q)*.55,1); dRoad.updateMatrix(); edgeBlend.setMatrixAt(eb++,dRoad.matrix);
           }
-          if(es<maxStones && srand(lane*211+q*29+(side>0?3:7))>.44){
+          if(es<maxStones && srand(lane*211+q*29+(side>0?3:7))>.44 && !nearCastleDistrict(px,pz,.15)){
             dRoad.position.set(px,.067,pz); dRoad.rotation.set(srand(q+lane)*3,srand(q*5+lane)*6,srand(q*7+lane)*3);
             dRoad.scale.setScalar(.58+srand(q*11+lane)*.95); dRoad.updateMatrix(); edgeStones.setMatrixAt(es,dRoad.matrix);
             stoneTint.setHSL(.10+srand(lane*17+q*19)*.025,.18,.58+srand(lane*41+q)*.12); edgeStones.setColorAt(es,stoneTint); es++;
@@ -4091,9 +4095,9 @@ function makeLifeAnimal(kind,seed){
     const comb=new THREE.Mesh(new THREE.ConeGeometry(.035,.07,4),mat(0xd94032)); comb.position.set(.04,.25,0); g.add(comb);
     const beak=new THREE.Mesh(new THREE.ConeGeometry(.025,.08,4),mat(0xe0a41f)); beak.position.set(.10,.17,0); beak.rotation.z=-Math.PI/2; g.add(beak);
   }else if(kind==="duck"){
-    const body=new THREE.Mesh(new THREE.SphereGeometry(.11,8,6),mat(0xf3e7bb)); body.scale.set(1.35,.75,.9); body.position.y=.11; g.add(body);
-    const head=new THREE.Mesh(new THREE.SphereGeometry(.065,7,6),mat(0x5f8f50)); head.position.set(.16,.20,0); g.add(head);
-    const bill=new THREE.Mesh(new THREE.BoxGeometry(.08,.025,.045),mat(0xe0a41f)); bill.position.set(.23,.19,0); g.add(bill);
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),mat(0xfff0b8)); body.scale.set(1.45,.78,.95); body.position.y=.15; g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.075,7,6),mat(0x2f7f48)); head.position.set(.19,.27,0); g.add(head);
+    const bill=new THREE.Mesh(new THREE.BoxGeometry(.09,.03,.05),mat(0xe0a41f)); bill.position.set(.28,.26,0); g.add(bill);
   }else{
     const fur=mat(0xb9a68c); const body=new THREE.Mesh(new THREE.SphereGeometry(.10,8,6),fur); body.scale.set(1.35,.9,.9); body.position.y=.12; g.add(body);
     const head=new THREE.Mesh(new THREE.SphereGeometry(.06,7,6),fur); head.position.set(.13,.19,0); g.add(head);
@@ -4140,7 +4144,7 @@ function rebuildSettlementLife(){
   WORK_SITES.forEach((w,i)=>{ if(w.type==="farm"){ addLifeAnimal("sheep",w.pos.clone().add(new THREE.Vector3(-1.7,0,1.7)),9500+i,"graze"); addLifeAnimal("chicken",w.pos.clone().add(new THREE.Vector3(1.6,0,-1.2)),9510+i,"peck"); } });
   if(RIVER){
     const ax=RIVER.bx-RIVER.ax, az=RIVER.bz-RIVER.az, len=Math.hypot(ax,az)||1, fx=ax/len, fz=az/len, sx=-fz, sz=fx;
-    for(let i=0;i<3;i++){ const u=-.32+i*.32, side=i%2?1:-1; addLifeAnimal("duck",new THREE.Vector3((RIVER.ax+RIVER.bx)/2+fx*u*15+sx*side*(RIVER.halfW*.36),WATER_Y+.04,(RIVER.az+RIVER.bz)/2+fz*u*15+sz*side*(RIVER.halfW*.36)),9600+i,"bob"); }
+    for(let i=0;i<3;i++){ const u=-.32+i*.32, side=i%2?1:-1; addLifeAnimal("duck",new THREE.Vector3((RIVER.ax+RIVER.bx)/2+fx*u*15+sx*side*(RIVER.halfW*.28),WATER_Y+.07,(RIVER.az+RIVER.bz)/2+fz*u*15+sz*side*(RIVER.halfW*.28)),9600+i,"bob"); }
   }
   addLifeAnimal("rabbit",new THREE.Vector3(-9.5,0,8.5),9700,"hop"); addLifeAnimal("rabbit",new THREE.Vector3(11.2,0,-8.4),9710,"hop");
 
@@ -4153,7 +4157,7 @@ function tickSettlementLife(dt,t){
   LIFE_FLAGS.forEach(u=>u.value=t);
   for(const s of LIFE_SMOKE){ const k=(t*.18+s.offset+s.phase)%1; const m=s.mesh; m.position.set(s.base.x+Math.sin(t*.5+s.phase)*.12+k*.20,s.base.y+k*1.25,s.base.z+Math.cos(t*.42+s.phase)*.12); m.scale.setScalar(.55+k*1.25); m.material.opacity=.26*(1-k); }
   for(const q of LIFE_TORCHES){ const f=.82+Math.sin(t*9+q.phase)*.16; q.flame.scale.set(f,1.0+Math.sin(t*7+q.phase)*.18,f); q.core.scale.setScalar(.78+Math.sin(t*11+q.phase)*.12); q.flame.rotation.y+=dt*2.2; }
-  for(const a of LIFE_ANIMALS){ const m=a.mesh, p=a.phase; if(a.mode==="peck") m.rotation.x=Math.max(0,Math.sin(t*2.8+p))*.35; else if(a.mode==="hop") m.position.y=Math.max(0,Math.sin(t*1.4+p))*.12; else if(a.mode==="bob") m.position.y=WATER_Y+.04+Math.sin(t*1.2+p)*.025; else m.rotation.x=Math.max(0,Math.sin(t*.8+p))*.20; m.rotation.y+=Math.sin(t*.35+p)*.002; }
+  for(const a of LIFE_ANIMALS){ const m=a.mesh, p=a.phase; if(a.mode==="peck") m.rotation.x=Math.max(0,Math.sin(t*2.8+p))*.35; else if(a.mode==="hop") m.position.y=Math.max(0,Math.sin(t*1.4+p))*.12; else if(a.mode==="bob") m.position.y=WATER_Y+.07+Math.sin(t*1.2+p)*.025; else m.rotation.x=Math.max(0,Math.sin(t*.8+p))*.20; m.rotation.y+=Math.sin(t*.35+p)*.002; }
   for(const b of LIFE_BIRDS){ const a=t*b.speed+b.phase; b.mesh.visible=!G.map; b.mesh.position.set(Math.cos(a)*b.rad,b.height+Math.sin(t*.45+b.phase)*.7,Math.sin(a)*b.rad); b.mesh.rotation.y=-a+Math.PI/2; const flap=Math.sin(t*5+b.phase)*.22; b.mesh.children[0].rotation.z=.28+flap; b.mesh.children[1].rotation.z=-.28-flap; }
 }
 /* ---- monarch parts ---- */
