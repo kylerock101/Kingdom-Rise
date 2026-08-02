@@ -4518,7 +4518,8 @@ function musicDuck(v,ramp){
 
 /* ── entrance visual helpers ─────────────────────────────────────────── */
 function spawnDragonShadow(from,to){
-  const g=new THREE.EllipseGeometry(2.8,1.6,14);
+  const _es=new THREE.Shape(); _es.absellipse(0,0,2.8,1.6,0,Math.PI*2,false,0);
+  const g=new THREE.ShapeGeometry(_es,14);
   const m=new THREE.MeshBasicMaterial({color:0x000000,opacity:.18,transparent:true,depthWrite:false});
   const s=new THREE.Mesh(g,m); s.rotation.x=-Math.PI/2;
   s.position.copy(from); s.position.y=.04;
