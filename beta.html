@@ -3732,7 +3732,7 @@ function updateMobRoster(){
   const kx=king.position.x, kz=king.position.z;
   const eligible=[];
   for(let i=0;i<FOLK.length;i++){
-    const p=FOLK[i]; if(p.kind==="guard") continue;
+    const p=FOLK[i]; if(p.kind==="guard" || p.ambientCitizen) continue;
     const dx=p.mesh.position.x-kx, dz=p.mesh.position.z-kz;
     if(dx*dx+dz*dz < 420) eligible.push(i);                 // those close enough to hear
   }
@@ -3741,7 +3741,7 @@ function updateMobRoster(){
   MOB_N=want;
   if(want>0){                                                // the watch responds in proportion
     const guards=[];
-    for(let i=0;i<FOLK.length;i++) if(FOLK[i].kind==="guard") guards.push(i);
+    for(let i=0;i<FOLK.length;i++) if(FOLK[i].kind==="guard" && !FOLK[i].ambientCitizen) guards.push(i);
     const need=Math.min(guards.length, Math.max(1, Math.ceil(want/2.5)));
     for(let k=0;k<need;k++) GUARD_RANK.set(guards[k], k);
     GUARD_N=need;
@@ -3792,6 +3792,7 @@ function folkEvent(type, dur, radius){
   const r2=(radius||9)*(radius||9);
   let n=0;
   for(const p of FOLK){
+    if(p.ambientCitizen) continue;
     const dx=p.mesh.position.x-king.position.x, dz=p.mesh.position.z-king.position.z;
     if(dx*dx+dz*dz > r2) continue;
     p.evt=type; p.evtT=dur||3.0;
@@ -3908,15 +3909,17 @@ function rebuildFolk(){
   let seed=11;
   const CAP=Math.min(72, 26+S.realm*11);                   // more citizens each realm, still phone-safe
   const add=(kind,pos,role,extra)=>{
+    const opts=extra||{};
     if(FOLK.length>=CAP) return;
     let clear=true;
     for(let t=0;t<TILE_COUNT;t++){ if(pos.distanceTo(path[t])<2.6){ clear=false; break; } }
     if(!clear) return;
     const p=makePerson(kind,seed);
+    if(opts.ambientCitizen) p.traverse(o=>{ if(o.isMesh||o.isInstancedMesh){ o.castShadow=false; o.receiveShadow=false; } });
     p.position.set(pos.x,0,pos.z);
     folkGroup.add(p);
     FOLK.push(Object.assign({mesh:p,home:pos.clone(),kind,role,
-      phase:srand(seed+7)*Math.PI*2, speed:.5+srand(seed+8)*.7}, extra||{}));
+      phase:srand(seed+7)*Math.PI*2, speed:.5+srand(seed+8)*.7}, opts));
     seed+=29;
   };
   const perp=new THREE.Vector3(-path[0].clone().normalize().z,0,path[0].clone().normalize().x);
@@ -4002,7 +4005,7 @@ function rebuildFolk(){
   }
   /* Settlement Life pass: a few intentional visible micro-scenes layered onto the existing crowd system. */
   if(progress>=1){
-    const vignette=(kind,pos,role,extra)=>add(kind,pos,role,Object.assign({lifeVignette:true},extra||{}));
+    const vignette=(kind,pos,role,extra)=>add(kind,pos,role,Object.assign({lifeVignette:true,ambientCitizen:true},extra||{}));
     const ring=(a,r)=>new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r);
     vignette("villager",ring(.95,5.7),"task",{hub:ring(.95,5.7),radius:.65});
     vignette("servant", ring(1.10,6.2),"task",{hub:ring(1.02,5.9),radius:.55});
@@ -4116,7 +4119,9 @@ function rebuildSettlementLife(){
   }
   addLifeAnimal("rabbit",new THREE.Vector3(-9.5,0,8.5),9700,"hop"); addLifeAnimal("rabbit",new THREE.Vector3(11.2,0,-8.4),9710,"hop");
 
-  const birdMat=new THREE.MeshBasicMaterial({color:0x4a4058,transparent:true,opacity:.55,depthWrite:false});
+  settlementLifeGroup.traverse(o=>{ if(o.isMesh||o.isInstancedMesh){ o.castShadow=false; o.receiveShadow=false; } });
+
+  const birdMat=new THREE.MeshBasicMaterial({color:0x5b5570,transparent:true,opacity:.48,depthWrite:false});
   for(let i=0;i<3;i++){ const b=new THREE.Group(); const left=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat), right=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat); left.position.x=-.15; right.position.x=.15; left.rotation.z=.28; right.rotation.z=-.28; b.add(left,right); settlementLifeGroup.add(b); LIFE_BIRDS.push({mesh:b,phase:srand(9800+i)*6.28,rad:28+i*6,height:12+i*1.4,speed:.055+srand(9810+i)*.025}); }
 }
 function tickSettlementLife(dt,t){
@@ -5889,8 +5894,8 @@ function startDragon(scale){
   const breed=dragonBreed(S.dragonSlain);
   const d=makeDragon(S.dragonSlain);
   const ahead=standPos((S.pos+1)%path.length);   // stand on the tile's real walking surface (matters on the bridge)
-  d.position.copy(ahead); d.lookAt(king.position.x,0,king.position.z);
-  d.scale.set(.01,.01,.01);
+  d.position.copy(ahead); d.lookAt(king.position.x,ahead.y,king.position.z);
+  d.scale.set(.35,.35,.35);
   scene.add(d); G.dragon=d; G.dragonT=0;
 
   // if this dragon fled a previous encounter with health left, it picks up where it left off
@@ -5899,7 +5904,7 @@ function startDragon(scale){
   const hpMax= returning ? S.dragonHPMax : hp;
   const perTapGold=Math.round(Math.max(9,7*scale)*RG()*posMult(S.pos));
   const FIGHT_TIME=5;                               // seconds to land as many strikes as you can
-  G.fight={hp, hpMax, taps:0, loot:0, perTapGold, running:false, recoil:0, breed, time:FIGHT_TIME, timeMax:FIGHT_TIME};
+  G.fight={hp, hpMax, taps:0, loot:0, perTapGold, running:false, recoil:0, breed, time:FIGHT_TIME, timeMax:FIGHT_TIME, baseY:d.position.y};
   S.dragonHPMax=hpMax;                              // remember this dragon's full health for future returns
 
   msg(returning ? "🐉 "+breed.n+" returns — still wounded!" : "🐉 "+breed.n+" guards its hoard!", 1400);
@@ -6606,10 +6611,10 @@ function animate(){
     elbowR.rotation.x+=(-.3-elbowR.rotation.x)*Math.min(1,dt*10);
     if(F&&F.recoil>0&&G.dragon){
       F.recoil=Math.max(0,F.recoil-dt*4);
-      G.dragon.position.y=Math.sin(clock.elapsedTime*3)*.08+F.recoil*.25;
+      G.dragon.position.y=F.baseY+Math.sin(clock.elapsedTime*3)*.08+F.recoil*.25;
       G.dragon.rotation.x=-F.recoil*.22;
     } else if(G.dragon){
-      G.dragon.position.y=Math.sin(clock.elapsedTime*3)*.08;   // idle bob while waiting for the next strike
+      G.dragon.position.y=F.baseY+Math.sin(clock.elapsedTime*3)*.08;   // idle bob while waiting for the next strike
     }
     if(F.running){
       F.time-=dt;
@@ -6863,7 +6868,7 @@ function animate(){
         m.rotation.z=Math.sin(t*(armed?5.4:3.1)+p.phase)*(armed?0.09:0.05);
         continue;
       }
-      if(MOOD==="beloved" && d2 < 90 && p.kind!=="guard"){     // they gather to cheer, evenly spread
+      if(!p.ambientCitizen && MOOD==="beloved" && d2 < 90 && p.kind!=="guard"){     // they gather to cheer, evenly spread
         const rank=(p.slotSeed!==undefined?p.slotSeed:(p.slotSeed=i%12));
         const slot=crowdSlot(rank, 12, t, 2.9, 0.72);
         const dxs=slot.x-m.position.x, dzs=slot.z-m.position.z;
@@ -6875,7 +6880,7 @@ function animate(){
         if(m.rotation.z) m.rotation.z*=0.85;
         continue;
       }
-      if(MOOD==="resentful" && d2 < 40 && p.kind!=="guard"){    // they turn away and mutter
+      if(!p.ambientCitizen && MOOD==="resentful" && d2 < 40 && p.kind!=="guard"){    // they turn away and mutter
         m.rotation.y=Math.atan2(ddx,ddz);
         m.rotation.x=-0.26;
         m.position.y=0;
@@ -6885,7 +6890,7 @@ function animate(){
       /* ---- do they notice the monarch? ---- */
       const dx=m.position.x-king.position.x, dz=m.position.z-king.position.z;
       const near=dx*dx+dz*dz < 30;                          // ~5.5 units
-      if(near) p.greet=Math.min(1,(p.greet||0)+dt*3.5);
+      if(!p.ambientCitizen && near) p.greet=Math.min(1,(p.greet||0)+dt*3.5);
       else if(p.greet) p.greet=Math.max(0,p.greet-dt*2.4);
       if(p.greet>0.02){
         // face the king and pay respects
@@ -6971,7 +6976,7 @@ function animate(){
     }
     for(let i=0;i<FOLK.length;i++){
       const m=FOLK[i].mesh;
-      if(showAll){ m.visible=true; continue; }
+      if(showAll || FOLK[i].ambientCitizen){ m.visible=true; continue; }
       const dx=m.position.x-kx, dz=m.position.z-kz;
       m.visible = (dx*dx+dz*dz) < RF2;
     }
