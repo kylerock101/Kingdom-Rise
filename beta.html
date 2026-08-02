@@ -3041,6 +3041,7 @@ function rebuildTown(){
   rebuildWorkSites();          // farms and woodlots line the road
   buildArchDetail();           // windows, doors, chimneys — a few draw calls for the whole town
   rebuildWildlife();           // the wild retreats as the streets fill in
+  rebuildSettlementLife();     // visual-only life details: flags, smoke, torches, animals, birds
 }
 
 /* ---- roads + ground scatter (instanced: hundreds of props, near-zero draw cost) ---- */
@@ -3999,6 +4000,131 @@ function rebuildFolk(){
       add("monk",pos,"task",{hub:h.clone(),radius:1.0});
     }
   }
+  /* Settlement Life pass: a few intentional visible micro-scenes layered onto the existing crowd system. */
+  if(progress>=1){
+    const vignette=(kind,pos,role,extra)=>add(kind,pos,role,Object.assign({lifeVignette:true},extra||{}));
+    const ring=(a,r)=>new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r);
+    vignette("villager",ring(.95,5.7),"task",{hub:ring(.95,5.7),radius:.65});
+    vignette("servant", ring(1.10,6.2),"task",{hub:ring(1.02,5.9),radius:.55});
+    vignette("guard", BRIDGE_CROSS_POINT?BRIDGE_CROSS_POINT.clone().add(new THREE.Vector3(-1.35,0,.95)):GATE_POS.clone().add(new THREE.Vector3(-1.0,0,.4)),"post",{facing:BRIDGE_CROSS_POINT?0:Math.PI});
+    vignette("merchant", MARKET_POS.clone().add(new THREE.Vector3(.9,0,-.75)),"market",{hub:MARKET_POS.clone(),radius:.85});
+    vignette("child", MARKET_POS.clone().add(new THREE.Vector3(-1.0,0,-.95)),"play",{hub:MARKET_POS.clone(),radius:.9});
+    WORK_SITES.slice(0,2).forEach((w,i)=>vignette(w.type==="farm"?"farmer":"woodcutter",w.pos.clone().add(new THREE.Vector3(.8+i*.4,0,1.0-i*.45)),w.type==="farm"?"till":"chop",{hub:w.pos.clone(),radius:.9}));
+    if(homes.length){
+      const h=homes[Math.floor(srand(9901)*homes.length)];
+      vignette("villager",h.clone().add(new THREE.Vector3(.8,0,.7)),"task",{hub:h.clone(),radius:.7});
+      vignette("child",h.clone().add(new THREE.Vector3(-.9,0,.6)),"play",{hub:h.clone(),radius:.8});
+    }
+  }}
+
+/* ================= SETTLEMENT LIFE PASS =================
+   A visual-only layer: small scenes, pooled smoke, flags, torches, animals and distant birds. */
+const settlementLifeGroup=new THREE.Group(); scene.add(settlementLifeGroup);
+const LIFE_FLAGS=[], LIFE_SMOKE=[], LIFE_TORCHES=[], LIFE_ANIMALS=[], LIFE_BIRDS=[];
+function lifeFlagMaterial(color){
+  const mat=new THREE.MeshStandardMaterial({color,roughness:.78,side:THREE.DoubleSide});
+  mat.onBeforeCompile=shader=>{
+    shader.uniforms.uLifeTime={value:0};
+    shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>\nuniform float uLifeTime;");
+    shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nfloat lifeWave=sin(uLifeTime*1.7+position.x*9.0+position.y*3.0);\ntransformed.z += lifeWave*0.035*smoothstep(-0.18,0.18,position.x);");
+    mat.userData.shader=shader; LIFE_FLAGS.push(shader.uniforms.uLifeTime);
+  };
+  return mat;
+}
+function makeLifeFlag(color,w,h){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.022,.024,h+.28,5),new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9}));
+  pole.position.y=(h+.28)/2; g.add(pole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(w,h,4,1),lifeFlagMaterial(color));
+  flag.position.set(w*.45,h+.08,0); flag.castShadow=false; g.add(flag);
+  return g;
+}
+function makeLifeTorch(){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.9});
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.035,.04,.82,5),wood); pole.position.y=.41; g.add(pole);
+  const cup=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,.10,7),new THREE.MeshStandardMaterial({color:0x3b2a1b,roughness:.85})); cup.position.y=.84; g.add(cup);
+  const flame=new THREE.Mesh(new THREE.ConeGeometry(.105,.30,7),new THREE.MeshBasicMaterial({color:0xffb13b,transparent:true,opacity:.90}));
+  flame.position.y=1.02; g.add(flame);
+  const core=new THREE.Mesh(new THREE.ConeGeometry(.052,.20,6),new THREE.MeshBasicMaterial({color:0xfff0a8,transparent:true,opacity:.82}));
+  core.position.y=1.02; g.add(core);
+  LIFE_TORCHES.push({flame,core,phase:srand(LIFE_TORCHES.length+8700)*6.28});
+  return g;
+}
+function makeLifeAnimal(kind,seed){
+  const g=new THREE.Group();
+  const mat=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.96});
+  if(kind==="sheep"){
+    const wool=mat(0xf0ead8), face=mat(0x6b594a);
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.20,9,7),wool); body.scale.set(1.35,.9,.85); body.position.y=.24; g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.09,7,6),face); head.position.set(.25,.25,0); g.add(head);
+    const legG=new THREE.CylinderGeometry(.018,.02,.20,5), legs=new THREE.InstancedMesh(legG,face,4), d=new THREE.Object3D(); let n=0;
+    for(const x of[-.12,.12]) for(const z of[-.08,.08]){ d.position.set(x,.08,z); d.updateMatrix(); legs.setMatrixAt(n++,d.matrix); }
+    legs.instanceMatrix.needsUpdate=true; g.add(legs);
+  }else if(kind==="chicken"){
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.09,7,6),mat(0xf2e8cc)); body.scale.set(1,.95,1.15); body.position.y=.15; g.add(body);
+    const comb=new THREE.Mesh(new THREE.ConeGeometry(.035,.07,4),mat(0xd94032)); comb.position.set(.04,.25,0); g.add(comb);
+    const beak=new THREE.Mesh(new THREE.ConeGeometry(.025,.08,4),mat(0xe0a41f)); beak.position.set(.10,.17,0); beak.rotation.z=-Math.PI/2; g.add(beak);
+  }else if(kind==="duck"){
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.11,8,6),mat(0xf3e7bb)); body.scale.set(1.35,.75,.9); body.position.y=.11; g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.065,7,6),mat(0x5f8f50)); head.position.set(.16,.20,0); g.add(head);
+    const bill=new THREE.Mesh(new THREE.BoxGeometry(.08,.025,.045),mat(0xe0a41f)); bill.position.set(.23,.19,0); g.add(bill);
+  }else{
+    const fur=mat(0xb9a68c); const body=new THREE.Mesh(new THREE.SphereGeometry(.10,8,6),fur); body.scale.set(1.35,.9,.9); body.position.y=.12; g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.06,7,6),fur); head.position.set(.13,.19,0); g.add(head);
+    const ears=new THREE.InstancedMesh(new THREE.CylinderGeometry(.014,.012,.13,5),fur,2), d=new THREE.Object3D();
+    [-.035,.035].forEach((z,i)=>{ d.position.set(.13,.29,z); d.rotation.z=-.18; d.updateMatrix(); ears.setMatrixAt(i,d.matrix); });
+    ears.instanceMatrix.needsUpdate=true; g.add(ears);
+  }
+  g.scale.setScalar(.9+srand(seed+3)*.35);
+  return g;
+}
+function addLifeAnimal(kind,pos,seed,mode){
+  if(overRiver(pos.x,pos.z,kind==="duck"?-.18:.35) && kind!=="duck") return;
+  for(let t=0;t<TILE_COUNT;t++) if(pos.distanceTo(path[t])<2.4) return;
+  const m=makeLifeAnimal(kind,seed); m.position.copy(pos); m.rotation.y=srand(seed+9)*6.28;
+  settlementLifeGroup.add(m); LIFE_ANIMALS.push({kind,mesh:m,home:pos.clone(),phase:srand(seed+5)*6.28,mode:mode||"idle"});
+}
+function rebuildSettlementLife(){
+  while(settlementLifeGroup.children.length){ const c=settlementLifeGroup.children[0]; settlementLifeGroup.remove(c); disposeGroup(c); }
+  LIFE_FLAGS.length=0; LIFE_SMOKE.length=0; LIFE_TORCHES.length=0; LIFE_ANIMALS.length=0; LIFE_BIRDS.length=0;
+  const flagColors=[0x8a2f3f,0xffc93c,0x2f5a8a];
+  const placeFlag=(pos,rot,scale,seed)=>{ const f=makeLifeFlag(flagColors[Math.floor(srand(seed)*flagColors.length)],.36*scale,.24*scale); f.position.copy(pos); f.rotation.y=rot; settlementLifeGroup.add(f); };
+  if(legacy()>=1){
+    placeFlag(new THREE.Vector3(-1.25,2.55,1.35),0,.9,9100); placeFlag(new THREE.Vector3(1.25,2.55,1.35),0,.9,9120);
+    const gd=path[0].clone().normalize(), pp=new THREE.Vector3(-gd.z,0,gd.x);
+    placeFlag(GATE_POS.clone().addScaledVector(pp,-2.2).setY(2.25),Math.atan2(gd.x,gd.z),.82,9140);
+    placeFlag(GATE_POS.clone().addScaledVector(pp,2.2).setY(2.25),Math.atan2(gd.x,gd.z),.82,9160);
+  }
+  if(BRIDGE_CROSS_POINT){ placeFlag(BRIDGE_CROSS_POINT.clone().add(new THREE.Vector3(-.85,.68,.65)),.25,.68,9180); placeFlag(BRIDGE_CROSS_POINT.clone().add(new THREE.Vector3(.85,.68,-.65)),Math.PI+.25,.68,9190); }
+
+  const smokeMat=new THREE.MeshBasicMaterial({color:0xded8c8,transparent:true,opacity:.32,depthWrite:false});
+  const smokeGeo=new THREE.SphereGeometry(.16,7,5);
+  const chim=DETAIL_SLOTS.chim.slice(0,10);
+  chim.forEach((sl,i)=>{ for(let k=0;k<2;k++){ const puff=new THREE.Mesh(smokeGeo,smokeMat.clone()); puff.renderOrder=10; settlementLifeGroup.add(puff); LIFE_SMOKE.push({mesh:puff,base:new THREE.Vector3(sl[0],sl[1]+sl[3]*.58,sl[2]),phase:srand(9300+i*7+k)*6.28,offset:k*.5}); } });
+
+  const torchSpots=[];
+  if(legacy()>=1) torchSpots.push(new THREE.Vector3(-.9,.02,2.05),new THREE.Vector3(.9,.02,2.05));
+  if(BRIDGE_CROSS_POINT) torchSpots.push(BRIDGE_CROSS_POINT.clone().add(new THREE.Vector3(-1.15,.02,.95)),BRIDGE_CROSS_POINT.clone().add(new THREE.Vector3(1.15,.02,-.95)));
+  if(legacy()>=2) torchSpots.push(GATE_POS.clone().add(new THREE.Vector3(.6,.02,.6)));
+  torchSpots.slice(0,5).forEach((p,i)=>{ if(!overRiver(p.x,p.z,.25)){ const t=makeLifeTorch(); t.position.copy(p); t.rotation.y=srand(9400+i)*6.28; settlementLifeGroup.add(t); } });
+
+  WORK_SITES.forEach((w,i)=>{ if(w.type==="farm"){ addLifeAnimal("sheep",w.pos.clone().add(new THREE.Vector3(-1.7,0,1.7)),9500+i,"graze"); addLifeAnimal("chicken",w.pos.clone().add(new THREE.Vector3(1.6,0,-1.2)),9510+i,"peck"); } });
+  if(RIVER){
+    const ax=RIVER.bx-RIVER.ax, az=RIVER.bz-RIVER.az, len=Math.hypot(ax,az)||1, fx=ax/len, fz=az/len, sx=-fz, sz=fx;
+    for(let i=0;i<3;i++){ const u=-.25+i*.24, side=i%2?1:-1; addLifeAnimal("duck",new THREE.Vector3((RIVER.ax+RIVER.bx)/2+fx*u*18+sx*side*(RIVER.halfW+.35),WATER_Y+.04,(RIVER.az+RIVER.bz)/2+fz*u*18+sz*side*(RIVER.halfW+.35)),9600+i,"bob"); }
+  }
+  addLifeAnimal("rabbit",new THREE.Vector3(-9.5,0,8.5),9700,"hop"); addLifeAnimal("rabbit",new THREE.Vector3(11.2,0,-8.4),9710,"hop");
+
+  const birdMat=new THREE.MeshBasicMaterial({color:0x4a4058,transparent:true,opacity:.55,depthWrite:false});
+  for(let i=0;i<3;i++){ const b=new THREE.Group(); const left=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat), right=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat); left.position.x=-.15; right.position.x=.15; left.rotation.z=.28; right.rotation.z=-.28; b.add(left,right); settlementLifeGroup.add(b); LIFE_BIRDS.push({mesh:b,phase:srand(9800+i)*6.28,rad:28+i*6,height:12+i*1.4,speed:.055+srand(9810+i)*.025}); }
+}
+function tickSettlementLife(dt,t){
+  LIFE_FLAGS.forEach(u=>u.value=t);
+  for(const s of LIFE_SMOKE){ const k=(t*.18+s.offset+s.phase)%1; const m=s.mesh; m.position.set(s.base.x+Math.sin(t*.5+s.phase)*.12+k*.20,s.base.y+k*1.25,s.base.z+Math.cos(t*.42+s.phase)*.12); m.scale.setScalar(.55+k*1.25); m.material.opacity=.26*(1-k); }
+  for(const q of LIFE_TORCHES){ const f=.82+Math.sin(t*9+q.phase)*.16; q.flame.scale.set(f,1.0+Math.sin(t*7+q.phase)*.18,f); q.core.scale.setScalar(.78+Math.sin(t*11+q.phase)*.12); q.flame.rotation.y+=dt*2.2; }
+  for(const a of LIFE_ANIMALS){ const m=a.mesh, p=a.phase; if(a.mode==="peck") m.rotation.x=Math.max(0,Math.sin(t*2.8+p))*.35; else if(a.mode==="hop") m.position.y=Math.max(0,Math.sin(t*1.4+p))*.12; else if(a.mode==="bob") m.position.y=WATER_Y+.04+Math.sin(t*1.2+p)*.025; else m.rotation.x=Math.max(0,Math.sin(t*.8+p))*.20; m.rotation.y+=Math.sin(t*.35+p)*.002; }
+  for(const b of LIFE_BIRDS){ const a=t*b.speed+b.phase; b.mesh.visible=!G.map; b.mesh.position.set(Math.cos(a)*b.rad,b.height+Math.sin(t*.45+b.phase)*.7,Math.sin(a)*b.rad); b.mesh.rotation.y=-a+Math.PI/2; const flap=Math.sin(t*5+b.phase)*.22; b.mesh.children[0].rotation.z=.28+flap; b.mesh.children[1].rotation.z=-.28-flap; }
 }
 /* ---- monarch parts ---- */
 function makeSword(steel,gold){
@@ -6854,6 +6980,7 @@ function animate(){
   tickRaising(dt);                 // buildings under construction
   if(COUNCIL.length) tickAdvisors(dt, clock.elapsedTime);
   tickFruitThrowing(dt); tickFruit(dt); tickWater(clock.elapsedTime);
+  tickSettlementLife(dt, clock.elapsedTime);
   if(WILD.length) tickWildlife(dt, clock.elapsedTime);
 
   if(dieAnim.spinning){
