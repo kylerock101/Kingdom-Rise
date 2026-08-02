@@ -1583,7 +1583,7 @@ sun.position.set(7.2,15.5,8.4); sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);                         // sharper contact shadows
 sun.shadow.camera.left=-38; sun.shadow.camera.right=38; sun.shadow.camera.top=38; sun.shadow.camera.bottom=-38;
 sun.shadow.camera.near=0.5; sun.shadow.camera.far=60;
-sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.02;       // clean contact, no shadow-acne
+sun.shadow.bias=0.00008; sun.shadow.normalBias=0.045;      // avoid speckled acne on bright plaza/cobble surfaces
 sun.shadow.radius=4;                                       // soft penumbra
 scene.add(sun);
 // a subtle cool rim from the opposite side gives forms gentle shape without extra shadows
@@ -1654,15 +1654,14 @@ ground.position.y=-.3; ground.receiveShadow=true; scene.add(ground);
   const cobbleTex=(()=>{
     const S=128, cv=document.createElement("canvas"); cv.width=cv.height=S;
     const x=cv.getContext("2d");
-    x.fillStyle="#8f8577"; x.fillRect(0,0,S,S);
-    for(let i=0;i<46;i++){
-      const cx=Math.random()*S, cy=Math.random()*S, r=6+Math.random()*8;
+    x.fillStyle="#b9ad9a"; x.fillRect(0,0,S,S);
+    for(let i=0;i<24;i++){
+      const cx=srand(15000+i)*S, cy=srand(15100+i)*S, r=7+srand(15200+i)*8;
       const g=x.createRadialGradient(cx-2,cy-2,1,cx,cy,r);
-      const base=150+Math.random()*40|0;
-      g.addColorStop(0,"rgb("+(base+18)+","+(base+10)+","+(base)+")");
-      g.addColorStop(1,"rgb("+(base-40)+","+(base-46)+","+(base-52)+")");
+      const base=188+(srand(15300+i)*22|0);
+      g.addColorStop(0,"rgb("+(base+14)+","+(base+10)+","+(base+4)+")");
+      g.addColorStop(1,"rgb("+(base-4)+","+(base-6)+","+(base-8)+")");
       x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r,0,7); x.fill();
-      x.strokeStyle="rgba(60,54,46,.5)"; x.lineWidth=1.5; x.stroke();
     }
     const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(5,5);
     if("colorSpace" in t) t.colorSpace=THREE.SRGBColorSpace;
@@ -1671,7 +1670,7 @@ ground.position.y=-.3; ground.receiveShadow=true; scene.add(ground);
   window.COBBLE_TEX=cobbleTex;    // shared — rebuildDetail reuses this, never regenerates it
   const cobble=new THREE.Mesh(new THREE.RingGeometry(2.4,10.5,48),
     new THREE.MeshStandardMaterial({map:cobbleTex,roughness:.95}));
-  cobble.rotation.x=-Math.PI/2; cobble.position.y=0.015; cobble.receiveShadow=true;
+  cobble.rotation.x=-Math.PI/2; cobble.position.y=0.015; cobble.receiveShadow=false;
   scene.add(cobble);
 }
 /* ground shifts with your tier: lush grass → worn dirt → paved stone as the realm develops */
@@ -1823,6 +1822,23 @@ function overRiver(x,z,margin){
   const px=RIVER.ax+abx*t, pz=RIVER.az+abz*t;
   return Math.hypot(x-px,z-pz) < RIVER.halfW+(margin||0);
 }
+function nearBoardTile(x,z,margin){
+  const pad=margin||0;
+  for(let i=0;i<TILE_COUNT;i++) if(Math.hypot(x-path[i].x,z-path[i].z)<TILESZ*.82+pad) return true;
+  return false;
+}
+function nearCastleDistrict(x,z,margin){
+  return Math.hypot(x,z) < 10.8+(margin||0);
+}
+function visualLandClear(pos,radius){
+  const r=radius||0.8;
+  if(overRiver(pos.x,pos.z,1.35+r)) return false;
+  if(nearBoardTile(pos.x,pos.z,r)) return false;
+  if(nearCastleDistrict(pos.x,pos.z,r)) return false;
+  if(BRIDGE_CROSS_POINT && Math.hypot(pos.x-BRIDGE_CROSS_POINT.x,pos.z-BRIDGE_CROSS_POINT.z)<2.2+r) return false;
+  if(typeof plotClear==="function" && !plotClear(pos.x,pos.z,r)) return false;
+  return true;
+}
 const BRIDGE_PARTS=[];
 function buildRiverAndBridge(){
   const idx=d=>((BRIDGE_FROM+d)%TILE_COUNT+TILE_COUNT)%TILE_COUNT;
@@ -1902,13 +1918,18 @@ function buildRiverAndBridge(){
     }
   }
   for(let i=0;i<20;i++){
-    const u=-.43+srand(2100+i)*.86, lateral=(srand(2110+i)-.5)*(RIVER_W*.62);
+    const u=-.43+srand(2100+i)*.86, lateral=(srand(2110+i)-.5)*(RIVER_W*.50);
     const x=cx+flow.x*u*RIVER_L+side.x*lateral, z=cz+flow.z*u*RIVER_L+side.z*lateral;
     if(lc<16 && srand(2120+i)>.18){ dShore.position.set(x,WATER_Y+.018,z); dShore.rotation.set(-Math.PI/2,0,srand(2130+i)*6.28); dShore.scale.set(.75+srand(2140+i)*.65,.55+srand(2150+i)*.45,1); dShore.updateMatrix(); lilies.setMatrixAt(lc++,dShore.matrix); }
-    if(dc<9 && srand(2160+i)>.65){ dShore.position.set(x,WATER_Y+.035,z); dShore.rotation.set(Math.PI/2,0,spin+(srand(2170+i)-.5)*.7); dShore.scale.setScalar(.85+srand(2180+i)*.45); dShore.updateMatrix(); drift.setMatrixAt(dc++,dShore.matrix); }
+    if(dc<9 && srand(2160+i)>.65){
+      const bank=srand(2165+i)>.5?1:-1, du=(srand(2168+i)-.5)*.8;
+      const lx=cx+flow.x*(u*RIVER_L+du)+side.x*bank*(RIVER_W*.5+.42+srand(2172+i)*.42);
+      const lz=cz+flow.z*(u*RIVER_L+du)+side.z*bank*(RIVER_W*.5+.42+srand(2172+i)*.42);
+      if(!overRiver(lx,lz,.04) && !nearBoardTile(lx,lz,.7)){ dShore.position.set(lx,.09,lz); dShore.rotation.set(Math.PI/2,0,spin+(srand(2170+i)-.5)*.7); dShore.scale.setScalar(.85+srand(2180+i)*.45); dShore.updateMatrix(); drift.setMatrixAt(dc++,dShore.matrix); }
+    }
   }
   reeds.count=rc; shoreRocks.count=sc; lilies.count=lc; drift.count=dc;
-  [reeds,shoreRocks,lilies,drift].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; scene.add(m); BRIDGE_PARTS.push(m); });
+  [reeds,shoreRocks,lilies,drift].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=false; m.receiveShadow=false; scene.add(m); BRIDGE_PARTS.push(m); });
   BRIDGE_CROSS_POINT=curve.getPoint(0.5).clone();      // the deck's midpoint - the one dry way across
   /* ---- the earthen embankment the road climbs, with a gap left for the arch ---- */
   const GY=-0.30, MHALF=1.42, ARCH_HALF_U=0.085;
@@ -2380,7 +2401,7 @@ function makeFarm(level,seed){
   const grown=Math.min(3,level);                            // 0 tilled · 1 sprouts · 2 tall · 3 ready
   if(grown>0){
     const h=[0,.22,.5,.75][grown];
-    const cropC=[0x000000,0x7fbf5a,0x6fa844,0xd6b64a][grown];
+    const cropC=[0x6b4b30,0x7fbf5a,0x6fa844,0xd6b64a][grown];
     const cropMat=new THREE.MeshStandardMaterial({color:cropC,roughness:.95});
     // one instanced mesh for the whole field: 45 plants, a single draw call
     const rows=5, cols=9, N=rows*cols;
@@ -3116,7 +3137,7 @@ function rebuildDetail(){
       ? new THREE.MeshStandardMaterial({map:window.COBBLE_TEX,roughness:.95})
       : roadMat;
     const plaza=new THREE.Mesh(new THREE.CircleGeometry(4.2,26),plazaMat);
-    plaza.rotation.x=-Math.PI/2; plaza.position.y=0.028; plaza.receiveShadow=true; detailGroup.add(plaza);
+    plaza.rotation.x=-Math.PI/2; plaza.position.y=0.028; plaza.receiveShadow=false; detailGroup.add(plaza);
 
     // Visual Pass 3: road trim is batched into a few instanced meshes so paths feel hand-laid without changing routes.
     const edgeStoneGeo=new THREE.DodecahedronGeometry(.075,0);
@@ -3180,11 +3201,11 @@ function rebuildDetail(){
       const px=Math.cos(a)*dist, pz=Math.sin(a)*dist;
       if(overRiver(px,pz,.35)) continue;
       if(eb<maxEdgeBlend && srand(690+q)>.25){ dRoad.position.set(px,.041,pz); dRoad.rotation.set(-Math.PI/2,0,-a+(srand(695+q)-.5)*.09); dRoad.scale.set(.95,.7+srand(696+q)*.55,1); dRoad.updateMatrix(); edgeBlend.setMatrixAt(eb++,dRoad.matrix); }
-      if(es<maxStones && srand(700+q)>.54){ dRoad.position.set(px,.067,pz); dRoad.rotation.set(0,srand(710+q)*6,0); dRoad.scale.setScalar(.50+srand(720+q)*.9); dRoad.updateMatrix(); edgeStones.setMatrixAt(es,dRoad.matrix); stoneTint.setHSL(.10+srand(721+q)*.025,.18,.57+srand(722+q)*.13); edgeStones.setColorAt(es,stoneTint); es++; }
+      if(es<maxStones && srand(700+q)>.54 && !nearCastleDistrict(px,pz,.15)){ dRoad.position.set(px,.067,pz); dRoad.rotation.set(0,srand(710+q)*6,0); dRoad.scale.setScalar(.50+srand(720+q)*.9); dRoad.updateMatrix(); edgeStones.setMatrixAt(es,dRoad.matrix); stoneTint.setHSL(.10+srand(721+q)*.025,.18,.57+srand(722+q)*.13); edgeStones.setColorAt(es,stoneTint); es++; }
       if(eg<maxGrass && srand(730+q)>.38){ dRoad.position.set(px,.145,pz); dRoad.rotation.set(0,srand(740+q)*6,0); dRoad.scale.setScalar(.72+srand(750+q)*.82); dRoad.updateMatrix(); edgeGrass.setMatrixAt(eg++,dRoad.matrix); }
     }
     edgeStones.count=es; ruts.count=ru; edgeBlend.count=eb; edgeGrass.count=eg;
-    [edgeStones,ruts,edgeBlend,edgeGrass].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; m.receiveShadow=true; detailGroup.add(m); });
+    [edgeStones,ruts,edgeBlend,edgeGrass].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=false; m.receiveShadow=false; detailGroup.add(m); });
     if(edgeStones.instanceColor) edgeStones.instanceColor.needsUpdate=true;
   }
   /* MARKET STALLS — grouped canopies at MARKET_POS, once the settlement exists.
@@ -3290,7 +3311,7 @@ function rebuildDetail(){
     const px=Math.cos(a)*rad, pz=Math.sin(a)*rad;
     let close=false;
     for(let t=0;t<TILE_COUNT;t++){ if(Math.hypot(px-path[t].x,pz-path[t].z)<2.45){ close=true; break; } }
-    if(close || overRiver(px,pz,.65)) continue;
+    if(close || overRiver(px,pz,.65) || nearCastleDistrict(px,pz,.45)) continue;
     const nearWood=WORK_SITES.some(w=>w.kind==="," && Math.hypot(px-w.x,pz-w.z)<5.2);
     const nearFarm=WORK_SITES.some(w=>w.kind===":" && Math.hypot(px-w.x,pz-w.z)<4.6);
     const kind=srand(s+2);
@@ -3326,7 +3347,7 @@ function rebuildDetail(){
     const p=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad);
     let onPath=false;
     for(let t=0;t<TILE_COUNT;t++){ if(p.distanceTo(path[t])<2.6){ onPath=true; break; } }
-    if(onPath || overRiver(p.x,p.z,0.35)) continue;
+    if(onPath || overRiver(p.x,p.z,0.35) || nearCastleDistrict(p.x,p.z,.55)) continue;
     const isRock=srand(s+2)<0.32;
     if(isRock && ri<ROCKS){
       dummy.position.set(p.x,0.05,p.z);
@@ -3364,7 +3385,7 @@ function rebuildDetail(){
     const p=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad);
     let blocked=false;
     for(let t=0;t<TILE_COUNT;t++){ if(p.distanceTo(path[t])<2.8){ blocked=true; break; } }
-    if(blocked || overRiver(p.x,p.z,0.35)) continue;
+    if(blocked || overRiver(p.x,p.z,0.35) || nearCastleDistrict(p.x,p.z,.55)) continue;
     const pick=srand(s2+2);
     if(pick<0.22 && ti<TR){
       if(!plotClear(p.x,p.z,FOOT_TREE)) continue;          // trees claim a plot like buildings do
@@ -3914,6 +3935,7 @@ function rebuildFolk(){
     let clear=true;
     for(let t=0;t<TILE_COUNT;t++){ if(pos.distanceTo(path[t])<2.6){ clear=false; break; } }
     if(!clear) return;
+    if(opts.ambientCitizen && !visualLandClear(pos,0.75)) return;
     const p=makePerson(kind,seed);
     if(opts.ambientCitizen) p.traverse(o=>{ if(o.isMesh||o.isInstancedMesh){ o.castShadow=false; o.receiveShadow=false; } });
     p.position.set(pos.x,0,pos.z);
@@ -4083,7 +4105,10 @@ function makeLifeAnimal(kind,seed){
   return g;
 }
 function addLifeAnimal(kind,pos,seed,mode){
-  if(overRiver(pos.x,pos.z,kind==="duck"?-.18:.35) && kind!=="duck") return;
+  if(kind==="duck"){
+    if(!overRiver(pos.x,pos.z,-.35) || nearBoardTile(pos.x,pos.z,.7)) return;
+    if(BRIDGE_CROSS_POINT && Math.hypot(pos.x-BRIDGE_CROSS_POINT.x,pos.z-BRIDGE_CROSS_POINT.z)<2.6) return;
+  } else if(!visualLandClear(pos,0.85)) return;
   for(let t=0;t<TILE_COUNT;t++) if(pos.distanceTo(path[t])<2.4) return;
   const m=makeLifeAnimal(kind,seed); m.position.copy(pos); m.rotation.y=srand(seed+9)*6.28;
   settlementLifeGroup.add(m); LIFE_ANIMALS.push({kind,mesh:m,home:pos.clone(),phase:srand(seed+5)*6.28,mode:mode||"idle"});
@@ -4115,7 +4140,7 @@ function rebuildSettlementLife(){
   WORK_SITES.forEach((w,i)=>{ if(w.type==="farm"){ addLifeAnimal("sheep",w.pos.clone().add(new THREE.Vector3(-1.7,0,1.7)),9500+i,"graze"); addLifeAnimal("chicken",w.pos.clone().add(new THREE.Vector3(1.6,0,-1.2)),9510+i,"peck"); } });
   if(RIVER){
     const ax=RIVER.bx-RIVER.ax, az=RIVER.bz-RIVER.az, len=Math.hypot(ax,az)||1, fx=ax/len, fz=az/len, sx=-fz, sz=fx;
-    for(let i=0;i<3;i++){ const u=-.25+i*.24, side=i%2?1:-1; addLifeAnimal("duck",new THREE.Vector3((RIVER.ax+RIVER.bx)/2+fx*u*18+sx*side*(RIVER.halfW+.35),WATER_Y+.04,(RIVER.az+RIVER.bz)/2+fz*u*18+sz*side*(RIVER.halfW+.35)),9600+i,"bob"); }
+    for(let i=0;i<3;i++){ const u=-.32+i*.32, side=i%2?1:-1; addLifeAnimal("duck",new THREE.Vector3((RIVER.ax+RIVER.bx)/2+fx*u*15+sx*side*(RIVER.halfW*.36),WATER_Y+.04,(RIVER.az+RIVER.bz)/2+fz*u*15+sz*side*(RIVER.halfW*.36)),9600+i,"bob"); }
   }
   addLifeAnimal("rabbit",new THREE.Vector3(-9.5,0,8.5),9700,"hop"); addLifeAnimal("rabbit",new THREE.Vector3(11.2,0,-8.4),9710,"hop");
 
@@ -4435,6 +4460,12 @@ king.position.copy(standPos(0));
 
 function showDie(on){
   $("dieDock").classList.toggle("hide",!on);
+}
+function restoreDiceHud(){
+  const dd=$("dieDock"); if(!dd || G.map || G.create) return;
+  showDie(true);
+  dd.style.display=""; dd.style.opacity=""; dd.style.pointerEvents="";
+  const multi=$("multi"); if(multi){ multi.style.display=""; multi.style.opacity=""; multi.style.pointerEvents=""; }
 }
 function endTurn(){
   if(COUNCIL.length) setTimeout(dismissAdvisors,1500);   // council never lingers past the turn
@@ -5995,7 +6026,7 @@ window.addEventListener("pointerdown",e=>{
 /* ================= BUILDER ================= */
 function doBuild(){
   const cost=buildCost();
-  if(S.coins<cost){ sNo(); return false; }
+  if(S.coins<cost){ sNo(); restoreDiceHud(); return false; }
   S.coins-=cost; S.builds++; S.soldiers+=2+S.tier; questProgress("build",1);
   sBuild(); buzz([30,30,60]);
   logEvent("🏗️","Built a "+bldFor(S.tier).n,"−"+cost.toLocaleString()+" 🪙  ·  +"+(2+S.tier)+" ⚔️");
@@ -6009,7 +6040,7 @@ function doBuild(){
       sFanfare(); buzz([80,60,80,60,120]);
       rebuildTown(); rebuildFolk(); rebuildDetail(); applyRealmScene();   // ground develops with the new tier
       showCard(bldFor(S.tier).e,TIERS[S.tier]+" Unlocked!","Your people cheer! +"+bonus.toLocaleString()+" 🪙 +5 🎲 +"+sB+" ⚔️","Rise!",()=>{
-        S.coins+=bonus; S.rolls+=5; S.soldiers+=sB; refresh(); renderBuilder();
+        S.coins+=bonus; S.rolls+=5; S.soldiers+=sB; refresh(); renderBuilder(); restoreDiceHud();
       });
     } else {
       $("buildOv").classList.remove("show");
@@ -6019,6 +6050,7 @@ function doBuild(){
     msg("🔨 "+bldFor(S.tier).n+" built! "+S.builds+"/"+BUILDS_PER_TIER,1200);
   }
   refresh();
+  restoreDiceHud();
   return true;
 }
 function ascend(){
@@ -6029,7 +6061,7 @@ function ascend(){
   sFanfare(); buzz([100,60,100,60,160]);
   applyRealmScene(); rebuildTown(); rebuildFolk(); rebuildDetail(); refresh();
   showCard("🌍",realmTheme().name+" Founded!","The world changes around you! +"+bonus.toLocaleString()+" 🪙 +15 🎲","Ascend!",()=>{
-    S.coins+=bonus; S.rolls+=15; refresh();
+    S.coins+=bonus; S.rolls+=15; refresh(); restoreDiceHud();
   });
 }
 function renderBuilder(){
@@ -6050,13 +6082,13 @@ function renderBuilder(){
       const cost=buildCost();
       btn.innerHTML='Build<br>'+cost.toLocaleString()+' 🪙';
       btn.disabled=S.coins<cost;
-      btn.onclick=()=>{ if(doBuild()) renderBuilder(); };
+      btn.onclick=()=>{ if(doBuild()) renderBuilder(); restoreDiceHud(); };
     }
     row.appendChild(btn); tr.appendChild(row);
   }
 }
 $("buildBtn").addEventListener("click",()=>{ renderBuilder(); $("buildOv").classList.add("show"); tone(880,0,.05,"square",.08); });
-$("buildX").addEventListener("click",()=>$("buildOv").classList.remove("show"));
+$("buildX").addEventListener("click",()=>{ $("buildOv").classList.remove("show"); restoreDiceHud(); });
 
 /* ================= MENU ================= */
 $("menuBtn").addEventListener("click",()=>{ $("menuUser").textContent="Signed in as "+CURRENT_USER; $("menuOv").classList.add("show"); });
