@@ -1569,46 +1569,61 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 if("outputColorSpace" in renderer) renderer.outputColorSpace=THREE.SRGBColorSpace;
 else if("outputEncoding" in renderer) renderer.outputEncoding=THREE.sRGBEncoding;   // r128 fallback
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.05;                         // gentle — keeps colours bright, not washed
+renderer.toneMappingExposure=1.08;                         // gentle - keeps colours bright, not washed
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x1c1240);
-scene.fog=new THREE.Fog(0x1c1240,48,110);
+scene.fog=new THREE.Fog(0x1c1240,44,116);
 const MAP_FOG=scene.fog;
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);
 // cool sky fill above, faint warm bounce below — keeps shadows from going flat-dark
-scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x4a3a2e, .68));
-const sun=new THREE.DirectionalLight(0xffe0ad, 1.28);      // warm golden key light
-sun.position.set(8,14,6); sun.castShadow=true;
+const hemiLight=new THREE.HemisphereLight(0xb8c6ff, 0x5b4328, .76);
+scene.add(hemiLight);
+const sun=new THREE.DirectionalLight(0xffd28c, 1.36);      // warm golden key light
+sun.position.set(7.2,15.5,8.4); sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);                         // sharper contact shadows
 sun.shadow.camera.left=-38; sun.shadow.camera.right=38; sun.shadow.camera.top=38; sun.shadow.camera.bottom=-38;
 sun.shadow.camera.near=0.5; sun.shadow.camera.far=60;
 sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.02;       // clean contact, no shadow-acne
-sun.shadow.radius=3;                                       // soft penumbra
+sun.shadow.radius=4;                                       // soft penumbra
 scene.add(sun);
 // a subtle cool rim from the opposite side gives forms gentle shape without extra shadows
-const rim=new THREE.DirectionalLight(0xb9a6ff, 0.28);
-rim.position.set(-9,7,-6); scene.add(rim);
-/* ---- Visual Pass 1: a soft gradient sky dome (vertex-coloured, no texture) ---- */
-let skyDome=null, skyTop=new THREE.Color(0x2a1a5c), skyBot=new THREE.Color(0x6a5aa8);
+const rim=new THREE.DirectionalLight(0xc8b9ff, 0.34);
+rim.position.set(-10,7.5,-6.5); scene.add(rim);
+/* ---- Visual Pass 3: richer procedural sky and soft horizon atmosphere ---- */
+let skyDome=null, skyTop=new THREE.Color(0xd8c8ff), skyMid=new THREE.Color(0xf0dcff), skyBot=new THREE.Color(0xfff0d0);
+const SKY_R=86, ATMOSPHERE_MATS=[];
 {
-  const sg=new THREE.SphereGeometry(124,24,16);
+  const sg=new THREE.SphereGeometry(SKY_R,28,18);
   const cols=[], pos=sg.attributes.position, tmp=new THREE.Color();
   for(let i=0;i<pos.count;i++){
-    const y=pos.getY(i)/124;                                // -1 (bottom) .. 1 (top)
-    const t=Math.min(1,Math.max(0,(y+0.35)/1.1));
-    tmp.copy(skyBot).lerp(skyTop,t);
+    const y=pos.getY(i)/SKY_R;
+    const t=Math.min(1,Math.max(0,(y+0.08)/1.28));
+    tmp.copy(t<.72 ? skyBot.clone().lerp(skyMid,t/.72) : skyMid.clone().lerp(skyTop,(t-.72)/.28));
     cols.push(tmp.r,tmp.g,tmp.b);
   }
   sg.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
-  skyDome=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));
+  skyDome=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false,depthTest:false}));
+  skyDome.renderOrder=-100; skyDome.frustumCulled=false;
   scene.add(skyDome);
 }
-// distant stars, kept from before, sitting just inside the dome
-{ const g=new THREE.BufferGeometry(), pts=[];
-  for(let i=0;i<300;i++){ const r=40+Math.random()*20, th=Math.random()*Math.PI*2, ph=Math.random()*Math.PI*.45;
-    pts.push(r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph)+4, r*Math.sin(ph)*Math.sin(th)); }
-  g.setAttribute("position",new THREE.Float32BufferAttribute(pts,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:.13,transparent:true,opacity:.8}))); }
+function addCloudBand(seed,count,y,rad,opacity){
+  const geo=new THREE.SphereGeometry(1,10,6);
+  const mat=new THREE.MeshBasicMaterial({color:0xffedd1,transparent:true,opacity,depthWrite:false,fog:false});
+  const clouds=new THREE.InstancedMesh(geo,mat,count);
+  const d=new THREE.Object3D();
+  for(let i=0;i<count;i++){
+    const s=seed+i*17, a=srand(s)*Math.PI*2;
+    d.position.set(Math.cos(a)*rad, y+srand(s+1)*4.2, Math.sin(a)*rad);
+    d.rotation.set(0,-a+srand(s+2)*.35,0);
+    d.scale.set(3.4+srand(s+3)*5.2, .18+srand(s+4)*.28, .48+srand(s+5)*.95);
+    d.updateMatrix(); clouds.setMatrixAt(i,d.matrix);
+  }
+  clouds.instanceMatrix.needsUpdate=true; clouds.renderOrder=-30;
+  scene.add(clouds); ATMOSPHERE_MATS.push(mat); return clouds;
+}
+addCloudBand(5100,18,18,63,.20);
+addCloudBand(6200,12,25,78,.13);
+// No active star layer in this static daytime pass; it caused speckling in the map camera.
 const groundMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,vertexColors:true});
 const groundGeo=new THREE.CylinderGeometry(48,48,.6,80,4,false);
 {
@@ -1616,13 +1631,17 @@ const groundGeo=new THREE.CylinderGeometry(48,48,.6,80,4,false);
   const posn=groundGeo.attributes.position, cols=[], base=new THREE.Color(0x2f7047), tmp=new THREE.Color();
   for(let i=0;i<posn.count;i++){
     const vx=posn.getX(i), vz=posn.getZ(i), vy=posn.getY(i);
-    if(vy>0){                                              // only the top surface is grass
+    if(vy>0){
       const rr=Math.hypot(vx,vz)/48;
       const n=Math.sin(vx*0.42)*Math.cos(vz*0.36)*0.55 + Math.sin(vx*1.25+vz*.72)*0.25 + Math.cos((vx-vz)*.18)*0.20;
       const lift=(n*0.014 - 0.006) * Math.min(1,Math.max(0,(rr-.08)*1.25));
       posn.setY(i,vy+lift);
       tmp.copy(base).offsetHSL(0.025*n, 0.055*n, 0.065*n);
-    } else tmp.copy(base).multiplyScalar(0.7);
+    } else {
+      // The terrain disc side can meet the horizon in normal view; keep it grassy, not black.
+      const side=Math.max(0,Math.min(1,(vy+0.3)/0.6));
+      tmp.copy(base).lerp(new THREE.Color(0xd4c393),.24).multiplyScalar(.78+side*.12);
+    }
     cols.push(tmp.r,tmp.g,tmp.b);
   }
   groundGeo.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
@@ -1659,22 +1678,38 @@ ground.position.y=-.3; ground.receiveShadow=true; scene.add(ground);
 const TIER_GROUND=[0x3f8f55, 0x5f8f45, 0x8a7a4a, 0x9c8a68, 0xa89a86, 0xb6b0a6];
 function applyRealmScene(){
   const th=realmTheme();
-  const skySky=skinSky(th.sky);
-  scene.background.setHex(skySky); if(scene.fog) scene.fog.color.setHex(skySky); MAP_FOG.color.setHex(skySky);
+  const skySky=skinSky(th.sky), base=new THREE.Color(skySky);
+  const fogCol=base.clone().lerp(new THREE.Color(0xffd39b),0.16);
+  scene.background.copy(base.clone().lerp(new THREE.Color(0xded0ff),0.86).multiplyScalar(1.08));
+  if(scene.fog) scene.fog.color.copy(fogCol); MAP_FOG.color.copy(fogCol);
   if(skyDome){                                             // keep the gradient in step with the realm's sky
-    const base=new THREE.Color(skySky);
-    skyTop.copy(base).multiplyScalar(0.62);
-    skyBot.copy(base).lerp(new THREE.Color(0xffffff),0.18).multiplyScalar(1.08);
+    skyTop.copy(base).lerp(new THREE.Color(0xd8c8ff),0.92).multiplyScalar(1.16);
+    skyMid.copy(base).lerp(new THREE.Color(0xf0dcff),0.88).multiplyScalar(1.16);
+    skyBot.copy(base).lerp(new THREE.Color(0xfff0d0),0.88).multiplyScalar(1.16);
     const col=skyDome.geometry.attributes.color, posn=skyDome.geometry.attributes.position, tmp=new THREE.Color();
     for(let i=0;i<posn.count;i++){
-      const y=posn.getY(i)/124, t=Math.min(1,Math.max(0,(y+0.35)/1.1));
-      tmp.copy(skyBot).lerp(skyTop,t); col.setXYZ(i,tmp.r,tmp.g,tmp.b);
+      const y=posn.getY(i)/SKY_R, t=Math.min(1,Math.max(0,(y+0.08)/1.28));
+      tmp.copy(t<.72 ? skyBot.clone().lerp(skyMid,t/.72) : skyMid.clone().lerp(skyTop,(t-.72)/.28));
+      col.setXYZ(i,tmp.r,tmp.g,tmp.b);
     }
     col.needsUpdate=true;
   }
+  ATMOSPHERE_MATS.forEach((m,i)=>{ m.color.copy(base).lerp(new THREE.Color(0xffefd1),0.74); m.opacity=i?0.13:0.20; });
   const g=TIER_GROUND[Math.min(S.tier,TIER_GROUND.length-1)];
   groundMat.color.setHex(skinGround(S.realm>1 ? th.ground : g));
 }
+const GRASS_WIND=[];
+function windGrassMaterial(mat){
+  mat.onBeforeCompile=shader=>{
+    shader.uniforms.uGrassTime={value:0};
+    shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>\nuniform float uGrassTime;");
+    shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\n#ifdef USE_INSTANCING\n  float grassLift=smoothstep(-0.12,0.16,position.y);\n  float grassPhase=dot(instanceMatrix[3].xz,vec2(0.73,1.37));\n  float grassWave=sin(uGrassTime*1.25+grassPhase);\n  transformed.x += grassWave*0.045*grassLift;\n  transformed.z += cos(uGrassTime*1.05+grassPhase)*0.022*grassLift;\n#endif");
+    mat.userData.shader=shader;
+    GRASS_WIND.push(shader.uniforms.uGrassTime);
+  };
+  return mat;
+}
+function tickAtmosphere(t){ if(skyDome) skyDome.position.copy(camera.position); for(let i=0;i<GRASS_WIND.length;i++) GRASS_WIND[i].value=t; }
 
 /* ---- board ---- */
 /* ---- board: a 48-tile squiggly organic loop (one lap = a "year") ---- */
@@ -3011,6 +3046,7 @@ function rebuildTown(){
 /* ---- roads + ground scatter (instanced: hundreds of props, near-zero draw cost) ---- */
 const detailGroup=new THREE.Group(); scene.add(detailGroup);
 function rebuildDetail(){
+  GRASS_WIND.length=0;
   while(detailGroup.children.length){ const c=detailGroup.children[0]; detailGroup.remove(c); disposeGroup(c); }
   const progress=S.tier*BUILDS_PER_TIER+S.builds;
   const LANES=8;
@@ -3273,9 +3309,9 @@ function rebuildDetail(){
   [barePatch,grassPatch,forestPatch].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.receiveShadow=true; detailGroup.add(m); });
   /* GRASS TUFTS + LOOSE ROCKS — one draw call each, scattered off the roads */
   const grassGeo=new THREE.ConeGeometry(0.055,0.32,3);
-  const grassMat=new THREE.MeshStandardMaterial({color:skinLeaf(0x4f8f46),roughness:1});
+  const grassMat=windGrassMaterial(new THREE.MeshStandardMaterial({color:skinLeaf(0x6fac5a),roughness:1,emissive:0x183a20,emissiveIntensity:.10}));
   const rockGeo=new THREE.DodecahedronGeometry(0.10,0);
-  const rockMat=new THREE.MeshStandardMaterial({color:0x8f8a80,roughness:1});
+  const rockMat=new THREE.MeshStandardMaterial({color:0xc6bea8,roughness:1,emissive:0x403828,emissiveIntensity:.10});
   const reach = legacy()>REALM_SPAN*0.8 ? 1.72 : 1.18;   // scatter spreads as the realm grows
   const GRASS=260, ROCKS=120;
   const gm=new THREE.InstancedMesh(grassGeo,grassMat,GRASS);
@@ -3358,12 +3394,13 @@ function rebuildDetail(){
     }
   }
   flower.count=fi; bush.count=bi; trunkI.count=ti; leafConeI.count=lc; leafRoundI.count=lr; leafTallI.count=lt;
-  [flower,bush,trunkI,leafConeI,leafRoundI,leafTallI].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=true; detailGroup.add(m); });
+  [flower,bush].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=false; detailGroup.add(m); });
+  [trunkI,leafConeI,leafRoundI,leafTallI].forEach(m=>{ m.instanceMatrix.needsUpdate=true; m.castShadow=false; detailGroup.add(m); });
   if(flower.instanceColor) flower.instanceColor.needsUpdate=true;
 
   gm.count=gi; rm.count=ri;
   gm.instanceMatrix.needsUpdate=true; rm.instanceMatrix.needsUpdate=true;
-  gm.castShadow=false; rm.castShadow=true;
+  gm.castShadow=false; rm.castShadow=false;
   detailGroup.add(gm); detailGroup.add(rm);
 }
 
@@ -6838,6 +6875,7 @@ function animate(){
   dieRenderer.render(dieScene,dieCam);
 
   updateCamera(dt);
+  tickAtmosphere(clock.elapsedTime);
   renderer.render(scene,camera);
 }
 function finishFight(){
