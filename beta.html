@@ -4472,6 +4472,106 @@ function animateDragonTakeoff(dt,t){
   if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(t*4)*.12;
   if(k>=1){ G.state="dragonFlee"; G.dragonT=0; d.userData.flyStartScale=battleScale; }
 }
+/* ── defeat: it goes down where it stood, and it never flies ──────────────
+   Victory and escape must not share a silhouette. Escape climbs away under its
+   own power; this collapses in place and lifts off as motes. */
+function spawnDeathMotes(d,at){
+  const glow=(d.userData.breed&&d.userData.breed.glow)||0xffb060;
+  const g=new THREE.SphereGeometry(.09,6,5);
+  G.dieMotes=[];
+  for(let i=0;i<6;i++){
+    const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:glow,transparent:true,opacity:.85,depthWrite:false}));
+    m.position.set(at.x+(Math.random()-.5)*1.7, at.y+.35+Math.random()*.55, at.z+(Math.random()-.5)*1.7);
+    scene.add(m);
+    G.dieMotes.push({mesh:m, vy:.5+Math.random()*.45, drift:(Math.random()-.5)*.32, life:1});
+  }
+}
+function tickDeathMotes(dt){
+  if(!G.dieMotes) return;
+  for(let i=G.dieMotes.length-1;i>=0;i--){
+    const o=G.dieMotes[i];
+    o.life-=dt*1.05;
+    o.mesh.position.y+=o.vy*dt; o.mesh.position.x+=o.drift*dt;
+    o.mesh.material.opacity=Math.max(0,.85*o.life);
+    o.mesh.scale.setScalar(Math.max(.05,o.life));
+    if(o.life<=0){ scene.remove(o.mesh); disposeGroup(o.mesh); G.dieMotes.splice(i,1); }
+  }
+  if(!G.dieMotes.length) G.dieMotes=null;
+}
+function animateDragonDefeat(dt,t){
+  const d=G.dragon; if(!d) return;
+  G.dragonT+=dt;
+  const et=G.dragonT;
+  const b=G.dieBeat||(G.dieBeat={});
+  const base=d.userData.baseBattlePos||d.position.clone();
+  d.scale.setScalar(d.userData.battleScale||1.55);
+
+  if(!b.hitch){                       // the stop — motion holds and the score cuts out
+    b.hitch=true;
+    musicDuck(0,.06); buzz([50,110,50]);
+    if(d.userData.mats){              // the glow goes out of it
+      d.userData.mats.body.emissiveIntensity=0;
+      d.userData.mats.dark.emissiveIntensity=0;
+    }
+  }
+  if(et>=DDIE.ROAR&&!b.roar){ b.roar=true; sDeathRoar(); }
+  if(et>=DDIE.IMPACT&&!b.impact){
+    b.impact=true; sBodyFall(); buzz([150,80,120]);
+    BATTLE.shake=Math.max(BATTLE.shake,1.0);
+    spawnDustRing(new THREE.Vector3(base.x,base.y,base.z));
+  }
+  if(et>=DDIE.SETTLE&&!b.settle){
+    b.settle=true; spawnDustRing(new THREE.Vector3(base.x+.75,base.y,base.z-.55));
+  }
+  if(et>=DDIE.FADE&&!b.fade){ b.fade=true; spawnDeathMotes(d,base); }
+  if(et>=DDIE.DONE&&!b.done){
+    b.done=true;
+    scene.remove(d); disposeGroup(d); G.dragon=null;
+    beginAftermath(base);
+    if(G.dieReward){ G.dieReward(); G.dieReward=null; }   // the hoard lands after the moment, never through it
+    G.dieBeat=null;
+    endTurn();
+    return;
+  }
+
+  /* pose: tension bleeds out during the hold, then it gives all at once */
+  const tension=Math.min(1,Math.max(0,et/0.30));
+  const collapse=Math.min(1,Math.max(0,(et-DDIE.COLLAPSE)/(DDIE.IMPACT-DDIE.COLLAPSE)));
+  const ce=collapse*collapse;                          // accelerating — it gives way rather than lowering
+  // the head goes down before the body commits: the frame that says it is over
+  const headLead=Math.min(1,Math.max(0,(et-DDIE.COLLAPSE+0.16)/0.55));
+  if(d.userData.head) d.userData.head.rotation.x=headLead*.85;
+  if(d.userData.neck) d.userData.neck.rotation.x=-.5+headLead*1.05;
+  d.position.set(base.x, base.y-ce*.34, base.z);
+  d.rotation.z=ce*.42;                                 // rolls onto one side, never a symmetrical fall
+  d.rotation.x=-.05+ce*.16;
+  const splay=tension*.12+ce*.62;                      // wings splay, not fold — uncontrolled
+  if(d.userData.wingL){
+    d.userData.wingL.rotation.z=-1.35-splay;
+    if(d.userData.wingLTip) d.userData.wingLTip.rotation.z=splay*.5;
+  }
+  if(d.userData.wingR){
+    d.userData.wingR.rotation.z= 1.35+splay*.8;        // one goes further than the other
+    if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=-splay*.5;
+  }
+  if(d.userData.tail){                                 // the tail is the last of it to stop moving
+    const tt=Math.max(0,et-DDIE.COLLAPSE-.35);
+    d.userData.tail.rotation.y=Math.sin(tt*5.2)*.30*Math.max(0,1-tt*1.1);
+  }
+  if(d.userData.body) d.userData.body.scale.y=.85;     // breathing stopped at the hitch
+
+  if(et>=DDIE.FADE){                                   // lifts away rather than shrinking into the sky
+    const k=Math.min(1,(et-DDIE.FADE)/(DDIE.DONE-DDIE.FADE));
+    d.traverse(o=>{
+      if(o.isMesh&&o.material){
+        (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+          m.transparent=true; m.opacity=1-k; m.depthWrite=k<.5;
+        });
+      }
+    });
+    d.position.y=base.y-.34-k*.25;
+  }
+}
 function makeDragon(breedIdx){
   const bd=dragonBreed(breedIdx||0);
   const d=new THREE.Group();
@@ -4816,6 +4916,87 @@ function clearBattlefield(){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   M4: Resolution and World Memory
+
+   A slain dragon used to play the same takeoff-and-shrink as an escaping one —
+   the player landed the killing blow and then watched their prize leave under
+   its own power. Defeat now has its own state: it goes down where it stood and
+   never flies. Afterwards the kingdom gets a quiet beat, stands down, and the
+   ground keeps the mark for a while.
+
+   Nothing here reads or writes health, damage, loot, soldier cost, or timing.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DDIE={
+  HITCH:    0.00,   // the stop — motion holds, the score cuts out
+  ROAR:     0.16,   // death roar, cut off before it resolves
+  COLLAPSE: 0.40,   // head goes down first, then the body gives
+  IMPACT:   1.15,   // the body strikes ground
+  SETTLE:   1.50,   // dust drifts, the tail is last to still
+  FADE:     1.90,   // it lifts away as motes in its own glow
+  DONE:     2.80,   // hand back to the kingdom
+};
+/* the death roar begins as a full roar and is cut off mid-sound — no release
+   tail. An unfinished sound is how the ear understands that something died. */
+function sDeathRoar(){
+  tone(64,0,.30,"sawtooth",.26); tone(86,.05,.24,"sawtooth",.21); tone(52,.09,.18,"sawtooth",.17);
+}
+/* the lowest, longest, heaviest impact in the game — sustained rather than sharp */
+function sBodyFall(){
+  tone(38,0,.80,"sine",.30); tone(52,.02,.55,"triangle",.19); tone(92,0,.14,"sawtooth",.12);
+}
+/* The entrance ducks the score to silence and nothing ever brought it back, so
+   the kingdom played on in silence for the rest of the session after any dragon.
+   Restores to the same 0.5 musicStart uses, and respects both toggles. */
+function musicRestore(ramp){
+  if(!MUSIC.on || (S&&S.music===false) || (S&&S.sound===false)) return;
+  musicDuck(0.5, ramp||1.4);
+}
+
+/* ── the mark it leaves ─────────────────────────────────────────────────
+   Kingdom Cycles §6 puts dragon scorch on a ~6-cycle fade. Cycles aren't wired
+   to this yet, so for now it fades on a timer and is deliberately temporary. */
+function clearScorch(){
+  if(G.scorch){ scene.remove(G.scorch.mesh); disposeGroup(G.scorch.mesh); G.scorch=null; }
+}
+function spawnScorch(at){
+  clearScorch();
+  const sh=new THREE.Shape(); sh.absellipse(0,0,2.7,1.95,0,Math.PI*2,false,0);
+  const g=new THREE.ShapeGeometry(sh,18);
+  const m=new THREE.MeshBasicMaterial({color:0x2b1e15,opacity:0,transparent:true,depthWrite:false});
+  const s=new THREE.Mesh(g,m); s.rotation.x=-Math.PI/2;
+  s.position.set(at.x,.045,at.z); s.renderOrder=2;
+  scene.add(s);
+  G.scorch={mesh:s, life:1, peak:.30};
+}
+function tickScorch(dt){
+  if(!G.scorch) return;
+  const sc=G.scorch;
+  sc.life-=dt/16;                                  // gone in about sixteen seconds
+  const fadeIn=Math.min(1,(1-sc.life)*6);          // darkens in quickly, then lingers and lifts
+  sc.mesh.material.opacity=Math.max(0,sc.peak*fadeIn*sc.life);
+  if(sc.life<=0) clearScorch();
+}
+
+/* ── the quiet beat ────────────────────────────────────────────────────
+   Called when the dragon is gone by either road. Combat stops, the bows come
+   down, the watch holds a moment before standing down, and the townsfolk drift
+   back — a few of them stopping to look at where it was first. */
+function beginAftermath(at){
+  BATTLE.firing=false;
+  if(at) spawnScorch(at);
+  G.dragonMark=at?at.clone():null;
+  musicRestore(1.6);
+  for(const p of FOLK){
+    if(p.evt==="dragonLine"){
+      p.evt="dragonStandDown"; p.evtT=6.5; p.evtSeed=Math.random()*6.28;
+    } else if(p.evt==="dragonFear"){
+      p.evt="dragonReturn"; p.evtT=7.5; p.evtSeed=Math.random()*6.28;
+      p.evtGaze=Math.random()<0.4;      // a few stand and look before going back to it
+    }
+  }
+}
+
 /* ── dragon flight path during cinematic ────────────────────────────── */
 function animateDragonFlight(t,et,landPos,dir){
   const d=G.dragon; if(!d) return;
@@ -4960,7 +5141,6 @@ function animateDragonEntrance(dt,t){
   if(et>=DENT.READY&&!beat.ready){ beat.ready=true; finishDragonEntrance(); }
 
   if(G.entranceShake>0) G.entranceShake=Math.max(0,G.entranceShake-dt*3.2);
-  tickEntranceDust(dt);
 }
 
 /* ── entrance entry / exit ──────────────────────────────────────────── */
@@ -6563,14 +6743,20 @@ function endDragonFight(victory){
   if(victory){
     const hoard=Math.round((900+F.hpMax*22)*RG()*posMult(S.pos));
     const got=gain(hoard, G.dragon?G.dragon.position:king.position);   // gain() itself applies any active x2
-    coinBurst(G.dragon?G.dragon.position:king.position,16);
     S.slayerTurns=3;                                    // 3 turns of double rewards from here
     S.dragonSlain++;
     S.dragonHP=0; S.dragonHPMax=0;                      // fully defeated — the next dragon starts fresh
-    sFanfare(); buzz([90,60,120]);
-    rewardToast("🐉","Dragon Slain!","+"+got.toLocaleString()+" 🪙  ·  ×2 rewards for 3 turns","big");
     logEvent("🐉","Slew the "+F.breed.n,"+"+got.toLocaleString()+" 🪙  ·  🐲x2 (3 turns)");
     save();
+    // M4: the gold, the boon and the save all land exactly as before — only the
+    // presentation waits. A hoard burst and a dismiss-me toast over the killing
+    // blow inverts the moment the player just earned.
+    const dpos=G.dragon?G.dragon.position.clone():king.position.clone();
+    G.dieReward=()=>{
+      coinBurst(dpos,16);
+      sFanfare(); buzz([90,60,120]);
+      rewardToast("🐉","Dragon Slain!","+"+got.toLocaleString()+" 🪙  ·  ×2 rewards for 3 turns","big");
+    };
   } else {
     // ran out of time or soldiers: keep whatever loot the strikes already knocked loose,
     // and remember exactly how wounded it is so it comes back hurt next time
@@ -6581,7 +6767,9 @@ function endDragonFight(victory){
       (F.loot>0?"+"+F.loot.toLocaleString()+" 🪙  ":"")+F.hp+"/"+F.hpMax+" HP left", "big", true);
     save();
   }
-  G.state="dragonTakeoff"; G.dragonT=0; G.fight=null;
+  // M4: a slain dragon no longer plays the escape animation. Victory collapses in
+  // place; only an escape takes off. The two must never share a silhouette.
+  G.state=victory?"dragonDie":"dragonTakeoff"; G.dragonT=0; G.fight=null; G.dieBeat=null;
 }
 $("dragonNoSoldiers").addEventListener("pointerdown",e=>{
   e.stopPropagation();
@@ -7250,20 +7438,15 @@ function updateCamera(dt){
   // the monarch's heading. The king's facing eases back toward neutral once he stops
   // walking, which could leave the dragon — and the whole battlefield with it — well
   // outside the frame. Aiming down the king→dragon axis keeps both in view.
-  if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee")&&G.dragon){
+  if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie")&&G.dragon){
     const toD=G.dragon.position.clone().sub(king.position).setY(0);
     if(toD.lengthSq()>0.04){ f.copy(toD.normalize()); r.set(-f.z,0,f.x); }
   }
   const tp=new THREE.Vector3().copy(king.position).addScaledVector(f,-dist).addScaledVector(r,side).setY(king.position.y+height);
   const tl=new THREE.Vector3().copy(king.position).addScaledVector(f,ahead).setY(king.position.y+1);   // aim at the monarch so he stays framed
-  if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee")&&G.dragon){
+  if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie")&&G.dragon){
     const dragonLook=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+1.0,G.dragon.position.z);
     tl.lerp(dragonLook,.55);
-  }
-  if(BATTLE.shake>0&&G.state==="encounter"){
-    // M3: per-strike nudge only — small enough that rapid tapping never costs accuracy
-    const sh=BATTLE.shake*.085, et2=clock.elapsedTime;
-    tp.x+=Math.sin(et2*63)*sh; tp.y+=Math.cos(et2*71)*sh*.6;
   }
 
   // free-look: only while idle; travelling eases the view back to the follow angle
@@ -7283,7 +7466,17 @@ function updateCamera(dt){
   }
   const k=1-Math.pow(.0015,dt);
   camPos.lerp(tp,k); camLook.lerp(tl,k);
-  camera.position.copy(camPos); camera.lookAt(camLook);
+  camera.position.copy(camPos);
+  // Applied after the smoothing for the same reason as the entrance rig: fed into
+  // the lerp target a hit only reaches a fraction of its amplitude on the frame it
+  // happens. Covers the per-strike nudge and the body hitting the ground on defeat.
+  if(BATTLE.shake>0&&(G.state==="encounter"||G.state==="dragonDie")){
+    const sh=BATTLE.shake*.055;
+    camera.position.x+=(Math.random()-.5)*sh;
+    camera.position.y+=(Math.random()-.5)*sh*.6;
+    camera.position.z+=(Math.random()-.5)*sh;
+  }
+  camera.lookAt(camLook);
 }
 
 /* ================= MAIN LOOP ================= */
@@ -7328,6 +7521,8 @@ function animate(){
       $("dragonTimeFill").style.width=Math.max(0,F.time/(F.timeMax||5)*100)+"%";
       if(F.time<=0) endDragonFight(false);              // out of time — it escapes, wounded
     }
+  } else if(G.state==="dragonDie"&&G.dragon){
+    animateDragonDefeat(dt,clock.elapsedTime);
   } else if(G.state==="dragonTakeoff"&&G.dragon){
     animateDragonTakeoff(dt,clock.elapsedTime);
   } else if(G.state==="dragonFlee"&&G.dragon){
@@ -7337,7 +7532,12 @@ function animate(){
     const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||1.55;
     const s=Math.max(.22,start*(1-G.dragonT*.55));
     G.dragon.scale.set(s,s,s);
-    if(G.dragonT>1.8){ scene.remove(G.dragon); disposeGroup(G.dragon); G.dragon=null; endTurn(); }
+    if(G.dragonT>1.8){
+      const mark=G.dragon.userData.baseBattlePos?G.dragon.userData.baseBattlePos.clone():null;
+      scene.remove(G.dragon); disposeGroup(G.dragon); G.dragon=null;
+      beginAftermath(mark);        // M4: it got away, but the kingdom still has to come back down
+      endTurn();
+    }
   } else if(G.state==="chest"&&G.chest){
     const C=G.chest;
     const s=Math.min(1,C.grp.scale.x+dt*2.5);
@@ -7538,6 +7738,44 @@ function animate(){
               m.rotation.z=Math.sin(t*2.3+sd)*.05;
             }
           }
+        } else if(e==="dragonStandDown"){                  // it's over: the watch holds, then relaxes
+          // they do not trust that it left — they keep the line for a beat before
+          // lowering the spear and walking back to their post
+          const hold=Math.max(0,p.evtT-4.6);               // ~1.9s of still, braced watching
+          if(hold>0){
+            if(G.dragonMark) m.rotation.y=Math.atan2(G.dragonMark.x-m.position.x, G.dragonMark.z-m.position.z);
+            m.rotation.x=-.10+Math.sin(t*.8+sd)*.02;       // braced, breathing
+            m.position.y=0; m.rotation.z=0;
+          } else {
+            const dxs=p.home.x-m.position.x, dzs=p.home.z-m.position.z, ds=Math.hypot(dxs,dzs);
+            if(ds>0.12){
+              const sp=Math.min(1.6,.5+ds*.5)*dt;          // an unhurried walk back, not a run
+              m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp;
+              m.rotation.y=Math.atan2(dxs,dzs);
+              m.position.y=Math.abs(Math.sin(t*5+sd))*.05;
+            } else {
+              m.rotation.y=p.facing!==undefined?p.facing:m.rotation.y;
+              m.position.y=0;
+            }
+            m.rotation.x*=.9;                              // stance eases out of the brace
+          }
+        } else if(e==="dragonReturn"){                     // the square refills, slowly and unevenly
+          // some stop where they stopped running and look back at where it was,
+          // and the stragglers are what make the rest of it read
+          const gaze=p.evtGaze&&p.evtT>4.4;
+          if(gaze&&G.dragonMark){
+            m.rotation.y=Math.atan2(G.dragonMark.x-m.position.x, G.dragonMark.z-m.position.z);
+            m.position.y=0; m.rotation.x=.04*Math.sin(t*.7+sd);
+          } else {
+            const dxs=p.home.x-m.position.x, dzs=p.home.z-m.position.z, ds=Math.hypot(dxs,dzs);
+            if(ds>0.15){
+              const sp=Math.min(1.5,.45+ds*.45)*dt;
+              m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp;
+              m.rotation.y=Math.atan2(dxs,dzs);
+              m.position.y=Math.abs(Math.sin(t*5.5+sd))*.06;
+            } else { m.position.y=0; }
+            m.rotation.x*=.9;
+          }
         } else if(e==="dragonFear"){                       // townsfolk get clear — some run on, some stop and watch
           const D=G.dragon?G.dragon.position:king.position;
           const stopAt=p.evtWatch?8.5:14;
@@ -7735,6 +7973,11 @@ function animate(){
   tickFruitThrowing(dt); tickFruit(dt); tickWater(clock.elapsedTime);
   tickSettlementLife(dt, clock.elapsedTime);
   tickBattlefield(dt, clock.elapsedTime);       // archers, arrows, and the strike nudge
+  // M4: dust is ticked here rather than inside the entrance, because the defeat
+  // throws rings too and the entrance tick has long stopped running by then —
+  // they were being left in the scene forever.
+  tickEntranceDust(dt);
+  tickScorch(dt); tickDeathMotes(dt);           // the mark it left, and the last of it lifting away
   if(WILD.length) tickWildlife(dt, clock.elapsedTime);
 
   if(dieAnim.spinning){
