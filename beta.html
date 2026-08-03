@@ -4172,10 +4172,16 @@ function rebuildSettlementLife(){
   const birdMat=new THREE.MeshBasicMaterial({color:0x5b5570,transparent:true,opacity:.48,depthWrite:false});
   for(let i=0;i<3;i++){ const b=new THREE.Group(); const left=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat), right=new THREE.Mesh(new THREE.PlaneGeometry(.34,.035),birdMat); left.position.x=-.15; right.position.x=.15; left.rotation.z=.28; right.rotation.z=-.28; b.add(left,right); settlementLifeGroup.add(b); LIFE_BIRDS.push({mesh:b,phase:srand(9800+i)*6.28,rad:28+i*6,height:12+i*1.4,speed:.055+srand(9810+i)*.025}); }
 }
+let _lifeWindT=0;
 function tickSettlementLife(dt,t){
-  LIFE_FLAGS.forEach(u=>u.value=t);
+  // M3: the fight puts an edge in the air — banners snap harder, torches gutter.
+  // Advanced as an accumulator so the wind never jumps phase when combat starts or ends.
+  const gust=BATTLE.active?1:0;
+  _lifeWindT+=dt*(1+gust*.9);
+  LIFE_FLAGS.forEach(u=>u.value=_lifeWindT);
   for(const s of LIFE_SMOKE){ const k=(t*.18+s.offset+s.phase)%1; const m=s.mesh; m.position.set(s.base.x+Math.sin(t*.5+s.phase)*.12+k*.20,s.base.y+k*1.25,s.base.z+Math.cos(t*.42+s.phase)*.12); m.scale.setScalar(.55+k*1.25); m.material.opacity=.26*(1-k); }
-  for(const q of LIFE_TORCHES){ const f=.82+Math.sin(t*9+q.phase)*.16; q.flame.scale.set(f,1.0+Math.sin(t*7+q.phase)*.18,f); q.core.scale.setScalar(.78+Math.sin(t*11+q.phase)*.12); q.flame.rotation.y+=dt*2.2; }
+  const fl=BATTLE.active?1.7:1;                                    // M3: torches gutter harder through the fight
+  for(const q of LIFE_TORCHES){ const f=.82+Math.sin(t*9*fl+q.phase)*.16*fl; q.flame.scale.set(f,1.0+Math.sin(t*7*fl+q.phase)*.18*fl,f); q.core.scale.setScalar(.78+Math.sin(t*11*fl+q.phase)*.12*fl); q.flame.rotation.y+=dt*2.2*fl; }
   for(const a of LIFE_ANIMALS){ const m=a.mesh, p=a.phase; if(a.mode==="peck") m.rotation.x=Math.max(0,Math.sin(t*2.8+p))*.35; else if(a.mode==="hop") m.position.y=Math.max(0,Math.sin(t*1.4+p))*.12; else if(a.mode==="bob") m.position.y=WATER_Y+.07+Math.sin(t*1.2+p)*.025; else m.rotation.x=Math.max(0,Math.sin(t*.8+p))*.20; m.rotation.y+=Math.sin(t*.35+p)*.002; }
   for(const b of LIFE_BIRDS){ const a=t*b.speed+b.phase; b.mesh.visible=!G.map; b.mesh.position.set(Math.cos(a)*b.rad,b.height+Math.sin(t*.45+b.phase)*.7,Math.sin(a)*b.rad); b.mesh.rotation.y=-a+Math.PI/2; const flap=Math.sin(t*5+b.phase)*.22; b.mesh.children[0].rotation.z=.28+flap; b.mesh.children[1].rotation.z=-.28-flap; }
 }
@@ -4400,10 +4406,21 @@ function animateDragonBattle(d,F,t,dt){
   d.scale.setScalar(battleScale);
   const sx=Math.sin(t*42)*.045*shake;
   const sz=Math.cos(t*37)*.045*shake;
+  // M3: it is being engaged by a whole kingdom, so it never settles — a long,
+  // non-harmonic weight shift between the forelimbs, slower than any other cycle on it
+  const weight=Math.sin(t*.31)*Math.cos(t*.17);
   // M3: near-zero vertical bob — dragon stays grounded (was .10/.035/.025)
-  d.position.set(base.x+sx,base.y+Math.sin(t*2.1)*.012+recoil*.18,base.z+sz);
+  d.position.set(base.x+sx+weight*.10,base.y+Math.sin(t*2.1)*.012+recoil*.18,base.z+sz+Math.sin(t*.23)*.05);
   d.rotation.x=-.05+Math.sin(t*1.4)*.012-recoil*.10;
-  d.rotation.z=Math.sin(t*1.1)*.008;
+  d.rotation.z=Math.sin(t*1.1)*.008+weight*.035;
+  // M3: a strike lights the hide in the breed's own glow, gone in a fifth of a second
+  const flash=F.flash||0;
+  if(d.userData.mats){
+    const gl=(d.userData.breed&&d.userData.breed.glow)||0xffb060;
+    d.userData.mats.body.emissive.setHex(gl); d.userData.mats.body.emissiveIntensity=flash*.55;
+    d.userData.mats.dark.emissive.setHex(gl); d.userData.mats.dark.emissiveIntensity=flash*.35;
+  }
+  F.flash=Math.max(0,flash-dt*5.5);
   // Wing base + lagged tip for visible joint bend during flap
   const wbBattle=heavyWingBeat(t,0.9);
   const wbTipB=heavyWingBeat(t-0.22,0.9);
@@ -4420,9 +4437,15 @@ function animateDragonBattle(d,F,t,dt){
   // M3: tail lags body ~400ms (increased from 300ms for more fluid trail)
   const tailT=t-0.40;
   if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(tailT*1.9)*.22+recoil*.12;
-  // Head scans when not recoiling; snaps back on heavy hits via recoil
+  // Head scans when not recoiling; snaps back on heavy hits via recoil.
+  // M3: a loosed arrow pulls its attention off the monarch for a beat — it is
+  // being fought by many, and the head says so before the health bar does.
   if(d.userData.head){
-    const scan=recoil<0.12?Math.sin(t*0.45)*.20:0;
+    let scan=recoil<0.12?Math.sin(t*0.45)*.20:0;
+    if(recoil<0.12 && BATTLE.aimHold>0 && BATTLE.aimAngle!==null){
+      const rel=Math.atan2(Math.sin(BATTLE.aimAngle-d.rotation.y),Math.cos(BATTLE.aimAngle-d.rotation.y));
+      scan+=(Math.max(-.55,Math.min(.55,rel))-scan)*Math.min(1,BATTLE.aimHold)*.75;
+    }
     d.userData.head.rotation.x=Math.sin(t*1.7)*.04-recoil*.10;
     d.userData.head.rotation.y=scan;
   }
@@ -4455,6 +4478,7 @@ function makeDragon(breedIdx){
   d.userData.breed=bd;
   const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.55,metalness:.05});
   const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.65,metalness:.05});
+  d.userData.mats={body,dark};      // M3: kept so a strike can pulse the hide breed-tinted
   const bodyM=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),body);
   bodyM.scale.set(1,.85,1.35); bodyM.position.y=.8; bodyM.castShadow=true; d.add(bodyM); d.userData.body=bodyM;
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,.8,8),body);
@@ -4581,15 +4605,215 @@ function tickEntranceDust(dt){
     const s=1+(1-r.userData.life)*4.5;
     r.scale.set(s,1,s);
     r.material.opacity=r.userData.life*.36;
-    if(r.userData.life<=0){ scene.remove(r); G.entranceDust.splice(i,1); }
+    if(r.userData.life<=0){ scene.remove(r); disposeGroup(r); G.entranceDust.splice(i,1); }
   }
 }
 function cleanupEntrance(){
-  if(G.entranceShadow){ scene.remove(G.entranceShadow); G.entranceShadow=null; }
+  // M3: these were being detached but never released, so every encounter grew the
+  // GPU's geometry pool. Dispose on the way out — the encounter can run many times
+  // in a session and this game runs on phones.
+  if(G.entranceShadow){ scene.remove(G.entranceShadow); disposeGroup(G.entranceShadow); G.entranceShadow=null; }
   G.wildlifeFleeDir=null;
   G.entranceBeat=null; G.entranceLanding=null; G.entranceApproachDir=null;
   G.entranceShake=0;
-  if(G.entranceDust){ G.entranceDust.forEach(r=>scene.remove(r)); G.entranceDust=null; }
+  if(G.entranceDust){ G.entranceDust.forEach(r=>{ scene.remove(r); disposeGroup(r); }); G.entranceDust=null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   M3: Battlefield Life — the kingdom answers the dragon.
+
+   Archers loose from the walls, the watch forms a line between the dragon
+   and the town, and the townsfolk back off to a distance and watch it happen.
+   Every part of this is presentation: nothing below reads or writes dragon
+   health, loot, soldiers, or combat timing. Arrows glance off — they exist to
+   make the dragon look armoured, and to make the monarch's strikes the only
+   ones that land.
+   ══════════════════════════════════════════════════════════════════════════ */
+const BATTLE={
+  active:false, firing:false, group:null,
+  archers:[], arrows:[], sparks:[],
+  next:0, aimAngle:null, aimHold:0, shake:0, hold:0, rallied:false,
+};
+function battleTarget(){
+  if(!G.dragon) return null;
+  const s=G.dragon.userData.battleScale||1.55;
+  return new THREE.Vector3(G.dragon.position.x, G.dragon.position.y+1.15*s, G.dragon.position.z);
+}
+/* Where a bow can answer from. The castle wall and gate towers are the best
+   ground — elevation is what makes the player's eye travel up what they built —
+   but the dragon can come down most of a board away from the keep, so the
+   streets around the landing answer too. Sorted by distance, nearest win, which
+   means the wall is manned when it lands at home and the outskirts are manned
+   when it doesn't. Either way there are always bows close enough to read. */
+function archerAnchors(D){
+  const out=[];
+  out.push(new THREE.Vector3(-1.72,2.34,1.42), new THREE.Vector3(1.72,2.34,1.42));   // castle wall
+  if(legacy()>=2 && path.length){
+    const gd=path[0].clone().setY(0).normalize(), pp=new THREE.Vector3(-gd.z,0,gd.x);
+    out.push(GATE_POS.clone().addScaledVector(pp,-2.05).setY(2.12));
+    out.push(GATE_POS.clone().addScaledVector(pp, 2.05).setY(2.12));
+  }
+  if(D){
+    const toK=Math.atan2(king.position.x-D.x, king.position.z-D.z);
+    for(let i=0;i<5;i++){
+      const ang=toK+(i-2)*.62, rad=6.2+((i%2)?1.1:0);
+      const p=new THREE.Vector3(D.x+Math.sin(ang)*rad,0,D.z+Math.cos(ang)*rad);
+      if(overRiver(p.x,p.z,.4)) continue;
+      let onBoard=false;
+      for(let k=0;k<TILE_COUNT;k++) if(p.distanceTo(path[k])<1.7){ onBoard=true; break; }
+      if(onBoard) continue;                                    // never stand a bow on the road itself
+      p.y=surfaceUnder(p.x,p.z)+.02;
+      out.push(p);
+    }
+    out.sort((a,b)=>a.distanceTo(D)-b.distanceTo(D));
+  }
+  return out;
+}
+function makeArcher(seed,mats){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.10,.16,.40,8),mats.coat); body.position.y=.20; g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.10,8,7),mats.skin); head.position.y=.48; g.add(head);
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(.20,.018,4,9,Math.PI*1.15),mats.wood);
+  bow.position.set(.05,.34,.19); bow.rotation.y=Math.PI/2; g.add(bow);
+  g.userData={bow,phase:srand(seed)*6.28,shot:9};
+  return g;
+}
+function startBattlefield(){
+  if(BATTLE.active) { BATTLE.firing=true; return; }
+  clearBattlefield();
+  // the wall tops the archers stand on only exist once the castle does — the same
+  // gate the wall banners use. Before that the kingdom is too small to answer.
+  if(legacy()<1) return;
+  BATTLE.group=new THREE.Group(); scene.add(BATTLE.group);
+  const mats={
+    coat:new THREE.MeshStandardMaterial({color:0x4d5a72,roughness:.85}),
+    skin:new THREE.MeshStandardMaterial({color:0xe0a878,roughness:.85}),
+    wood:new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9}),
+  };
+  const anchors=archerAnchors(G.dragon?G.dragon.position:null);
+  const want=Math.max(2,Math.min(6, 2+Math.floor(legacy()/3)));    // a bigger kingdom fields more bows
+  for(let i=0;i<Math.min(want,anchors.length);i++){
+    const a=makeArcher(8300+i*13,mats);
+    a.position.copy(anchors[i]);
+    BATTLE.group.add(a); BATTLE.archers.push(a);
+  }
+  const arrowGeo=new THREE.CylinderGeometry(.012,.012,.52,4); arrowGeo.rotateX(Math.PI/2);
+  const arrowMat=new THREE.MeshBasicMaterial({color:0x4a3a28});
+  for(let i=0;i<8;i++){
+    const m=new THREE.Mesh(arrowGeo,arrowMat); m.visible=false; BATTLE.group.add(m);
+    BATTLE.arrows.push({mesh:m,live:false,t:0,dur:.3,arc:.6,from:new THREE.Vector3(),to:new THREE.Vector3()});
+  }
+  const sparkGeo=new THREE.SphereGeometry(.075,6,5);
+  for(let i=0;i<6;i++){
+    const m=new THREE.Mesh(sparkGeo,new THREE.MeshBasicMaterial({color:0xffe3a8,transparent:true,opacity:.9,depthWrite:false}));
+    m.visible=false; BATTLE.group.add(m);
+    BATTLE.sparks.push({mesh:m,live:false,t:0});
+  }
+  BATTLE.active=true; BATTLE.firing=true; BATTLE.next=.35; BATTLE.hold=2;
+  if(!BATTLE.rallied) rallyKingdom();     // no cinematic ran — mobilise now instead
+}
+/* The watch breaks the moment the thing is visible, not when it lands — a guard
+   can be posted most of a board from where it comes down, and the combat window
+   is five seconds. They run for their monarch first, which is both the honest
+   motivation and the position they need to be in, then form on the dragon once
+   it is actually on the ground. */
+function rallyGuards(){
+  BATTLE.rallied=true;
+  const guards=[];
+  for(const p of FOLK){ if(!p.ambientCitizen && p.kind==="guard") guards.push(p); }
+  guards.forEach((p,i)=>{
+    p.evt="dragonLine"; p.evtT=14; p.evtSeed=Math.random()*6.28;
+    p.evtSlot=i; p.evtSlotN=guards.length;
+  });
+}
+/* everyone else gets clear — some keep running, some stop at a distance and watch */
+function scatterCitizens(){
+  const D=G.dragon?G.dragon.position:king.position;
+  for(const p of FOLK){
+    if(p.ambientCitizen || p.kind==="guard") continue;
+    p.evt="dragonFear"; p.evtT=14; p.evtSeed=Math.random()*6.28;
+    p.evtDir=Math.atan2(p.mesh.position.x-D.x, p.mesh.position.z-D.z);   // straight away from the dragon
+    p.evtWatch=Math.random()<0.45;
+  }
+}
+function rallyKingdom(){ rallyGuards(); scatterCitizens(); }
+function fireArrow(archer){
+  const to=battleTarget(); if(!to) return;
+  const a=BATTLE.arrows.find(x=>!x.live); if(!a) return;
+  a.from.set(archer.position.x, archer.position.y+.46, archer.position.z);
+  a.to.copy(to);
+  a.to.x+=(Math.random()-.5)*.7; a.to.y+=(Math.random()-.5)*.6; a.to.z+=(Math.random()-.5)*.7;
+  a.live=true; a.t=0; a.dur=.28+Math.random()*.08; a.arc=.5+Math.random()*.4;
+  a.mesh.visible=true;
+  archer.userData.shot=0;
+  BATTLE.aimAngle=Math.atan2(archer.position.x-to.x, archer.position.z-to.z);
+  BATTLE.aimHold=1;
+}
+function spawnGlance(at){
+  const s=BATTLE.sparks.find(x=>!x.live); if(!s) return;
+  s.live=true; s.t=0; s.mesh.visible=true;
+  s.mesh.position.copy(at);
+  s.mesh.scale.setScalar(1);
+  s.mesh.material.opacity=.9;
+}
+function tickBattlefield(dt,t){
+  BATTLE.shake=Math.max(0,BATTLE.shake-dt*4.5);
+  BATTLE.aimHold=Math.max(0,BATTLE.aimHold-dt*1.1);
+  if(!BATTLE.active) return;
+  // The watch stands down when the turn ends, never on a timer — top the battle
+  // poses up periodically so the line holds for however long the encounter runs.
+  BATTLE.hold-=dt;
+  if(BATTLE.hold<=0){
+    BATTLE.hold=2;
+    for(const p of FOLK) if(p.evt==="dragonLine"||p.evt==="dragonFear") p.evtT=6;
+  }
+  const target=battleTarget();
+  /* archers: shoulders squared on the dragon, loosing on a steady but unsynchronised beat */
+  for(const a of BATTLE.archers){
+    if(target) a.rotation.y=Math.atan2(target.x-a.position.x, target.z-a.position.z);
+    const u=a.userData;
+    u.shot=Math.min(9,u.shot+dt);
+    const kick=Math.max(0,1-u.shot*4);                 // the snap of the release, gone in a quarter second
+    a.rotation.x=-0.06-kick*0.18+Math.sin(t*.8+u.phase)*0.02;
+    u.bow.scale.set(1,1-kick*0.22,1);
+  }
+  if(BATTLE.firing && target && BATTLE.archers.length){
+    BATTLE.next-=dt;
+    if(BATTLE.next<=0){
+      BATTLE.next=.52+Math.random()*.30;               // steady support fire — never a stream
+      fireArrow(BATTLE.archers[(Math.random()*BATTLE.archers.length)|0]);
+    }
+  }
+  for(const a of BATTLE.arrows){
+    if(!a.live) continue;
+    a.t+=dt;
+    const k=Math.min(1,a.t/a.dur);
+    const at=(u)=>new THREE.Vector3(
+      a.from.x+(a.to.x-a.from.x)*u,
+      a.from.y+(a.to.y-a.from.y)*u+Math.sin(u*Math.PI)*a.arc,
+      a.from.z+(a.to.z-a.from.z)*u);
+    const p=at(k); a.mesh.position.copy(p);
+    const n=at(Math.min(1,k+.08)); if(!n.equals(p)) a.mesh.lookAt(n);
+    if(k>=1){ a.live=false; a.mesh.visible=false; spawnGlance(a.to); }   // it glances off — no damage, ever
+  }
+  for(const s of BATTLE.sparks){
+    if(!s.live) continue;
+    s.t+=dt;
+    const k=Math.min(1,s.t/.22);
+    s.mesh.scale.setScalar(1+k*1.4);
+    s.mesh.material.opacity=.9*(1-k);
+    if(k>=1){ s.live=false; s.mesh.visible=false; }
+  }
+}
+function clearBattlefield(){
+  if(BATTLE.group){ scene.remove(BATTLE.group); disposeGroup(BATTLE.group); }
+  BATTLE.group=null; BATTLE.archers.length=0; BATTLE.arrows.length=0; BATTLE.sparks.length=0;
+  BATTLE.active=false; BATTLE.firing=false; BATTLE.rallied=false; BATTLE.aimAngle=null; BATTLE.aimHold=0; BATTLE.shake=0; BATTLE.hold=0;
+  for(const p of FOLK){                                   // release anyone still holding a battle pose
+    if(p.evt==="dragonLine"||p.evt==="dragonFear"){
+      p.evt=null; p.evtT=0; p.mesh.rotation.z=0; p.mesh.rotation.x=0; p.mesh.position.y=0;
+    }
+  }
 }
 
 /* ── dragon flight path during cinematic ────────────────────────────── */
@@ -4686,6 +4910,7 @@ function animateDragonEntrance(dt,t){
     const sp=landPos.clone().addScaledVector(dir,18); sp.y=11;
     d.position.copy(sp); d.scale.setScalar(1.62); // M2: larger entrance scale
     scene.add(d); G.dragon=d;
+    rallyGuards();   // M3: the watch breaks the moment it is visible — they have ground to cover
   }
   if(G.dragon&&et>=DENT.APPEAR&&et<DENT.LAND) animateDragonFlight(t,et,landPos,dir);
 
@@ -4694,7 +4919,8 @@ function animateDragonEntrance(dt,t){
     if(G.dragon&&G.entranceLanding) setDragonBattlePose(G.dragon,G.entranceLanding);
     G.entranceShake=.85; buzz([130,60,90]);
     spawnDustRing(landPos);
-    if(G.entranceShadow){ scene.remove(G.entranceShadow); G.entranceShadow=null; }
+    if(G.entranceShadow){ scene.remove(G.entranceShadow); disposeGroup(G.entranceShadow); G.entranceShadow=null; }
+    scatterCitizens();   // M3: the stillness ends on impact — the square empties
   }
   if(et>=DENT.WING_SLAM&&!beat.wingSlam){
     beat.wingSlam=true; G.entranceShake=Math.max(G.entranceShake||0,.45); buzz([70,40]);
@@ -4728,7 +4954,9 @@ function animateDragonEntrance(dt,t){
     sChallengeRoar(); G.entranceShake=Math.max(G.entranceShake||0,.55);
     if(G.dragon) G.dragon.lookAt(king.position.x,G.dragon.position.y+.45,king.position.z);
   }
-  if(et>=DENT.TRUMPET&&!beat.trumpet){ beat.trumpet=true; sKingdomTrumpet(); }
+  // M3: the trumpet is the mobilisation order — guards form up and the bows come
+  // out on it, ~0.95s after the dragon hits the ground.
+  if(et>=DENT.TRUMPET&&!beat.trumpet){ beat.trumpet=true; sKingdomTrumpet(); startBattlefield(); }
   if(et>=DENT.READY&&!beat.ready){ beat.ready=true; finishDragonEntrance(); }
 
   if(G.entranceShake>0) G.entranceShake=Math.max(0,G.entranceShake-dt*3.2);
@@ -4830,6 +5058,7 @@ function restoreDiceHud(){
   const multi=$("multi"); if(multi){ multi.style.display=""; multi.style.opacity=""; multi.style.pointerEvents=""; }
 }
 function endTurn(){
+  clearBattlefield();                                    // the field empties on every exit path
   if(COUNCIL.length) setTimeout(dismissAdvisors,1500);   // council never lingers past the turn
   G.state="idle"; showDie(true); refresh();
   updateGoalsDot();
@@ -6304,6 +6533,8 @@ function startDragon(scale){
   $("dragonHPNum").textContent=hp+" / "+hpMax;
   $("dragonTimeFill").style.width="100%";
 
+  if(!BATTLE.active) startBattlefield();      // no cinematic played — the kingdom still answers
+
   const armFight=()=>{
     if(G.state!=="encounter")return;
     $("tapHint").textContent="🐉 TAP TO STRIKE!";
@@ -6325,6 +6556,7 @@ function startDragon(scale){
 function endDragonFight(victory){
   const F=G.fight; if(!F) return;
   F.running=false;
+  BATTLE.firing=false;      // bows lower, but the line holds and watches it go
   $("dragonHP").classList.remove("show");
   $("dragonNoSoldiers").classList.remove("show");
   $("tapHint").classList.remove("show");
@@ -6368,6 +6600,17 @@ window.addEventListener("pointerdown",e=>{
     F.taps++; F.hp=Math.max(0,F.hp-1); F.loot+=F.perTapGold;
     sCoin(); sSlash(); buzz(10);
     F.recoil=1; F.shake=1;
+    // M3: make the strike read — a breed-tinted pulse across the hide, a spark at
+    // the contact point, and the lightest possible nudge on the camera.
+    F.flash=1;
+    BATTLE.shake=Math.max(BATTLE.shake,.34);
+    if(G.dragon){
+      const tg=battleTarget();
+      if(tg){
+        tg.x+=(Math.random()-.5)*.9; tg.y+=(Math.random()-.5)*.8; tg.z+=(Math.random()-.5)*.9;
+        spawnGlance(tg);
+      }
+    }
     if(F.taps%4===0&&G.dragon) coinBurst(G.dragon.position,3);
     king.userData.armR.rotation.x=-1.6; king.userData.elbowR.rotation.x=-1.3;
     $("dragonHPFill").style.width=Math.round(F.hp/F.hpMax*100)+"%";
@@ -6888,7 +7131,7 @@ $("authUser").addEventListener("keydown",e=>{ if(e.key==="Enter")$("authPass").f
 
 /* ================= CAMERA ================= */
 const camPos=new THREE.Vector3(0,7,-half-9), camLook=new THREE.Vector3();
-let _camBreath=0, _walkCam=0;
+let _camBreath=0, _walkCam=0, _battleLens=0;
 /* ---- free-look: drag to orbit the view while idle; resets on roll ---- */
 const LOOK={yaw:0, pitch:0, active:false, tYaw:0, tPitch:0};
 const LOOK_YAW_MAX=Math.PI*0.62, LOOK_PITCH_MIN=-0.35, LOOK_PITCH_MAX=0.75;
@@ -6982,18 +7225,36 @@ function updateCamera(dt){
     if(_walkCam>0){ dist+=1.4*_walkCam; height+=2.6*_walkCam; ahead+=1.4*_walkCam; side-=5.8*_walkCam; }
   }
   /* widen the lens while travelling — far more of the board fits without shrinking the monarch */
-  const wantFov = G.map ? 55 : 55 + 14*_walkCam;
+  // M3: a touch wider through the fight so the guard line and the nearest bows sit
+  // in frame with the dragon. Lens, not distance — the low angle survives intact.
+  // Eased, so the lens never snaps when combat starts or ends.
+  _battleLens += (((G.state==="encounter"&&G.fight)?5:0)-_battleLens)*Math.min(1,dt*3.2);
+  const wantFov = G.map ? 55 : 55 + 14*_walkCam + _battleLens;
   if(Math.abs(camera.fov-wantFov)>0.05){ camera.fov=wantFov; camera.updateProjectionMatrix(); }
   if(G.state==="chest"){ dist=6.2;height=3.5;ahead=2.6;side=1.3; }                       // gentle diagonal
   if(G.state==="encounter"||G.state==="raid"||G.state==="fight"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie"){
     dist=6.8;height=2.8;ahead=2.8;side=3.1;                                              // M2: lower height (was 3.7) for continuity with low-angle landing camera
   }
+  if(G.state==="encounter"&&G.fight){ dist=7.3;height=3.0;ahead=2.6; }                   // M3: hold the battlefield, barely further back
   if(G.state==="boot"||G.state==="auth"){ dist=11;height=8;ahead=0;side=0; }
+  // M3: through a dragon encounter the rig is anchored on the dragon rather than on
+  // the monarch's heading. The king's facing eases back toward neutral once he stops
+  // walking, which could leave the dragon — and the whole battlefield with it — well
+  // outside the frame. Aiming down the king→dragon axis keeps both in view.
+  if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee")&&G.dragon){
+    const toD=G.dragon.position.clone().sub(king.position).setY(0);
+    if(toD.lengthSq()>0.04){ f.copy(toD.normalize()); r.set(-f.z,0,f.x); }
+  }
   const tp=new THREE.Vector3().copy(king.position).addScaledVector(f,-dist).addScaledVector(r,side).setY(king.position.y+height);
   const tl=new THREE.Vector3().copy(king.position).addScaledVector(f,ahead).setY(king.position.y+1);   // aim at the monarch so he stays framed
   if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee")&&G.dragon){
     const dragonLook=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+1.0,G.dragon.position.z);
     tl.lerp(dragonLook,.55);
+  }
+  if(BATTLE.shake>0&&G.state==="encounter"){
+    // M3: per-strike nudge only — small enough that rapid tapping never costs accuracy
+    const sh=BATTLE.shake*.085, et2=clock.elapsedTime;
+    tp.x+=Math.sin(et2*63)*sh; tp.y+=Math.cos(et2*71)*sh*.6;
   }
 
   // free-look: only while idle; travelling eases the view back to the follow angle
@@ -7067,7 +7328,7 @@ function animate(){
     const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||1.55;
     const s=Math.max(.22,start*(1-G.dragonT*.55));
     G.dragon.scale.set(s,s,s);
-    if(G.dragonT>1.8){ scene.remove(G.dragon); G.dragon=null; endTurn(); }
+    if(G.dragonT>1.8){ scene.remove(G.dragon); disposeGroup(G.dragon); G.dragon=null; endTurn(); }
   } else if(G.state==="chest"&&G.chest){
     const C=G.chest;
     const s=Math.min(1,C.grp.scale.x+dt*2.5);
@@ -7238,6 +7499,49 @@ function animate(){
           m.rotation.y=p.evtDir||0;
           m.rotation.x=.08*Math.sin(t*.7+sd)*k;           // slight fearful trembling
           m.position.y=0;
+        } else if(e==="dragonLine"){                       // the watch holds a line between the dragon and the town
+          // while it is still in the air they run to the monarch; once it is down
+          // they form on the dragon itself
+          const D=(G.dragon&&G.dragon.position.y<2.5)?G.dragon.position:king.position;
+          {
+            // each guard owns one slot on the arc, so the line spreads and never stacks
+            const a0=Math.atan2(king.position.x-D.x, king.position.z-D.z);
+            // the arc widens and pushes out with the size of the watch, so a bigger
+            // kingdom fields a longer line rather than a denser one — nobody stacks
+            const n=Math.max(1,p.evtSlotN||1), idx=p.evtSlot||0;
+            const spread=Math.min(2.4,.45*(n-1));
+            const ang=a0 + (n>1 ? spread*(idx/(n-1)-.5) : 0);
+            const rad=2.4+n*.06+Math.sin(sd)*.22;
+            const tx=D.x+Math.sin(ang)*rad, tz=D.z+Math.cos(ang)*rad;
+            const dxs=tx-m.position.x, dzs=tz-m.position.z, ds=Math.hypot(dxs,dzs);
+            // a posted guard can be most of the board away when it lands, so they
+            // come at a dead run and decelerate into the slot rather than sliding in
+            if(ds>0.08){ const sp=Math.min(4.8,0.8+ds*0.8)*dt; m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp; }
+            m.rotation.y=Math.atan2(D.x-m.position.x, D.z-m.position.z);   // every face turned on the dragon
+            if(ds>1.1){
+              m.position.y=Math.abs(Math.sin(t*10+sd))*.13;                // running
+              m.rotation.x=-.22;
+              m.rotation.z=Math.sin(t*10+sd)*.07;
+            } else {
+              const th=Math.max(0,Math.sin(t*1.6+sd*2.1));                 // planted: a slow spear thrust, out of time with the others
+              m.rotation.x=-.10-th*.16;
+              m.position.y=th*.045;
+              m.rotation.z=Math.sin(t*2.3+sd)*.05;
+            }
+          }
+        } else if(e==="dragonFear"){                       // townsfolk get clear — some run on, some stop and watch
+          const D=G.dragon?G.dragon.position:king.position;
+          const stopAt=p.evtWatch?8.5:14;
+          if(Math.hypot(m.position.x-D.x,m.position.z-D.z)<stopAt){
+            const sp=(p.evtWatch?1.5:2.4)*dt;
+            m.position.x+=Math.sin(p.evtDir)*sp; m.position.z+=Math.cos(p.evtDir)*sp;
+            m.position.y=Math.abs(Math.sin(t*9+sd))*.10;
+            m.rotation.y=p.evtDir; m.rotation.x=-.14;
+          } else {
+            m.rotation.y=Math.atan2(D.x-m.position.x, D.z-m.position.z);   // far enough now to turn and watch
+            m.position.y=0;
+            m.rotation.x=.05*Math.sin(t*.9+sd);
+          }
         }
         if(p.evtT<=0){ p.evt=null; p.evtFall=false; m.rotation.z=0; }
         continue;
@@ -7421,6 +7725,7 @@ function animate(){
   if(COUNCIL.length) tickAdvisors(dt, clock.elapsedTime);
   tickFruitThrowing(dt); tickFruit(dt); tickWater(clock.elapsedTime);
   tickSettlementLife(dt, clock.elapsedTime);
+  tickBattlefield(dt, clock.elapsedTime);       // archers, arrows, and the strike nudge
   if(WILD.length) tickWildlife(dt, clock.elapsedTime);
 
   if(dieAnim.spinning){
