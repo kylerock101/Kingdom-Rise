@@ -4400,25 +4400,33 @@ function animateDragonBattle(d,F,t,dt){
   d.scale.setScalar(battleScale);
   const sx=Math.sin(t*42)*.045*shake;
   const sz=Math.cos(t*37)*.045*shake;
-  d.position.set(base.x+sx,base.y+Math.sin(t*2.1)*.10+recoil*.18,base.z+sz);
-  d.rotation.x=-.05+Math.sin(t*1.4)*.035-recoil*.10;
-  d.rotation.z=Math.sin(t*1.1)*.025;
-  // M2: asymmetric wing beat (fast down, slow up) + occasional small spread
-  const wbBattle=heavyWingBeat(t,0.9)*0.10;
+  // M3: near-zero vertical bob — dragon stays grounded (was .10/.035/.025)
+  d.position.set(base.x+sx,base.y+Math.sin(t*2.1)*.012+recoil*.18,base.z+sz);
+  d.rotation.x=-.05+Math.sin(t*1.4)*.012-recoil*.10;
+  d.rotation.z=Math.sin(t*1.1)*.008;
+  // Wing base + lagged tip for visible joint bend during flap
+  const wbBattle=heavyWingBeat(t,0.9);
+  const wbTipB=heavyWingBeat(t-0.22,0.9);
+  const baseFlap=wbBattle*0.10, tipFlap=wbTipB*0.065;
   const wingAdj=Math.max(0,Math.sin(t*.55))*.18+recoil*.22;
-  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.35+wbBattle+wingAdj;
-  if(d.userData.wingR) d.userData.wingR.rotation.z= 1.35-wbBattle-wingAdj;
-  // M2: tail lags body by ~300ms for weight feel
-  const tailT=t-0.30;
+  if(d.userData.wingL){
+    d.userData.wingL.rotation.z=-1.35+baseFlap+wingAdj;
+    if(d.userData.wingLTip) d.userData.wingLTip.rotation.z=tipFlap-baseFlap;
+  }
+  if(d.userData.wingR){
+    d.userData.wingR.rotation.z= 1.35-baseFlap-wingAdj;
+    if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=baseFlap-tipFlap;
+  }
+  // M3: tail lags body ~400ms (increased from 300ms for more fluid trail)
+  const tailT=t-0.40;
   if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(tailT*1.9)*.22+recoil*.12;
-  // M2: head scans when not recoiling; locks on during heavy hits
+  // Head scans when not recoiling; snaps back on heavy hits via recoil
   if(d.userData.head){
     const scan=recoil<0.12?Math.sin(t*0.45)*.20:0;
     d.userData.head.rotation.x=Math.sin(t*1.7)*.04-recoil*.10;
     d.userData.head.rotation.y=scan;
   }
   if(d.userData.neck) d.userData.neck.rotation.x=-.5+Math.sin(t*1.7)*.035-recoil*.04;
-  // M2: breathing — subtle body scale oscillation
   if(d.userData.body) d.userData.body.scale.y=0.85+Math.sin(t*0.88)*0.045;
 }
 function animateDragonTakeoff(dt,t){
@@ -4436,8 +4444,8 @@ function animateDragonTakeoff(dt,t){
   d.rotation.x=-.05-ease*.35;
   d.rotation.y+=dt*.25;
   const spread=.38+ease*.34+Math.sin(t*8)*.08;
-  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.45-spread;
-  if(d.userData.wingR) d.userData.wingR.rotation.z=1.45+spread;
+  if(d.userData.wingL){ d.userData.wingL.rotation.z=-1.45-spread; if(d.userData.wingLTip) d.userData.wingLTip.rotation.z=0; }
+  if(d.userData.wingR){ d.userData.wingR.rotation.z=1.45+spread; if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=0; }
   if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(t*4)*.12;
   if(k>=1){ G.state="dragonFlee"; G.dragonT=0; d.userData.flyStartScale=battleScale; }
 }
@@ -4459,10 +4467,19 @@ function makeDragon(breedIdx){
   const e1=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),eyeM); e1.position.set(-.14,1.85,1.0); d.add(e1);
   const e2=e1.clone(); e2.position.x=.14; d.add(e2);
   for(const sg of[-1,1]){
-    const wing=new THREE.Mesh(new THREE.ConeGeometry(.75,1.5,4),dark);
-    wing.rotation.z=sg*1.35; wing.rotation.y=sg*.3;
-    wing.position.set(sg*.85,1.35,.1); wing.castShadow=true;
-    d.add(wing); d.userData[sg<0?"wingL":"wingR"]=wing;
+    const key=sg<0?"wingL":"wingR";
+    // Wing base group — animation drives rotation.z each frame; initial rest position set here
+    const wBase=new THREE.Group();
+    wBase.position.set(sg*.85,1.35,.1); wBase.rotation.y=sg*.3; wBase.rotation.z=sg*1.35;
+    const wBM=new THREE.Mesh(new THREE.ConeGeometry(.68,1.0,4),dark);
+    wBM.position.y=.50; wBM.castShadow=true; wBase.add(wBM);
+    // Wing tip — child of base at outer end; lags slightly behind for visible joint bend
+    const wTip=new THREE.Group(); wTip.position.y=1.0;
+    const wTM=new THREE.Mesh(new THREE.ConeGeometry(.36,.62,4),dark);
+    wTM.position.y=.31; wTM.castShadow=true; wTip.add(wTM);
+    wBase.add(wTip);
+    d.add(wBase);
+    d.userData[key]=wBase; d.userData[key+"Tip"]=wTip;
   }
   const tail=new THREE.Mesh(new THREE.ConeGeometry(.22,1.4,8),body);
   tail.rotation.x=1.9; tail.position.set(0,.6,-1.05); d.add(tail); d.userData.tail=tail;
@@ -4604,12 +4621,19 @@ function animateDragonFlight(t,et,landPos,dir){
   }
   d.position.copy(pos);
   d.scale.setScalar(1.62);
-  // M2: asymmetric wing beat — slow large beats, downstroke fast, upstroke slow
   const wb=heavyWingBeat(t,1.35);
-  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.05-wb*.50;
-  if(d.userData.wingR) d.userData.wingR.rotation.z= 1.05+wb*.50;
-  // M2: tail lags body — 300ms phase delay reads as weight
-  const tailT=t-0.30;
+  const wbTipF=heavyWingBeat(t-0.22,1.35); // tip lags ~220ms — more visible at flight amplitude
+  const tipBendF=wb-wbTipF; // positive when base is ahead on downstroke
+  if(d.userData.wingL){
+    d.userData.wingL.rotation.z=-1.05-wb*.50;
+    if(d.userData.wingLTip) d.userData.wingLTip.rotation.z= tipBendF*.45; // tip trails, stays higher
+  }
+  if(d.userData.wingR){
+    d.userData.wingR.rotation.z= 1.05+wb*.50;
+    if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=-tipBendF*.45;
+  }
+  // M3: tail lags body ~400ms (increased from 300ms)
+  const tailT=t-0.40;
   if(d.userData.tail)  d.userData.tail.rotation.y=Math.sin(tailT*1.8)*.22;
 }
 
@@ -4675,15 +4699,15 @@ function animateDragonEntrance(dt,t){
   if(et>=DENT.WING_SLAM&&!beat.wingSlam){
     beat.wingSlam=true; G.entranceShake=Math.max(G.entranceShake||0,.45); buzz([70,40]);
   }
-  // M2: staggered secondary dust bursts ~120ms and ~240ms after impact
+  // Staggered secondary dust bursts — wider spread (M3: .6/.5 → .85/.70)
   if(et>=DENT.LAND+0.12&&!beat.dustBurst2){
     beat.dustBurst2=true;
-    spawnDustRing(new THREE.Vector3(landPos.x+dir.z*.6,landPos.y,-dir.x*.6+landPos.z));
+    spawnDustRing(new THREE.Vector3(landPos.x+dir.z*.85,landPos.y,-dir.x*.85+landPos.z));
   }
   if(et>=DENT.LAND+0.24&&!beat.dustBurst3){
     beat.dustBurst3=true;
-    spawnDustRing(new THREE.Vector3(landPos.x-dir.z*.5,landPos.y,dir.x*.5+landPos.z));
-    G.entranceShake=Math.max(G.entranceShake||0,.28);
+    spawnDustRing(new THREE.Vector3(landPos.x-dir.z*.70,landPos.y,dir.x*.70+landPos.z));
+    G.entranceShake=Math.max(G.entranceShake||0,.42); // M3: stronger aftershock (was .28)
   }
   // head rises from landing crouch to standing height
   if(G.dragon&&et>=DENT.LAND&&et<DENT.CHALLENGE){
@@ -4691,8 +4715,8 @@ function animateDragonEntrance(dt,t){
     const e=rk*rk;
     if(G.dragon.userData.neck) G.dragon.userData.neck.rotation.x=-.5+e*.30;
     if(G.dragon.userData.head) G.dragon.userData.head.rotation.x=-e*.12;
-    if(G.dragon.userData.wingL) G.dragon.userData.wingL.rotation.z=-1.45+e*.15;
-    if(G.dragon.userData.wingR) G.dragon.userData.wingR.rotation.z= 1.45-e*.15;
+    if(G.dragon.userData.wingL){ G.dragon.userData.wingL.rotation.z=-1.45+e*.15; if(G.dragon.userData.wingLTip) G.dragon.userData.wingLTip.rotation.z=0; }
+    if(G.dragon.userData.wingR){ G.dragon.userData.wingR.rotation.z= 1.45-e*.15; if(G.dragon.userData.wingRTip) G.dragon.userData.wingRTip.rotation.z=0; }
   }
   // M2: idle life — breathing and slow head scan after rising, before challenge roar
   if(G.dragon&&et>=DENT.HEAD_RISE&&et<DENT.CHALLENGE){
