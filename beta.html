@@ -7198,14 +7198,23 @@ function updateCamera(dt){
       } else { tl=kLk; }
       fov=55-challengeZoom*5; // 55→50: subtle push-in as dragon faces king
     }
-    if(G.entranceShake>0){
-      const sh=G.entranceShake*.16;
-      tp.x+=(Math.random()-.5)*sh; tp.y+=(Math.random()-.5)*sh*.5; tp.z+=(Math.random()-.5)*sh;
-    }
     if(Math.abs(camera.fov-fov)>.1){ camera.fov+=(fov-camera.fov)*Math.min(1,dt*2.5); camera.updateProjectionMatrix(); }
     const k=1-Math.pow(.001,dt);
     camPos.lerp(tp,k); camLook.lerp(tl,k);
-    camera.position.copy(camPos); camera.lookAt(camLook);
+    camera.position.copy(camPos);
+    // Shake is applied AFTER the position smoothing, never into the lerp target.
+    // Fed through the lerp it only reached ~11% of amplitude on the impact frame and
+    // averaged out to ~24% thereafter, so the hit smeared in over ~10 frames while the
+    // dust ring popped instantly — the two read as separate events. Applied here it
+    // lands whole on the exact frame the first dust burst spawns. The multiplier drops
+    // .16 -> .075 to absorb the ~4x gain from no longer being filtered.
+    if(G.entranceShake>0){
+      const sh=G.entranceShake*.075;
+      camera.position.x+=(Math.random()-.5)*sh;
+      camera.position.y+=(Math.random()-.5)*sh*.5;
+      camera.position.z+=(Math.random()-.5)*sh;
+    }
+    camera.lookAt(camLook);
     return;
   }
   const f=new THREE.Vector3(Math.sin(king.rotation.y),0,Math.cos(king.rotation.y));
