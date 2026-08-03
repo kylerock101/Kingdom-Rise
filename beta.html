@@ -4377,7 +4377,7 @@ function dragonBattlePlacement(){
   }
   if(forward.lengthSq()<0.01) forward.set(0,0,1);
   forward.normalize();
-  const pos=king.position.clone().addScaledVector(forward,4.2);
+  const pos=king.position.clone().addScaledVector(forward,5.5);
   pos.y=Math.max(standPos(S.pos).y, surfaceUnder(pos.x,pos.z))+.08;
   return {pos, forward};
 }
@@ -4386,7 +4386,7 @@ function setDragonBattlePose(d,placement){
   d.position.copy(placement.pos);
   d.lookAt(king.position.x,d.position.y+.45,king.position.z);
   d.userData.baseBattlePos=placement.pos.clone();
-  d.userData.battleScale=1.42;
+  d.userData.battleScale=1.55;
   d.scale.setScalar(d.userData.battleScale);
 }
 function animateDragonBattle(d,F,t,dt){
@@ -4394,7 +4394,7 @@ function animateDragonBattle(d,F,t,dt){
   const base=d.userData.baseBattlePos||d.position;
   const recoil=F.recoil||0;
   const shake=F.shake||0;
-  const battleScale=d.userData.battleScale||1.42;
+  const battleScale=d.userData.battleScale||1.55;
   F.recoil=Math.max(0,recoil-dt*4.5);
   F.shake=Math.max(0,shake-dt*6.5);
   d.scale.setScalar(battleScale);
@@ -4403,12 +4403,23 @@ function animateDragonBattle(d,F,t,dt){
   d.position.set(base.x+sx,base.y+Math.sin(t*2.1)*.10+recoil*.18,base.z+sz);
   d.rotation.x=-.05+Math.sin(t*1.4)*.035-recoil*.10;
   d.rotation.z=Math.sin(t*1.1)*.025;
-  const flap=Math.sin(t*2.6)*.16+Math.max(0,Math.sin(t*.55))*.22+recoil*.22;
-  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.35+flap;
-  if(d.userData.wingR) d.userData.wingR.rotation.z=1.35-flap;
-  if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(t*2.0)*.18+recoil*.08;
-  if(d.userData.head) d.userData.head.rotation.x=Math.sin(t*1.7)*.04-recoil*.10;
+  // M2: asymmetric wing beat (fast down, slow up) + occasional small spread
+  const wbBattle=heavyWingBeat(t,0.9)*0.10;
+  const wingAdj=Math.max(0,Math.sin(t*.55))*.18+recoil*.22;
+  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.35+wbBattle+wingAdj;
+  if(d.userData.wingR) d.userData.wingR.rotation.z= 1.35-wbBattle-wingAdj;
+  // M2: tail lags body by ~300ms for weight feel
+  const tailT=t-0.30;
+  if(d.userData.tail) d.userData.tail.rotation.y=Math.sin(tailT*1.9)*.22+recoil*.12;
+  // M2: head scans when not recoiling; locks on during heavy hits
+  if(d.userData.head){
+    const scan=recoil<0.12?Math.sin(t*0.45)*.20:0;
+    d.userData.head.rotation.x=Math.sin(t*1.7)*.04-recoil*.10;
+    d.userData.head.rotation.y=scan;
+  }
   if(d.userData.neck) d.userData.neck.rotation.x=-.5+Math.sin(t*1.7)*.035-recoil*.04;
+  // M2: breathing — subtle body scale oscillation
+  if(d.userData.body) d.userData.body.scale.y=0.85+Math.sin(t*0.88)*0.045;
 }
 function animateDragonTakeoff(dt,t){
   if(!G.dragon) return;
@@ -4419,7 +4430,7 @@ function animateDragonTakeoff(dt,t){
   const climbT=Math.max(0,G.dragonT-pause);
   const k=Math.min(1,climbT/1.15);
   const ease=k*k*(3-2*k);
-  const battleScale=d.userData.battleScale||1.42;
+  const battleScale=d.userData.battleScale||1.55;
   d.scale.setScalar(battleScale);
   d.position.set(base.x,base.y+ease*2.45+Math.sin(t*3)*.06,base.z-ease*.42);
   d.rotation.x=-.05-ease*.35;
@@ -4434,8 +4445,8 @@ function makeDragon(breedIdx){
   const bd=dragonBreed(breedIdx||0);
   const d=new THREE.Group();
   d.userData.breed=bd;
-  const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.7});
-  const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.8});
+  const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.55,metalness:.05});
+  const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.65,metalness:.05});
   const bodyM=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),body);
   bodyM.scale.set(1,.85,1.35); bodyM.position.y=.8; bodyM.castShadow=true; d.add(bodyM); d.userData.body=bodyM;
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,.8,8),body);
@@ -4515,12 +4526,22 @@ function musicDuck(v,ramp){
   out.gain.cancelScheduledValues(AC.currentTime);
   out.gain.linearRampToValueAtTime(v,AC.currentTime+ramp);
 }
+// M2: asymmetric wing beat — 0=wings raised, 1=maximum downstroke
+// downstroke occupies ~28% of cycle (fast), upstroke ~65% (slow), ~7% pause at bottom
+function heavyWingBeat(t,rate){
+  const cyc=((t*rate)%(Math.PI*2))/(Math.PI*2); // 0-1 per cycle
+  if(cyc<0.28) return cyc/0.28;                 // rapid down (0→1)
+  if(cyc<0.35) return 1.0-(cyc-0.28)/0.07*0.08; // brief pause at bottom (1→0.92)
+  const p=(cyc-0.35)/0.65;
+  return 0.92*(1-p*p);                           // slow smooth rise back (0.92→0)
+}
 
 /* ── entrance visual helpers ─────────────────────────────────────────── */
 function spawnDragonShadow(from,to){
-  const _es=new THREE.Shape(); _es.absellipse(0,0,2.8,1.6,0,Math.PI*2,false,0);
-  const g=new THREE.ShapeGeometry(_es,14);
-  const m=new THREE.MeshBasicMaterial({color:0x000000,opacity:.18,transparent:true,depthWrite:false});
+  // M2: larger ellipse beyond dragon footprint; higher opacity for strong omen read
+  const _es=new THREE.Shape(); _es.absellipse(0,0,3.8,2.2,0,Math.PI*2,false,0);
+  const g=new THREE.ShapeGeometry(_es,16);
+  const m=new THREE.MeshBasicMaterial({color:0x000000,opacity:.28,transparent:true,depthWrite:false});
   const s=new THREE.Mesh(g,m); s.rotation.x=-Math.PI/2;
   s.position.copy(from); s.position.y=.04;
   s.userData.from=from.clone(); s.userData.to=to.clone();
@@ -4582,11 +4603,14 @@ function animateDragonFlight(t,et,landPos,dir){
     d.rotation.x=-.05-e*.40;   // nose pitches down on descent
   }
   d.position.copy(pos);
-  d.scale.setScalar(1.42);
-  const flap=Math.sin(t*2.3)*.28+Math.cos(t*1.05)*.10;
-  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.1-Math.abs(flap)*.65;
-  if(d.userData.wingR) d.userData.wingR.rotation.z= 1.1+Math.abs(flap)*.65;
-  if(d.userData.tail)  d.userData.tail.rotation.y=Math.sin(t*2.1)*.15;
+  d.scale.setScalar(1.62);
+  // M2: asymmetric wing beat — slow large beats, downstroke fast, upstroke slow
+  const wb=heavyWingBeat(t,1.35);
+  if(d.userData.wingL) d.userData.wingL.rotation.z=-1.05-wb*.50;
+  if(d.userData.wingR) d.userData.wingR.rotation.z= 1.05+wb*.50;
+  // M2: tail lags body — 300ms phase delay reads as weight
+  const tailT=t-0.30;
+  if(d.userData.tail)  d.userData.tail.rotation.y=Math.sin(tailT*1.8)*.22;
 }
 
 /* ── per-frame entrance tick (called from animate loop) ─────────────── */
@@ -4614,6 +4638,8 @@ function animateDragonEntrance(dt,t){
     beat.shadow=true;
     const from=landPos.clone().addScaledVector(dir,22); from.y=0;
     G.entranceShadow=spawnDragonShadow(from,landPos.clone());
+    // M2: rotate shadow long-axis to align with approach direction
+    G.entranceShadow.rotation.y=Math.atan2(dir.x,dir.z);
   }
   if(G.entranceShadow){
     const dur=DENT.LAND-DENT.SHADOW;
@@ -4624,7 +4650,8 @@ function animateDragonEntrance(dt,t){
     G.entranceShadow.position.z=sf.z+(st.z-sf.z)*e;
     G.entranceShadow.position.y=.04;
     const scl=.28+e*.72; G.entranceShadow.scale.set(scl,1,scl);
-    G.entranceShadow.material.opacity=(.14+e*.12)*Math.min(1,(et-DENT.SHADOW)/.4);
+    // M2: higher max opacity so shadow reads clearly as the omen beat
+    G.entranceShadow.material.opacity=(.18+e*.16)*Math.min(1,(et-DENT.SHADOW)/.4);
   }
   if(et>=DENT.ROAR_OFF&&!beat.roarOff){
     beat.roarOff=true; sApproachRoar(); musicDuck(0,.25);
@@ -4633,7 +4660,7 @@ function animateDragonEntrance(dt,t){
     beat.appear=true;
     const d=makeDragon(S.dragonSlain);
     const sp=landPos.clone().addScaledVector(dir,18); sp.y=11;
-    d.position.copy(sp); d.scale.setScalar(1.42);
+    d.position.copy(sp); d.scale.setScalar(1.62); // M2: larger entrance scale
     scene.add(d); G.dragon=d;
   }
   if(G.dragon&&et>=DENT.APPEAR&&et<DENT.LAND) animateDragonFlight(t,et,landPos,dir);
@@ -4648,6 +4675,16 @@ function animateDragonEntrance(dt,t){
   if(et>=DENT.WING_SLAM&&!beat.wingSlam){
     beat.wingSlam=true; G.entranceShake=Math.max(G.entranceShake||0,.45); buzz([70,40]);
   }
+  // M2: staggered secondary dust bursts ~120ms and ~240ms after impact
+  if(et>=DENT.LAND+0.12&&!beat.dustBurst2){
+    beat.dustBurst2=true;
+    spawnDustRing(new THREE.Vector3(landPos.x+dir.z*.6,landPos.y,-dir.x*.6+landPos.z));
+  }
+  if(et>=DENT.LAND+0.24&&!beat.dustBurst3){
+    beat.dustBurst3=true;
+    spawnDustRing(new THREE.Vector3(landPos.x-dir.z*.5,landPos.y,dir.x*.5+landPos.z));
+    G.entranceShake=Math.max(G.entranceShake||0,.28);
+  }
   // head rises from landing crouch to standing height
   if(G.dragon&&et>=DENT.LAND&&et<DENT.CHALLENGE){
     const rk=Math.min(1,(et-DENT.LAND)/(DENT.HEAD_RISE-DENT.LAND));
@@ -4656,6 +4693,11 @@ function animateDragonEntrance(dt,t){
     if(G.dragon.userData.head) G.dragon.userData.head.rotation.x=-e*.12;
     if(G.dragon.userData.wingL) G.dragon.userData.wingL.rotation.z=-1.45+e*.15;
     if(G.dragon.userData.wingR) G.dragon.userData.wingR.rotation.z= 1.45-e*.15;
+  }
+  // M2: idle life — breathing and slow head scan after rising, before challenge roar
+  if(G.dragon&&et>=DENT.HEAD_RISE&&et<DENT.CHALLENGE){
+    if(G.dragon.userData.body) G.dragon.userData.body.scale.y=0.85+Math.sin(t*0.88)*0.04;
+    if(G.dragon.userData.head) G.dragon.userData.head.rotation.y=Math.sin(t*0.40)*0.32;
   }
   if(et>=DENT.CHALLENGE&&!beat.challenge){
     beat.challenge=true;
@@ -6862,30 +6904,32 @@ function updateCamera(dt){
     const r2=new THREE.Vector3(-f2.z,0,f2.x);
     let tp,tl,fov=55;
     if(et<DENT.APPEAR){
-      // omen phase: follow rig tilts toward the horizon where the dragon will come from
+      // M2 omen: camera eases down and tilts toward the arrival horizon
       const omeP=Math.min(1,Math.max(0,(et-DENT.OMEN)/(DENT.APPEAR-DENT.OMEN)));
       const oe=omeP*omeP;
       const base=king.position.clone().addScaledVector(f2,-7.5).setY(king.position.y+6.0);
-      const omen=king.position.clone().addScaledVector(dir,-3.5).addScaledVector(r2,1.8).setY(king.position.y+5.5);
+      const omen=king.position.clone().addScaledVector(dir,-3.5).addScaledVector(r2,1.8).setY(king.position.y+4.5);
       tp=new THREE.Vector3().lerpVectors(base,omen,oe);
       const baseLk=king.position.clone().addScaledVector(f2,2.6).setY(king.position.y+1);
       const omenLk=king.position.clone().addScaledVector(dir,7).setY(king.position.y+2.5);
       tl=new THREE.Vector3().lerpVectors(baseLk,omenLk,oe);
-      fov=55+oe*6;
+      fov=55+oe*8; // wider toward arrival — sky and horizon enter frame
     } else if(et<DENT.LAND){
-      // flight phase: drop to ground level, track dragon crossing overhead
-      tp=king.position.clone().addScaledVector(dir,4).setY(king.position.y+1.6);
-      tl=G.dragon?G.dragon.position.clone().setY(G.dragon.position.y+1):lp.clone().addScaledVector(dir,10).setY(8);
-      fov=68;
+      // M2 flight: near-ground camera looks UP at dragon passing overhead — primary scale tool
+      tp=king.position.clone().addScaledVector(dir,2.5).addScaledVector(r2,2.0).setY(king.position.y+0.7);
+      tl=G.dragon?G.dragon.position.clone():lp.clone().addScaledVector(dir,10).setY(8);
+      fov=74; // wide to let dragon fill and exceed frame
     } else {
-      // landing / challenge: battle framing matching the encounter rig
-      tp=king.position.clone().addScaledVector(f2,-6.8).addScaledVector(r2,3.1).setY(king.position.y+3.7);
-      const kLk=king.position.clone().addScaledVector(f2,2.8).setY(king.position.y+1);
+      // M2 landing/challenge: low camera tilts upward — dragon towers over frame
+      // subtle zoom-in after challenge roar reinforces the face-off moment
+      const challengeZoom=Math.min(1,Math.max(0,(et-DENT.CHALLENGE)/0.9));
+      tp=king.position.clone().addScaledVector(f2,-6.8).addScaledVector(r2,3.5).setY(king.position.y+1.8);
+      const kLk=king.position.clone().addScaledVector(f2,2.8).setY(king.position.y+0.8);
       if(G.dragon){
-        const dLk=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+1,G.dragon.position.z);
-        tl=kLk.lerp(dLk,.55);
+        const dLk=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+0.8,G.dragon.position.z);
+        tl=kLk.clone().lerp(dLk,.50);
       } else { tl=kLk; }
-      fov=55;
+      fov=55-challengeZoom*5; // 55→50: subtle push-in as dragon faces king
     }
     if(G.entranceShake>0){
       const sh=G.entranceShake*.16;
@@ -6918,7 +6962,7 @@ function updateCamera(dt){
   if(Math.abs(camera.fov-wantFov)>0.05){ camera.fov=wantFov; camera.updateProjectionMatrix(); }
   if(G.state==="chest"){ dist=6.2;height=3.5;ahead=2.6;side=1.3; }                       // gentle diagonal
   if(G.state==="encounter"||G.state==="raid"||G.state==="fight"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie"){
-    dist=6.8;height=3.7;ahead=2.8;side=3.1;                                              // stronger right swing for raids/dragon
+    dist=6.8;height=2.8;ahead=2.8;side=3.1;                                              // M2: lower height (was 3.7) for continuity with low-angle landing camera
   }
   if(G.state==="boot"||G.state==="auth"){ dist=11;height=8;ahead=0;side=0; }
   const tp=new THREE.Vector3().copy(king.position).addScaledVector(f,-dist).addScaledVector(r,side).setY(king.position.y+height);
@@ -6996,7 +7040,7 @@ function animate(){
     G.dragonT+=dt;
     G.dragon.position.y+=dt*4.5;
     G.dragon.rotation.y+=dt*2;
-    const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||1.42;
+    const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||1.55;
     const s=Math.max(.22,start*(1-G.dragonT*.55));
     G.dragon.scale.set(s,s,s);
     if(G.dragonT>1.8){ scene.remove(G.dragon); G.dragon=null; endTurn(); }
