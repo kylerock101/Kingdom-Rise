@@ -315,6 +315,32 @@
   #devPinRow button{flex:1;padding:12px;border:none;border-radius:10px;font-weight:900;font-size:15px;cursor:pointer;}
   #devPinOk{background:#5a3fa0;color:#fff;}
   #devPinCancel{background:#2a2050;color:#b0a8d8;}
+  /* ---------- DEV TEST PANEL ----------
+     Sits under every overlay (z-index 19 vs the .ov layer's 20) and collapses to a
+     single small chip, so it never takes space away from the HUD on a phone. Bottom
+     left is the one corner nothing else claims: the goal bar owns top-right at 88px,
+     the quest bar 140px, and the map button top-left. column-reverse puts the chip on
+     the bottom so the list opens upward, clear of the action bar either way. */
+  #devPanel{position:fixed;left:10px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:19;
+    display:flex;flex-direction:column-reverse;align-items:flex-start;gap:6px;
+    width:min(38vw,148px);pointer-events:none;}
+  #devPanelToggle{pointer-events:auto;border:none;border-radius:11px;width:36px;height:32px;
+    font-size:15px;line-height:1;opacity:.5;background:rgba(20,12,45,.8);color:#f4efff;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.4);cursor:pointer;}
+  #devPanelToggle:active{transform:translateY(1px);}
+  #devPanel.open #devPanelToggle{opacity:1;}
+  #devPanelBody{display:none;flex-direction:column;gap:5px;width:100%;pointer-events:auto;
+    background:rgba(20,12,45,.94);border-radius:12px;padding:8px;opacity:.96;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.4), 0 6px 16px rgba(0,0,0,.4);}
+  #devPanel.open #devPanelBody{display:flex;}
+  #devPanelHead{font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+    color:#8f86bd;padding:0 2px 1px;}
+  .devBtn{border:none;border-radius:9px;padding:7px 8px;font:inherit;font-size:11px;font-weight:800;
+    text-align:left;background:#2a2050;color:#e8e2ff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.35);
+    cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .devBtn:active{transform:translateY(1px);}
+  #devPanelNote{font-size:9px;font-weight:700;color:#b0a8d8;line-height:1.3;padding:1px 2px 0;
+    white-space:normal;word-break:break-word;}
   .skinCard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:none;cursor:pointer;
     border-radius:14px;padding:12px 14px;margin:8px 0;background:#2a2350;color:#fff;position:relative;
     box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .06s;}
@@ -461,6 +487,21 @@
   </div>
 </div>
 
+<!-- dev test panel: shortcuts into the systems that already exist, nothing new.
+     Hidden by default — same DEV_KEY passphrase gate as the rest of the dev tools,
+     so the public build stays clean. -->
+<div id="devPanel" style="display:none">
+  <button id="devPanelToggle" title="Dev test panel" aria-label="Toggle dev test panel">🛠</button>
+  <div id="devPanelBody">
+    <div id="devPanelHead">Dev Tests</div>
+    <button class="devBtn" id="devSpawnDragon">🐉 Spawn Dragon</button>
+    <button class="devBtn" id="devAddSoldiers">⚔️ Add Soldiers</button>
+    <button class="devBtn" id="devClearUnits">🧹 Clear Units</button>
+    <button class="devBtn" id="devNearDeath">💀 Trigger Defeat</button>
+    <div id="devPanelNote"></div>
+  </div>
+</div>
+
 <div id="ravenDeliveryFx" aria-hidden="true"><div class="ravenBird"><div class="ravenWing"></div><div class="ravenScrollMini"></div></div></div>
 
 <!-- generic card -->
@@ -565,7 +606,7 @@
   <button class="ghost" id="importBtn" style="display:none">📥 Paste Save Code (dev)</button>
   <button class="ghost" id="weekTestBtn" style="display:none">📜 Near Weekly Goal (dev)</button>
   <button class="ghost" id="introTestBtn" style="display:none">🎬 Replay Intro (dev)</button>
-  <div id="verRow">King's Rise 3D · Beta v0.1</div>
+  <div id="verRow">King's Rise 3D · Beta v0.1 · BUILD M3.5</div>
 </div></div>
 
 <div class="ov" id="storeOv"><div class="panel">
@@ -615,6 +656,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 "use strict";
+console.log("BUILD M3.5 ACTIVE");   // temporary deploy-verification marker — safe to remove once confirmed live
 /* ================= FIREBASE CONFIG ================= */
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyD270zTZyroRhGFS94wtSLvLIP_JiW3E1A",
@@ -4733,7 +4775,19 @@ const BATTLE={
   active:false, firing:false, group:null,
   archers:[], arrows:[], sparks:[],
   next:0, aimAngle:null, aimHold:0, shake:0, hold:0, rallied:false,
+  line:null,                      // the watch currently formed on the dragon (a slice of FOLK, not a copy)
 };
+/* How the watch holds itself on the field. Shoulder room is the number the whole
+   formation is built around: the ring is pushed out until every slot has this much
+   of it, so a bigger watch surrounds the dragon rather than packing onto one face. */
+const GUARD_SEP=1.05;             // minimum world-units between two guards
+const GUARD_SETTLE=0.12;          // close enough to the slot to plant and stop moving
+const GUARD_REFORM=1.2;           // slot must drift this far before a planted guard breaks stance
+// A rail, not a tuning knob. The watch is capped at ten by rebuildFolk, and at ten
+// the ring sits at 3.0 — nowhere near this. It only bites if something ever fields
+// twenty-odd guards, where growing the ring to keep shoulder room would otherwise
+// form the line half a board away from the thing it is supposed to be facing.
+const GUARD_RING_MAX=5.5;
 function battleTarget(){
   if(!G.dragon) return null;
   const s=G.dragon.userData.battleScale||1.55;
@@ -4824,7 +4878,16 @@ function rallyGuards(){
   guards.forEach((p,i)=>{
     p.evt="dragonLine"; p.evtT=14; p.evtSeed=Math.random()*6.28;
     p.evtSlot=i; p.evtSlotN=guards.length;
+    // The order does not reach the whole watch on the same frame. A fifth to
+    // three fifths of a second of spread is enough that the line breaks as a
+    // ripple down the wall rather than as one block of men starting together.
+    // Stratified rather than plain random: one guard per slice of the band, so
+    // the ripple always covers it — pure random bunches, and eight bunched draws
+    // read as everybody starting at once again.
+    p.evtDelay=0.2+0.4*((i+Math.random())/Math.max(1,guards.length));
+    p.evtAge=0; p.evtSettled=false;
   });
+  BATTLE.line=guards;                 // small, and the only list the spacing pass walks
 }
 /* everyone else gets clear — some keep running, some stop at a distance and watch */
 function scatterCitizens(){
@@ -4856,9 +4919,45 @@ function spawnGlance(at){
   s.mesh.scale.setScalar(1);
   s.mesh.material.opacity=.9;
 }
+/* Shoulder room, enforced.
+
+   The slot maths already guarantees a *settled* line cannot stack — the ring is
+   pushed out until every slot has GUARD_SEP of arc to itself. What it cannot
+   cover is the run-in: a guard can be posted most of a board from where the thing
+   lands, and two converging along the same line would walk through each other.
+
+   One push-apart pass over BATTLE.line only — the watch, never the whole crowd,
+   so this is a handful of pairs and not a crowd simulation. A guard who has
+   planted holds its ground and is never pushed; the one still moving gives way,
+   which is both cheaper and the right read. */
+function separateWatch(){
+  const L=BATTLE.line; if(!L||L.length<2) return;
+  for(let i=0;i<L.length;i++){
+    const a=L[i]; if(a.evt!=="dragonLine") continue;
+    for(let j=i+1;j<L.length;j++){
+      const b=L[j]; if(b.evt!=="dragonLine") continue;
+      if(a.evtSettled&&b.evtSettled) continue;      // both planted: their slots already have the room
+      const am=a.mesh, bm=b.mesh;
+      let dx=bm.position.x-am.position.x, dz=bm.position.z-am.position.z;
+      let d=Math.hypot(dx,dz);
+      if(d>=GUARD_SEP) continue;
+      if(d<1e-4){ dx=Math.sin(i*2.39996); dz=Math.cos(i*2.39996); d=1; }   // exactly stacked: break the tie
+      const ux=dx/d, uz=dz/d, push=GUARD_SEP-d;
+      const wa=a.evtSettled?0:(b.evtSettled?1:.5);   // the planted one does not move
+      const wb=b.evtSettled?0:(a.evtSettled?1:.5);
+      am.position.x-=ux*push*wa; am.position.z-=uz*push*wa;
+      bm.position.x+=ux*push*wb; bm.position.z+=uz*push*wb;
+    }
+  }
+}
 function tickBattlefield(dt,t){
   BATTLE.shake=Math.max(0,BATTLE.shake-dt*4.5);
   BATTLE.aimHold=Math.max(0,BATTLE.aimHold-dt*1.1);
+  // Above the active check on purpose. The watch breaks the moment the thing is
+  // visible, which is a beat before the trumpet puts the archers on the wall —
+  // so the whole run-in, the part that most needs the spacing, happens while the
+  // battlefield itself is not up yet. separateWatch no-ops when there is no line.
+  separateWatch();
   if(!BATTLE.active) return;
   // The watch stands down when the turn ends, never on a timer — top the battle
   // poses up periodically so the line holds for however long the encounter runs.
@@ -4909,11 +5008,265 @@ function clearBattlefield(){
   if(BATTLE.group){ scene.remove(BATTLE.group); disposeGroup(BATTLE.group); }
   BATTLE.group=null; BATTLE.archers.length=0; BATTLE.arrows.length=0; BATTLE.sparks.length=0;
   BATTLE.active=false; BATTLE.firing=false; BATTLE.rallied=false; BATTLE.aimAngle=null; BATTLE.aimHold=0; BATTLE.shake=0; BATTLE.hold=0;
+  BATTLE.line=null;
   for(const p of FOLK){                                   // release anyone still holding a battle pose
     if(p.evt==="dragonLine"||p.evt==="dragonFear"){
       p.evt=null; p.evtT=0; p.mesh.rotation.z=0; p.mesh.rotation.x=0; p.mesh.position.y=0;
+      p.evtSettled=false; p.evtAge=0;
     }
   }
+  clearMuster();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   M5: One Soldier Per Strike — the muster.
+
+   Every tap already spent a soldier out of the army and nothing on screen ever
+   showed where they went, so the best beat in the encounter read as tapping a
+   shape. This sends them in. One tap puts exactly one actor on the field — an
+   archer looses, a footman runs in and swings, a rider makes a pass — and it is
+   off the field again inside three quarters of a second.
+
+   Presentation only, and deliberately downstream: by the time spawnStrikeActor
+   runs, the tap handler has already spent the soldier, taken the health and
+   moved the bar. Nothing below reads or writes health, loot, soldier count or
+   combat timing, and no actor can miss — the strike has already landed.
+
+   A fixed pool of eight, built once when the encounter arms and never grown.
+   Actors leave by scaling out rather than fading, which keeps every material
+   opaque and shared between them: a figure this small reads a fast scale-out
+   as a fade anyway, and it costs no transparency sorting on a phone.
+   ══════════════════════════════════════════════════════════════════════════ */
+const MUSTER={ group:null, pool:[], ready:false, seq:0 };
+const MUSTER_MAX=8;                       // hard ceiling on actors alive at once
+const _mv=new THREE.Vector3(), _mv2=new THREE.Vector3();
+const mEase=x=>1-Math.pow(1-x,3);
+/* a charge has to accelerate out of the muster and brake into the swing — a pure
+   ease-out covers three quarters of the ground in the first two frames and reads
+   as a teleport rather than a run */
+const mRun=x=>x*x*(3-2*x);
+
+/* One rig per kind, all sharing the geometry and materials made in initMuster.
+   Shapes stay primitive and are read at about the size of a townsfolk — the
+   silhouette has to say "archer" or "rider" from the combat camera and nothing
+   more than that. */
+function makeMusterArcher(Gm,M){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(Gm.body,M.green); t.position.y=.20; g.add(t);
+  const h=new THREE.Mesh(Gm.head,M.skin);  h.position.y=.47; g.add(h);
+  const bow=new THREE.Mesh(Gm.bow,M.wood); bow.position.set(.07,.33,.17); bow.rotation.y=Math.PI/2; g.add(bow);
+  return {g,bow};
+}
+function makeMusterFootman(Gm,M){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(Gm.body,M.mail);  t.position.y=.20; g.add(t);
+  const h=new THREE.Mesh(Gm.head,M.skin);  h.position.y=.47; g.add(h);
+  const arm=new THREE.Group(); arm.position.set(.14,.38,.02); g.add(arm);
+  const upper=new THREE.Mesh(Gm.arm,M.mail); upper.position.z=.13; arm.add(upper);
+  const blade=new THREE.Mesh(Gm.blade,M.steel); blade.position.z=.44; blade.rotation.x=Math.PI/2; arm.add(blade);
+  return {g,arm};
+}
+function makeMusterRider(Gm,M){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(Gm.horse,M.hide); body.position.y=.36; g.add(body);
+  const neck=new THREE.Mesh(Gm.neck,M.hide);  neck.position.set(0,.50,.30); neck.rotation.x=-.35; g.add(neck);
+  const legs=[];
+  for(let i=0;i<4;i++){
+    const l=new THREE.Mesh(Gm.leg,M.hide);
+    l.position.set((i&1)?.10:-.10,.15,(i<2)?.21:-.19); g.add(l); legs.push(l);
+  }
+  const r=new THREE.Mesh(Gm.body,M.cloak); r.position.y=.62; r.scale.set(.82,.82,.82); g.add(r);
+  const h=new THREE.Mesh(Gm.head,M.skin);  h.position.y=.86; g.add(h);
+  const lance=new THREE.Mesh(Gm.lance,M.steel); lance.position.set(.17,.60,.30); lance.rotation.x=.10; g.add(lance);
+  return {g,legs,lance};
+}
+function initMuster(){
+  if(MUSTER.ready) return;
+  clearMuster();
+  MUSTER.group=new THREE.Group(); scene.add(MUSTER.group);
+  const M={
+    green:new THREE.MeshStandardMaterial({color:0x4f6b3a,roughness:.9}),                   // archers: woodline green over brown
+    wood: new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:.9}),
+    mail: new THREE.MeshStandardMaterial({color:0x8b93a1,roughness:.65,metalness:.25}),     // footmen: the neutral metal of the watch
+    steel:new THREE.MeshStandardMaterial({color:0xd8dde6,roughness:.35,metalness:.5}),
+    hide: new THREE.MeshStandardMaterial({color:0x4a3728,roughness:.95}),                   // riders: darker, on a horse tone
+    cloak:new THREE.MeshStandardMaterial({color:0x5c4a63,roughness:.85}),
+    skin: new THREE.MeshStandardMaterial({color:0xe0a878,roughness:.85}),
+  };
+  const arrowGeo=new THREE.CylinderGeometry(.012,.012,.44,4); arrowGeo.rotateX(Math.PI/2);
+  const lanceGeo=new THREE.CylinderGeometry(.018,.010,.82,4); lanceGeo.rotateX(Math.PI/2);
+  const Gm={
+    body:new THREE.CylinderGeometry(.10,.16,.40,7),
+    head:new THREE.SphereGeometry(.095,7,6),
+    bow: new THREE.TorusGeometry(.19,.017,4,9,Math.PI*1.15),
+    arm: new THREE.BoxGeometry(.055,.055,.26),
+    blade:new THREE.BoxGeometry(.04,.40,.018),
+    horse:new THREE.BoxGeometry(.26,.25,.62),
+    neck:new THREE.BoxGeometry(.13,.26,.16),
+    leg: new THREE.BoxGeometry(.065,.28,.065),
+    arrow:arrowGeo, lance:lanceGeo,
+  };
+  // three bows, three blades, two riders — enough that a fast tapper keeps getting
+  // the kind they rolled, few enough that the field never crowds
+  const roster=["archer","archer","archer","foot","foot","foot","horse","horse"];
+  for(let i=0;i<MUSTER_MAX;i++){
+    const kind=roster[i];
+    const rig=kind==="archer"?makeMusterArcher(Gm,M):kind==="foot"?makeMusterFootman(Gm,M):makeMusterRider(Gm,M);
+    rig.g.visible=false; MUSTER.group.add(rig.g);
+    const a={kind, g:rig.g, bow:rig.bow||null, arm:rig.arm||null, legs:rig.legs||null, lance:rig.lance||null,
+      live:false, t:0, dur:.6, seq:0, y0:0, y1:0, face:0, side:1, struck:false,
+      from:new THREE.Vector3(), to:new THREE.Vector3(), aim:new THREE.Vector3(),
+      arrow:null, arrowLive:false, at:0, af:new THREE.Vector3()};
+    if(kind==="archer"){
+      a.arrow=new THREE.Mesh(Gm.arrow,M.wood); a.arrow.visible=false; MUSTER.group.add(a.arrow);
+    }
+    MUSTER.pool.push(a);
+  }
+  MUSTER.ready=true; MUSTER.seq=0;
+}
+function retireActor(a){
+  a.live=false; a.arrowLive=false; a.struck=false;
+  a.g.visible=false; a.g.scale.setScalar(1); a.g.rotation.set(0,0,0);
+  if(a.arrow) a.arrow.visible=false;
+}
+/* A free slot of the kind we rolled, else any free slot, else the oldest actor
+   on the field gives way. The last case is what guarantees the contract: every
+   tap gets a visible action, even at the top of a player's tapping speed. */
+function takeActor(kind){
+  let a=null;
+  for(const x of MUSTER.pool) if(!x.live&&x.kind===kind){ a=x; break; }
+  if(!a) for(const x of MUSTER.pool) if(!x.live){ a=x; break; }
+  if(!a){
+    a=MUSTER.pool[0];
+    for(const x of MUSTER.pool) if(x.seq<a.seq) a=x;
+    retireActor(a);
+  }
+  return a;
+}
+/* Called from the strike handler on touch-down, on the same frame as the hit.
+   Nothing here can defer, queue or await — the actor is on screen before the
+   tap that made it has finished being handled. */
+function spawnStrikeActor(){
+  if(!G.dragon) return;
+  if(!MUSTER.ready) initMuster();
+  if(!MUSTER.group) return;
+  const D=G.dragon.position, K=king.position;
+  _mv.set(D.x-K.x,0,D.z-K.z);
+  if(_mv.lengthSq()<1e-4) return;                       // nothing sane to charge at
+  const dir=_mv.normalize().clone();
+  const perp=_mv2.set(-dir.z,0,dir.x).clone();
+
+  const r=Math.random();
+  const kind = r<.42 ? "archer" : r<.82 ? "foot" : "horse";
+  const a=takeActor(kind);
+  const seq=++MUSTER.seq;
+  a.seq=seq; a.live=true; a.t=0; a.struck=false; a.arrowLive=false;
+
+  // fan the muster point out sideways so consecutive actors never stack up, and
+  // start them behind the monarch — they come from the player's side of the field
+  const lane=((seq%5)-2)*.62+(Math.random()-.5)*.28;
+  a.side = lane>=0?1:-1;
+
+  const tg=battleTarget();
+  a.aim.copy(tg||D);
+  a.aim.x+=(Math.random()-.5)*.7; a.aim.y+=(Math.random()-.5)*.6; a.aim.z+=(Math.random()-.5)*.7;
+
+  if(a.kind==="horse"){
+    // a pass: in from the flank, through the dragon's side, and gone off the far edge
+    a.dur=.60;
+    a.from.set(K.x+perp.x*(lane+a.side*1.5)-dir.x*1.4, 0, K.z+perp.z*(lane+a.side*1.5)-dir.z*1.4);
+    a.to.set(D.x+dir.x*3.0+perp.x*a.side*2.1, 0, D.z+dir.z*3.0+perp.z*a.side*2.1);
+  } else if(a.kind==="foot"){
+    a.dur=.70;
+    a.from.set(K.x+perp.x*lane-dir.x*(.9+Math.random()*.4), 0, K.z+perp.z*lane-dir.z*(.9+Math.random()*.4));
+    a.to.set(D.x-dir.x*(1.6+Math.random()*.35)+perp.x*lane*.5, 0, D.z-dir.z*(1.6+Math.random()*.35)+perp.z*lane*.5);
+  } else {
+    a.dur=.50;                                            // the arrow lands at .30 — anything after that is dead time
+    a.from.set(K.x+perp.x*lane-dir.x*(.7+Math.random()*.4), 0, K.z+perp.z*lane-dir.z*(.7+Math.random()*.4));
+    a.to.copy(a.from).addScaledVector(dir,.55);           // archers plant and loose; a short step is the whole move
+  }
+  a.y0=surfaceUnder(a.from.x,a.from.z)+.02;
+  a.y1=surfaceUnder(a.to.x,a.to.z)+.02;
+  a.from.y=a.y0; a.to.y=a.y1;
+  a.face=Math.atan2(a.kind==="horse"?a.to.x-a.from.x:a.aim.x-a.from.x,
+                    a.kind==="horse"?a.to.z-a.from.z:a.aim.z-a.from.z);
+
+  a.g.position.copy(a.from);
+  a.g.rotation.set(0,a.face,0);
+  a.g.scale.setScalar(.55);                              // a very short scale-in, so arrival is not a pop
+  a.g.visible=true;
+  if(a.arm)  a.arm.rotation.x=-.5;
+  if(a.bow)  a.bow.scale.set(1,1,1);
+  if(a.lance)a.lance.rotation.x=.10;
+  if(a.arrow)a.arrow.visible=false;
+}
+function tickMuster(dt){
+  if(!MUSTER.ready) return;
+  for(const a of MUSTER.pool){
+    if(!a.live) continue;
+    a.t+=dt;
+    const k=a.t/a.dur;
+
+    // the arrow outlives nothing — it always lands well inside its archer's window
+    if(a.arrowLive){
+      a.at+=dt;
+      const u=Math.min(1,a.at/.17);
+      _mv.set(a.af.x+(a.aim.x-a.af.x)*u, a.af.y+(a.aim.y-a.af.y)*u+Math.sin(u*Math.PI)*.30, a.af.z+(a.aim.z-a.af.z)*u);
+      a.arrow.position.copy(_mv);
+      _mv2.set(a.af.x+(a.aim.x-a.af.x)*Math.min(1,u+.1), a.af.y+(a.aim.y-a.af.y)*Math.min(1,u+.1)+Math.sin(Math.min(1,u+.1)*Math.PI)*.30, a.af.z+(a.aim.z-a.af.z)*Math.min(1,u+.1));
+      if(!_mv2.equals(_mv)) a.arrow.lookAt(_mv2);
+      if(u>=1){ a.arrowLive=false; a.arrow.visible=false; spawnGlance(a.aim); }
+    }
+
+    if(k>=1){ retireActor(a); continue; }
+
+    const grow=Math.min(1,a.t/.06);
+    let sc=.55+.45*grow, u=0, bob=0;
+
+    if(a.kind==="archer"){
+      u=mEase(Math.min(1,a.t/.16));
+      const rel=a.t-.13;                                  // release, a breath after the draw
+      if(rel>=0&&!a.struck){
+        a.struck=true; a.arrowLive=true; a.at=0;
+        a.af.set(a.g.position.x,a.g.position.y+.34,a.g.position.z);
+        a.arrow.position.copy(a.af); a.arrow.visible=true;
+      }
+      const kick=rel<0?Math.min(1,(a.t/.13))*.22:Math.max(0,1-rel*7)*.22;
+      a.bow.scale.set(1,1-kick,1);
+      a.g.rotation.x=-.04-kick*.30;
+      if(k>.70) sc*=1-(k-.70)/.30;                        // steps off as soon as the shot has landed
+    } else if(a.kind==="foot"){
+      if(k<.50){ u=mRun(k/.50); bob=Math.abs(Math.sin(a.t*26))*.045; a.arm.rotation.x=-.5+Math.sin(a.t*26)*.5; }
+      else if(k<.64){
+        u=1;
+        const s=(k-.50)/.14;
+        a.arm.rotation.x=-2.3+s*3.1;                      // over the shoulder and down through it
+        if(s>=.42&&!a.struck){ a.struck=true; spawnGlance(a.aim); }
+      } else {
+        u=1-mRun((k-.64)/.36);                            // back out the way they came
+        bob=Math.abs(Math.sin(a.t*22))*.038;
+        a.arm.rotation.x=.8-(k-.64)/.36*1.3;
+      }
+      a.g.rotation.x=(k<.50?-.10:0);
+      if(k>.84) sc*=1-(k-.84)/.16;
+    } else {
+      u=Math.pow(k,.92);                                  // a pass holds its speed; it is not arriving anywhere
+      bob=Math.abs(Math.sin(a.t*30))*.055;
+      const gal=Math.sin(a.t*30);
+      for(let i=0;i<4;i++) a.legs[i].rotation.x=Math.sin(a.t*30+(i<2?0:Math.PI))*.7;
+      a.g.rotation.z=gal*.05;
+      a.lance.rotation.x=.10-Math.max(0,1-Math.abs(k-.52)*7)*.34;
+      if(k>=.50&&!a.struck){ a.struck=true; spawnGlance(a.aim); }
+      if(k>.86) sc*=1-(k-.86)/.14;
+    }
+
+    a.g.position.set(a.from.x+(a.to.x-a.from.x)*u, a.from.y+(a.to.y-a.from.y)*u+bob, a.from.z+(a.to.z-a.from.z)*u);
+    a.g.scale.setScalar(Math.max(.001,sc));
+  }
+}
+function clearMuster(){
+  if(MUSTER.group){ scene.remove(MUSTER.group); disposeGroup(MUSTER.group); }
+  MUSTER.group=null; MUSTER.pool.length=0; MUSTER.ready=false; MUSTER.seq=0;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -6714,6 +7067,7 @@ function startDragon(scale){
   $("dragonTimeFill").style.width="100%";
 
   if(!BATTLE.active) startBattlefield();      // no cinematic played — the kingdom still answers
+  initMuster();                               // M5: warm the strike pool before the first tap can want it
 
   const armFight=()=>{
     if(G.state!=="encounter")return;
@@ -6792,6 +7146,9 @@ window.addEventListener("pointerdown",e=>{
     // the contact point, and the lightest possible nudge on the camera.
     F.flash=1;
     BATTLE.shake=Math.max(BATTLE.shake,.34);
+    // M5: the soldier that tap just spent goes in. Visual only, and fired here so
+    // it lands on touch-down alongside the sound and the bar — never deferred.
+    spawnStrikeActor();
     if(G.dragon){
       const tg=battleTarget();
       if(tg){
@@ -7066,8 +7423,9 @@ $("verRow").addEventListener("click",()=>{
     if(localStorage.getItem(DEV_KEY)==="1"){
       // already unlocked — toggle off with no prompt
       try{localStorage.setItem(DEV_KEY,"0");}catch(e){}
-      ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn","weekTestBtn","introTestBtn"]
+      ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn","weekTestBtn","introTestBtn","devPanel"]
         .forEach(id=>{ const b=$(id); if(b) b.style.display="none"; });
+      $("devPanel").classList.remove("open");
       msg("🛠️ Dev tools off",1200);
       return;
     }
@@ -7080,7 +7438,7 @@ $("verRow").addEventListener("click",()=>{
       if(inp.value.trim().toLowerCase()!==DEV_PASS){ buzz(20); inp.value=""; inp.focus(); return; }
       pin.classList.remove("show");
       try{localStorage.setItem(DEV_KEY,"1");}catch(e){}
-      ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn"]
+      ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn","devPanel"]
         .forEach(id=>{ const b=$(id); if(b) b.style.display=""; });
       $("weekTestBtn").style.display=""; $("introTestBtn").style.display="";
       msg("🛠️ Dev tools on",1200);
@@ -7290,7 +7648,7 @@ async function enterGame(u){
   if(had) msg("👑 Welcome back, "+u+"!",3200);
   else msg("👑 Roll the dice to begin your rise!",3600);
   if(localStorage.getItem(DEV_KEY)==="1"){
-    ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn"].forEach(id=>{const b=$(id); if(b) b.style.display="";});
+    ["freeRollsBtn","nextDayBtn","jumpBtn","richBtn","exportBtn","importBtn","devPanel"].forEach(id=>{const b=$(id); if(b) b.style.display="";});
     $("weekTestBtn").style.display=""; $("introTestBtn").style.display="";
   }
 }
@@ -7712,30 +8070,75 @@ function animate(){
           // while it is still in the air they run to the monarch; once it is down
           // they form on the dragon itself
           const D=(G.dragon&&G.dragon.position.y<2.5)?G.dragon.position:king.position;
-          {
+          // they form on the monarch while it is still in the air, but the eyes are
+          // on the thing itself the whole time — that is what makes it read as one
+          // response rather than a squad running an errand
+          const EYE=G.dragon?G.dragon.position:D;
+          p.evtAge=(p.evtAge||0)+dt;
+          if(p.evtAge<(p.evtDelay||0)){
+            // the order has not reached this one yet — the head comes round first.
+            // The spread of delays is the whole point: the watch breaks as a ripple
+            // along the wall, never as one block of men starting on the same frame.
+            m.rotation.y=Math.atan2(EYE.x-m.position.x, EYE.z-m.position.z);
+            m.rotation.x=-.04; m.position.y=0; m.rotation.z=0;
+          } else {
             // each guard owns one slot on the arc, so the line spreads and never stacks
             const a0=Math.atan2(king.position.x-D.x, king.position.z-D.z);
-            // the arc widens and pushes out with the size of the watch, so a bigger
-            // kingdom fields a longer line rather than a denser one — nobody stacks
             const n=Math.max(1,p.evtSlotN||1), idx=p.evtSlot||0;
-            const spread=Math.min(2.4,.45*(n-1));
-            const ang=a0 + (n>1 ? spread*(idx/(n-1)-.5) : 0);
-            const rad=2.4+n*.06+Math.sin(sd)*.22;
-            const tx=D.x+Math.sin(ang)*rad, tz=D.z+Math.cos(ang)*rad;
-            const dxs=tx-m.position.x, dzs=tz-m.position.z, ds=Math.hypot(dxs,dzs);
-            // a posted guard can be most of the board away when it lands, so they
-            // come at a dead run and decelerate into the slot rather than sliding in
-            if(ds>0.08){ const sp=Math.min(4.8,0.8+ds*0.8)*dt; m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp; }
-            m.rotation.y=Math.atan2(D.x-m.position.x, D.z-m.position.z);   // every face turned on the dragon
-            if(ds>1.1){
-              m.position.y=Math.abs(Math.sin(t*10+sd))*.13;                // running
-              m.rotation.x=-.22;
-              m.rotation.z=Math.sin(t*10+sd)*.07;
-            } else {
-              const th=Math.max(0,Math.sin(t*1.6+sd*2.1));                 // planted: a slow spear thrust, out of time with the others
+            // The arc opens further round the dragon as the watch grows, and the ring
+            // is then pushed out until every slot has GUARD_SEP of arc to itself. A
+            // bigger watch therefore surrounds the thing rather than packing tighter
+            // onto the town-facing side of it.
+            const spread=Math.min(3.6,.52*(n-1));
+            const step=n>1?spread/(n-1):0;
+            let rad=2.4+n*.06;
+            if(step>0) rad=Math.min(GUARD_RING_MAX, Math.max(rad, GUARD_SEP/step));
+            // Ragged on purpose. A fixed wobble per guard — off their seed, so it never
+            // changes once chosen — reads as people taking up a position instead of
+            // marks on a circle. The angular part is scaled to the slot, so however
+            // tight the ring gets it can never close a gap the spacing just granted.
+            const ang=a0+(n>1?spread*(idx/(n-1)-.5):0)+Math.sin(sd*3.1)*step*.16;
+            const rr=rad+Math.sin(sd*1.7)*.34;
+            const tx=D.x+Math.sin(ang)*rr, tz=D.z+Math.cos(ang)*rr;
+            // Hysteresis. The dragon's idle breathing drifts this slot by centimetres
+            // every frame, and chasing it is what makes a formation shimmer. Only a
+            // real change — it lands, the line re-forms — is worth breaking stance for.
+            if(p.evtSettled&&Math.hypot(tx-p.evtAnchorX,tz-p.evtAnchorZ)>GUARD_REFORM) p.evtSettled=false;
+            if(p.evtSettled){
+              // eased onto the anchor rather than snapped to it — the last hand's
+              // breadth of the approach, then genuinely still. Once inside a
+              // centimetre it is set exactly, so a planted guard is provably static.
+              const ax=p.evtAnchorX-m.position.x, az=p.evtAnchorZ-m.position.z;
+              if(Math.abs(ax)<.01&&Math.abs(az)<.01){ m.position.x=p.evtAnchorX; m.position.z=p.evtAnchorZ; }
+              else { const k=Math.min(1,dt*9); m.position.x+=ax*k; m.position.z+=az*k; }
+              const want=Math.atan2(EYE.x-m.position.x, EYE.z-m.position.z);
+              let da=want-m.rotation.y;                                    // eased onto the dragon, never twitching onto it
+              while(da>Math.PI) da-=6.283185307; while(da<-Math.PI) da+=6.283185307;
+              m.rotation.y+=da*Math.min(1,dt*3.0);
+              const th=Math.max(0,Math.sin(t*1.6+sd*2.1));                 // a slow spear thrust, out of time with the others
               m.rotation.x=-.10-th*.16;
               m.position.y=th*.045;
               m.rotation.z=Math.sin(t*2.3+sd)*.05;
+            } else {
+              const dxs=tx-m.position.x, dzs=tz-m.position.z, ds=Math.hypot(dxs,dzs);
+              if(ds>GUARD_SETTLE){
+                // a posted guard can be most of the board away when it lands, so they
+                // come at a dead run and decelerate into the slot rather than sliding in
+                const sp=Math.min(4.8,0.8+ds*0.8)*dt;
+                m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp;
+                m.rotation.y=Math.atan2(EYE.x-m.position.x, EYE.z-m.position.z); // every face turned on the dragon
+                if(ds>0.9){
+                  m.position.y=Math.abs(Math.sin(t*10+sd))*.13;             // running
+                  m.rotation.x=-.22;
+                  m.rotation.z=Math.sin(t*10+sd)*.07;
+                } else {                                                    // last few steps: out of the run, into the stance
+                  m.rotation.x+=(-.10-m.rotation.x)*Math.min(1,dt*6);
+                  m.position.y=Math.abs(Math.sin(t*6+sd))*.05;
+                  m.rotation.z*=.9;
+                }
+              } else {
+                p.evtSettled=true; p.evtAnchorX=tx; p.evtAnchorZ=tz;        // arrived — this is the ground they hold
+              }
             }
           }
         } else if(e==="dragonStandDown"){                  // it's over: the watch holds, then relaxes
@@ -7973,6 +8376,7 @@ function animate(){
   tickFruitThrowing(dt); tickFruit(dt); tickWater(clock.elapsedTime);
   tickSettlementLife(dt, clock.elapsedTime);
   tickBattlefield(dt, clock.elapsedTime);       // archers, arrows, and the strike nudge
+  tickMuster(dt);                               // M5: the soldier each tap sent in
   // M4: dust is ticked here rather than inside the entrance, because the defeat
   // throws rings too and the entrance tick has long stopped running by then —
   // they were being left in the scene forever.
@@ -8016,6 +8420,105 @@ window.addEventListener("resize",()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DEV TEST PANEL — a harness, not a system.
+
+   Every button here is a shortcut into machinery that already exists:
+     Spawn Dragon     → startDragonEntrance(), the exact call the "dragon" tile makes,
+                        so the full cinematic → battlefield → combat chain runs.
+     Add Soldiers     → S.soldiers (the field a Recruit tile fills) plus real FOLK
+                        guards built through makePerson(), the same path rebuildFolk() uses.
+     Clear Units      → rebuildFolk(), the game's own crowd reset.
+     Trigger Defeat   → writes the live fight's hp and repaints the same bar a strike
+                        repaints; the kill still goes through the normal tap handler.
+
+   Nothing below defines new rules, rewards, timings or combat behaviour, and no
+   existing function was changed to accommodate it.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DEV_FOLK_CAP=110;                      // ceiling on total crowd size — this runs on phones
+function devNote(text){
+  const n=$("devPanelNote"); if(n) n.textContent=text||"";
+  if(text) console.log("[dev] "+text);
+}
+const DEV_DRAGON_STATES=["dragonEntrance","encounter","dragonDie","dragonTakeoff","dragonFlee"];
+function devDragonBusy(){ return DEV_DRAGON_STATES.indexOf(G.state)>=0; }
+/* the full encounter, entrance cinematic and all — never a bare spawn */
+function spawnDragonEncounter(scale){
+  if(devDragonBusy()){ devNote("A dragon is already in play."); return false; }
+  if(G.state!=="idle"||G.intro||G.map||G.create){
+    devNote("Not idle — finish the turn first (state: "+G.state+")."); return false;
+  }
+  startDragonEntrance(typeof scale==="number"&&scale>0?scale:1);
+  devNote("Entrance running — the watch forms on the trumpet.");
+  return true;
+}
+/* real guards on the field, not just a bigger number on the pill */
+function addTestSoldiers(n){
+  const want=Math.max(1,Math.min(20,(typeof n==="number"&&n>0)?Math.floor(n):6));
+  S.soldiers+=want; refresh();
+  let placed=0;
+  for(let i=0;i<want&&FOLK.length<DEV_FOLK_CAP;i++){
+    const idx=FOLK.length;
+    const ang=idx*2.39996;                              // golden angle: they spread, never stack
+    const rad=3.2+(idx%3)*0.55;                         // outside the road, inside the cull radius
+    const x=king.position.x+Math.sin(ang)*rad, z=king.position.z+Math.cos(ang)*rad;
+    if(overRiver(x,z,.4)) continue;                     // nobody stands in the river
+    const seed=90000+idx*29;
+    const p=makePerson("guard",seed);
+    p.position.set(x,0,z);
+    folkGroup.add(p);
+    FOLK.push({mesh:p, home:new THREE.Vector3(x,0,z), kind:"guard", role:"post",
+      phase:srand(seed+7)*Math.PI*2, speed:.5+srand(seed+8)*.7,
+      facing:Math.atan2(king.position.x-x,king.position.z-z), devSpawn:true});
+    placed++;
+  }
+  // if the watch is already mustered, re-form the line so the new bodies join it
+  if(BATTLE.rallied&&devDragonBusy()) rallyGuards();
+  devNote("+"+want+" ⚔️ · "+placed+" guard"+(placed===1?"":"s")+" spawned.");
+  return placed;
+}
+/* back to the canonical crowd for this kingdom — drops dev spawns and strays alike */
+function clearUnits(){
+  if(devDragonBusy()){ devNote("Not mid-encounter — the watch is on the field."); return false; }
+  const before=FOLK.length;
+  rebuildFolk();
+  devNote("Crowd reset · "+before+" → "+FOLK.length+" units.");
+  return true;
+}
+/* one tap from the kill, through the ordinary strike path */
+function forceDragonNearDeath(){
+  const F=G.fight;
+  if(G.state!=="encounter"||!F||F.hp===undefined){
+    devNote("No dragon fight running — spawn one first."); return false;
+  }
+  F.hp=1;
+  if(S.soldiers<=0){ S.soldiers=1; refresh(); }        // a strike costs a soldier; make sure one is left
+  $("dragonNoSoldiers").classList.remove("show");
+  $("dragonHPFill").style.width=Math.round(F.hp/F.hpMax*100)+"%";
+  $("dragonHPNum").textContent=F.hp+" / "+F.hpMax;
+  devNote("HP → 1 / "+F.hpMax+" · next tap kills.");
+  return true;
+}
+(function wireDevPanel(){
+  const panel=$("devPanel"); if(!panel) return;
+  // strikes are read off a window-level pointerdown; the panel must never double as
+  // one, so its own pointers stop here rather than bubbling out to the fight.
+  panel.addEventListener("pointerdown",e=>e.stopPropagation());
+  const close=()=>panel.classList.remove("open");
+  $("devPanelToggle").addEventListener("click",()=>{
+    panel.classList.toggle("open");
+    if(panel.classList.contains("open")) devNote("");
+  });
+  $("devSpawnDragon").addEventListener("click",()=>{ if(spawnDragonEncounter(1)) close(); });
+  $("devAddSoldiers").addEventListener("click",()=>addTestSoldiers(6));
+  $("devClearUnits").addEventListener("click",()=>clearUnits());
+  $("devNearDeath").addEventListener("click",()=>forceDragonNearDeath());
+})();
+window.spawnDragonEncounter=spawnDragonEncounter;
+window.addTestSoldiers=addTestSoldiers;
+window.clearUnits=clearUnits;
+window.forceDragonNearDeath=forceDragonNearDeath;
 
 /* ================= BOOT ================= */
 rebuildTown(); rebuildFolk(); rebuildDetail();
