@@ -4570,6 +4570,7 @@ function animateDragonDefeat(dt,t){
     b.done=true;
     scene.remove(d); disposeGroup(d); G.dragon=null;
     beginAftermath(base);
+    G.deathHold=DDIE.HOLD;        // the camera is not finished with the spot just because the body is
     if(G.dieReward){ G.dieReward(); G.dieReward=null; }   // the hoard lands after the moment, never through it
     G.dieBeat=null;
     endTurn();
@@ -4886,6 +4887,7 @@ function rallyGuards(){
     // read as everybody starting at once again.
     p.evtDelay=0.2+0.4*((i+Math.random())/Math.max(1,guards.length));
     p.evtAge=0; p.evtSettled=false;
+    p.evtRally=null; p.evtFace=undefined; p.evtRoam=false; p.evtBrace=0;  // last battle's stand-down is spent
   });
   BATTLE.line=guards;                 // small, and the only list the spacing pass walks
 }
@@ -5039,6 +5041,28 @@ function clearBattlefield(){
    ══════════════════════════════════════════════════════════════════════════ */
 const MUSTER={ group:null, pool:[], ready:false, seq:0 };
 const MUSTER_MAX=8;                       // hard ceiling on actors alive at once
+/* M5.1: the soldier a tap spends is consumed, so the actor is not allowed to walk
+   off the field — it goes down where it struck. One shared collapse for all three
+   kinds, played over the tail of the window: pitched forward, over onto the side it
+   was already leaning, and sunk out.
+
+   M5.2: the whole strike is now one short beat rather than a charge across the
+   field. The actor is already standing in the line when the tap lands, so it only
+   has to commit forward — which is what makes 0.28s readable where a run-in at that
+   length was not. Fractions below are of MUSTER_DUR, so the collapse is ~0.13s. */
+const MUSTER_DUR=0.28;                    // total strike: lunge, blow, collapse
+const MUSTER_DEATH={archer:.50, foot:.52, horse:.55};
+const MUSTER_STREAK=0.10;                 // the blow crossing to the dragon
+/* The standing army: a loose two-rank line behind the monarch, four abreast, facing
+   whatever he is facing. Slots are fixed per rig so the line never reshuffles, and
+   the spacing is wide enough that no two bodies overlap at any camera angle. */
+const _msv=new THREE.Vector3();
+function musterSlot(i,K,fx,fz,px,pz,out){
+  const row=(i<4)?0:1, col=(i%4)-1.5;
+  out.x=K.x+px*(col*0.95)-fx*(1.15+row*0.85);
+  out.z=K.z+pz*(col*0.95)-fz*(1.15+row*0.85);
+  return out;
+}
 const _mv=new THREE.Vector3(), _mv2=new THREE.Vector3();
 const mEase=x=>1-Math.pow(1-x,3);
 /* a charge has to accelerate out of the muster and brake into the swing — a pure
@@ -5113,13 +5137,14 @@ function initMuster(){
     const kind=roster[i];
     const rig=kind==="archer"?makeMusterArcher(Gm,M):kind==="foot"?makeMusterFootman(Gm,M):makeMusterRider(Gm,M);
     rig.g.visible=false; MUSTER.group.add(rig.g);
-    const a={kind, g:rig.g, bow:rig.bow||null, arm:rig.arm||null, legs:rig.legs||null, lance:rig.lance||null,
-      live:false, t:0, dur:.6, seq:0, y0:0, y1:0, face:0, side:1, struck:false,
+    const a={kind, idx:i, g:rig.g, bow:rig.bow||null, arm:rig.arm||null, legs:rig.legs||null, lance:rig.lance||null,
+      live:false, t:0, dur:MUSTER_DUR, seq:0, y0:0, y1:0, face:0, side:1, struck:false, rest:0,
       from:new THREE.Vector3(), to:new THREE.Vector3(), aim:new THREE.Vector3(),
       arrow:null, arrowLive:false, at:0, af:new THREE.Vector3()};
-    if(kind==="archer"){
-      a.arrow=new THREE.Mesh(Gm.arrow,M.wood); a.arrow.visible=false; MUSTER.group.add(a.arrow);
-    }
+    // M5.2: every rig gets a streak, not just the bows. The lunge is deliberately short
+    // — a body committing forward, not crossing the field — so the streak is what
+    // carries the blow the rest of the way and keeps every tap pointed at the dragon.
+    a.arrow=new THREE.Mesh(Gm.arrow,M.wood); a.arrow.visible=false; MUSTER.group.add(a.arrow);
     MUSTER.pool.push(a);
   }
   MUSTER.ready=true; MUSTER.seq=0;
@@ -5127,6 +5152,7 @@ function initMuster(){
 function retireActor(a){
   a.live=false; a.arrowLive=false; a.struck=false;
   a.g.visible=false; a.g.scale.setScalar(1); a.g.rotation.set(0,0,0);
+  a.rest=0;                                // the gap in the line closes rather than popping shut
   if(a.arrow) a.arrow.visible=false;
 }
 /* A free slot of the kind we rolled, else any free slot, else the oldest actor
@@ -5160,40 +5186,31 @@ function spawnStrikeActor(){
   const kind = r<.42 ? "archer" : r<.82 ? "foot" : "horse";
   const a=takeActor(kind);
   const seq=++MUSTER.seq;
-  a.seq=seq; a.live=true; a.t=0; a.struck=false; a.arrowLive=false;
+  a.seq=seq; a.live=true; a.t=0; a.struck=false; a.arrowLive=false; a.dur=MUSTER_DUR;
 
-  // fan the muster point out sideways so consecutive actors never stack up, and
-  // start them behind the monarch — they come from the player's side of the field
-  const lane=((seq%5)-2)*.62+(Math.random()-.5)*.28;
-  a.side = lane>=0?1:-1;
+  // M5.2: it launches from the slot it was already standing in, so the attack visibly
+  // leaves the line rather than appearing beside it. The slot also fixes which way it
+  // rolls when it goes down, so the near and far files fall away from each other.
+  const col=(a.idx%4)-1.5;
+  a.side = col>=0?1:-1;
+  musterSlot(a.idx,K,dir.x,dir.z,perp.x,perp.z,a.from);
 
   const tg=battleTarget();
   a.aim.copy(tg||D);
   a.aim.x+=(Math.random()-.5)*.7; a.aim.y+=(Math.random()-.5)*.6; a.aim.z+=(Math.random()-.5)*.7;
 
-  if(a.kind==="horse"){
-    // a pass: in from the flank, through the dragon's side, and gone off the far edge
-    a.dur=.60;
-    a.from.set(K.x+perp.x*(lane+a.side*1.5)-dir.x*1.4, 0, K.z+perp.z*(lane+a.side*1.5)-dir.z*1.4);
-    a.to.set(D.x+dir.x*3.0+perp.x*a.side*2.1, 0, D.z+dir.z*3.0+perp.z*a.side*2.1);
-  } else if(a.kind==="foot"){
-    a.dur=.70;
-    a.from.set(K.x+perp.x*lane-dir.x*(.9+Math.random()*.4), 0, K.z+perp.z*lane-dir.z*(.9+Math.random()*.4));
-    a.to.set(D.x-dir.x*(1.6+Math.random()*.35)+perp.x*lane*.5, 0, D.z-dir.z*(1.6+Math.random()*.35)+perp.z*lane*.5);
-  } else {
-    a.dur=.50;                                            // the arrow lands at .30 — anything after that is dead time
-    a.from.set(K.x+perp.x*lane-dir.x*(.7+Math.random()*.4), 0, K.z+perp.z*lane-dir.z*(.7+Math.random()*.4));
-    a.to.copy(a.from).addScaledVector(dir,.55);           // archers plant and loose; a short step is the whole move
-  }
+  // A lunge, not a charge — a step and a half of forward commit, always straight down
+  // the king→dragon axis so every strike in the encounter points the same way.
+  const reach = a.kind==="horse" ? 1.85 : a.kind==="foot" ? 1.35 : 0.55;
+  a.to.set(a.from.x+dir.x*reach, 0, a.from.z+dir.z*reach);
   a.y0=surfaceUnder(a.from.x,a.from.z)+.02;
   a.y1=surfaceUnder(a.to.x,a.to.z)+.02;
   a.from.y=a.y0; a.to.y=a.y1;
-  a.face=Math.atan2(a.kind==="horse"?a.to.x-a.from.x:a.aim.x-a.from.x,
-                    a.kind==="horse"?a.to.z-a.from.z:a.aim.z-a.from.z);
+  a.face=Math.atan2(dir.x,dir.z);                        // the whole line faces the dragon
 
   a.g.position.copy(a.from);
   a.g.rotation.set(0,a.face,0);
-  a.g.scale.setScalar(.55);                              // a very short scale-in, so arrival is not a pop
+  a.g.scale.setScalar(1);                                // already standing there — no scale-in to play
   a.g.visible=true;
   if(a.arm)  a.arm.rotation.x=-.5;
   if(a.bow)  a.bow.scale.set(1,1,1);
@@ -5202,15 +5219,44 @@ function spawnStrikeActor(){
 }
 function tickMuster(dt){
   if(!MUSTER.ready) return;
+  // M5.2: the line's basis, resolved once per frame rather than per rig. Everything
+  // downstream — where an idle body stands, which way it faces, which way a lunge
+  // goes — hangs off this one king→dragon axis, so the whole formation and every
+  // attack out of it always point at the same thing.
+  const K=king.position;
+  let line = (G.state==="encounter" && !!G.dragon);
+  let fx=0,fz=0,px=0,pz=0,ff=0;
+  if(line){
+    const dx=G.dragon.position.x-K.x, dz=G.dragon.position.z-K.z;
+    const L=Math.hypot(dx,dz);
+    if(L>0.01){ fx=dx/L; fz=dz/L; px=-fz; pz=fx; ff=Math.atan2(fx,fz); }
+    else line=false;
+  }
+  const et=clock.elapsedTime;
   for(const a of MUSTER.pool){
-    if(!a.live) continue;
+    if(!a.live){
+      // Standing in the line. Not a simulation: one transform on a body that was
+      // already allocated, and it is skipped entirely outside an encounter.
+      if(!line){ if(a.g.visible){ a.g.visible=false; a.rest=0; } continue; }
+      a.rest=Math.min(1,(a.rest||0)+dt*4.5);              // steps back into the gap it left
+      musterSlot(a.idx,K,fx,fz,px,pz,_msv);
+      const ph=a.idx*1.7;
+      a.g.visible=true;
+      a.g.position.set(_msv.x, surfaceUnder(_msv.x,_msv.z)+.02+Math.abs(Math.sin(et*1.1+ph))*.012, _msv.z);
+      a.g.rotation.set(0, ff+Math.sin(et*.4+ph)*.05, 0);  // facing the dragon, not quite parallel
+      a.g.scale.setScalar(a.rest);
+      if(a.arm) a.arm.rotation.x=-.5;
+      if(a.bow) a.bow.scale.set(1,1,1);
+      if(a.lance) a.lance.rotation.x=.10;
+      continue;
+    }
     a.t+=dt;
     const k=a.t/a.dur;
 
-    // the arrow outlives nothing — it always lands well inside its archer's window
+    // the streak outlives nothing — it always lands well inside its actor's window
     if(a.arrowLive){
       a.at+=dt;
-      const u=Math.min(1,a.at/.17);
+      const u=Math.min(1,a.at/MUSTER_STREAK);
       _mv.set(a.af.x+(a.aim.x-a.af.x)*u, a.af.y+(a.aim.y-a.af.y)*u+Math.sin(u*Math.PI)*.30, a.af.z+(a.aim.z-a.af.z)*u);
       a.arrow.position.copy(_mv);
       _mv2.set(a.af.x+(a.aim.x-a.af.x)*Math.min(1,u+.1), a.af.y+(a.aim.y-a.af.y)*Math.min(1,u+.1)+Math.sin(Math.min(1,u+.1)*Math.PI)*.30, a.af.z+(a.aim.z-a.af.z)*Math.min(1,u+.1));
@@ -5220,44 +5266,46 @@ function tickMuster(dt){
 
     if(k>=1){ retireActor(a); continue; }
 
-    const grow=Math.min(1,a.t/.06);
-    let sc=.55+.45*grow, u=0, bob=0;
+    let sc=1, u=0, bob=0;
+    // The blow leaves the body partway through the lunge and crosses the rest of the
+    // way as the streak. Fired once, from wherever the body has actually reached.
+    const throwAt = a.kind==="archer" ? .34 : a.kind==="foot" ? .46 : .44;
+    if(k>=throwAt&&!a.struck){
+      a.struck=true; a.arrowLive=true; a.at=0;
+      a.af.set(a.g.position.x,a.g.position.y+.34,a.g.position.z);
+      a.arrow.position.copy(a.af); a.arrow.visible=true;
+    }
 
     if(a.kind==="archer"){
-      u=mEase(Math.min(1,a.t/.16));
-      const rel=a.t-.13;                                  // release, a breath after the draw
-      if(rel>=0&&!a.struck){
-        a.struck=true; a.arrowLive=true; a.at=0;
-        a.af.set(a.g.position.x,a.g.position.y+.34,a.g.position.z);
-        a.arrow.position.copy(a.af); a.arrow.visible=true;
-      }
-      const kick=rel<0?Math.min(1,(a.t/.13))*.22:Math.max(0,1-rel*7)*.22;
+      u=mEase(Math.min(1,k/.40));                         // plants, draws, looses
+      const kick=k<throwAt?(k/throwAt)*.22:Math.max(0,1-(k-throwAt)*9)*.22;
       a.bow.scale.set(1,1-kick,1);
       a.g.rotation.x=-.04-kick*.30;
-      if(k>.70) sc*=1-(k-.70)/.30;                        // steps off as soon as the shot has landed
     } else if(a.kind==="foot"){
-      if(k<.50){ u=mRun(k/.50); bob=Math.abs(Math.sin(a.t*26))*.045; a.arm.rotation.x=-.5+Math.sin(a.t*26)*.5; }
-      else if(k<.64){
-        u=1;
-        const s=(k-.50)/.14;
-        a.arm.rotation.x=-2.3+s*3.1;                      // over the shoulder and down through it
-        if(s>=.42&&!a.struck){ a.struck=true; spawnGlance(a.aim); }
-      } else {
-        u=1-mRun((k-.64)/.36);                            // back out the way they came
-        bob=Math.abs(Math.sin(a.t*22))*.038;
-        a.arm.rotation.x=.8-(k-.64)/.36*1.3;
-      }
-      a.g.rotation.x=(k<.50?-.10:0);
-      if(k>.84) sc*=1-(k-.84)/.16;
+      u=mRun(Math.min(1,k/.48));                          // drives forward off the line
+      const s=Math.min(1,Math.max(0,(k-.26)/.22));
+      a.arm.rotation.x=-.5-2.0*Math.sin(Math.PI*s)+s*1.6; // over the shoulder and down through it
+      a.g.rotation.x=-.16+s*.16;
+      bob=Math.abs(Math.sin(a.t*30))*.035;
     } else {
-      u=Math.pow(k,.92);                                  // a pass holds its speed; it is not arriving anywhere
-      bob=Math.abs(Math.sin(a.t*30))*.055;
-      const gal=Math.sin(a.t*30);
-      for(let i=0;i<4;i++) a.legs[i].rotation.x=Math.sin(a.t*30+(i<2?0:Math.PI))*.7;
-      a.g.rotation.z=gal*.05;
-      a.lance.rotation.x=.10-Math.max(0,1-Math.abs(k-.52)*7)*.34;
-      if(k>=.50&&!a.struck){ a.struck=true; spawnGlance(a.aim); }
-      if(k>.86) sc*=1-(k-.86)/.14;
+      u=mRun(Math.min(1,k/.52));                          // spurs forward out of the rank
+      bob=Math.abs(Math.sin(a.t*34))*.045;
+      for(let i=0;i<4;i++) a.legs[i].rotation.x=Math.sin(a.t*34+(i<2?0:Math.PI))*.7;
+      a.g.rotation.x=-.06;                                // assigned, not left standing: the collapse below
+      a.g.rotation.z=Math.sin(a.t*34)*.05;                // subtracts from it and would otherwise accumulate
+      a.lance.rotation.x=.10-Math.max(0,1-Math.abs(k-throwAt)*9)*.34;
+    }
+
+    // M5.1: the collapse. Squared, so it holds a beat on its feet and then gives all
+    // at once rather than lowering; the sink and the scale-out together read as a body
+    // going down at this size without costing a transparent material.
+    const da=MUSTER_DEATH[a.kind];
+    if(k>=da){
+      const de=(k-da)/(1-da), dq=de*de;
+      a.g.rotation.x-=dq*1.35;                            // pitched forward over the strike
+      a.g.rotation.z=a.side*dq*.55;                       // and onto the side it was leaning
+      bob-=dq*.07;
+      sc*=Math.max(0,1-dq*1.05);
     }
 
     a.g.position.set(a.from.x+(a.to.x-a.from.x)*u, a.from.y+(a.to.y-a.from.y)*u+bob, a.from.z+(a.to.z-a.from.z)*u);
@@ -5286,8 +5334,14 @@ const DDIE={
   COLLAPSE: 0.40,   // head goes down first, then the body gives
   IMPACT:   1.15,   // the body strikes ground
   SETTLE:   1.50,   // dust drifts, the tail is last to still
-  FADE:     1.90,   // it lifts away as motes in its own glow
-  DONE:     2.80,   // hand back to the kingdom
+  // M3.6: the body used to start dissolving 0.4s after the dust settled, which read
+  // as the game clearing the table rather than as something having died. FADE moves
+  // out by 0.7s and DONE follows it, so the fade itself is the same length and only
+  // the silence in front of it grows: ~1.1s of a still body on the ground, tail
+  // stopped, before anything begins to lift away.
+  FADE:     2.60,   // it lifts away as motes in its own glow
+  DONE:     3.50,   // hand back to the kingdom
+  HOLD:     0.90,   // and the camera stays with the spot a beat longer than the body does
 };
 /* the death roar begins as a full roar and is cut off mid-sound — no release
    tail. An unfinished sound is how the ear understands that something died. */
@@ -5331,6 +5385,29 @@ function tickScorch(dt){
   if(sc.life<=0) clearScorch();
 }
 
+/* Where one guard falls back to, resolved once and then held.
+
+   No search and no path: the destination is an anchor the kingdom already has.
+   A guard placed by rebuildFolk owns a post at the gate and simply returns to it,
+   which is why the watch re-gathers in one place without being told to. A guard
+   who has no post — the line can include bodies mustered away from the wall — is
+   given a slot on a loose golden-angle ring around the gate itself, the same
+   never-stacks placement the crowd uses. Roamers keep the ground they took. */
+function watchRallyPoint(p, m){
+  if(p.evtRally) return p.evtRally;
+  const i=p.evtSlot||0, ang=i*2.39996;
+  let v;
+  if(p.evtRoam){
+    v=new THREE.Vector3(m.position.x+Math.sin(ang)*1.5, 0, m.position.z+Math.cos(ang)*1.5);
+  } else if(p.facing!==undefined && p.home){
+    v=p.home.clone();                                   // a posted guard already has a place
+  } else {
+    const base=(GATE_POS.lengthSq()>0.01)?GATE_POS:new THREE.Vector3();   // gate, else the castle at centre
+    const rad=2.6+Math.sqrt(i)*0.55;
+    v=new THREE.Vector3(base.x+Math.sin(ang)*rad, 0, base.z+Math.cos(ang)*rad);
+  }
+  v.y=0; p.evtRally=v; return v;
+}
 /* ── the quiet beat ────────────────────────────────────────────────────
    Called when the dragon is gone by either road. Combat stops, the bows come
    down, the watch holds a moment before standing down, and the townsfolk drift
@@ -5340,12 +5417,38 @@ function beginAftermath(at){
   if(at) spawnScorch(at);
   G.dragonMark=at?at.clone():null;
   musicRestore(1.6);
+  // M3.7: the watch falls back to a place rather than dispersing. Roamers hold the
+  // ground they took; everyone else forms up again on their post or on the gate.
+  // Chosen as a count rather than a per-guard coin flip: on a watch of eight a 15%
+  // flip lands on 0, 1, 2 or 3 bodies, and two of those are outside the band. This
+  // picks a fixed share and shuffles which few it is, so it is always 10–20% and
+  // never the same guards twice.
+  const line=[];
+  for(const p of FOLK) if(p.evt==="dragonLine") line.push(p);
+  const roamN=line.length>=5
+    ? Math.max(1, Math.min(Math.floor(line.length*0.20), Math.round(line.length*0.15)))
+    : 0;                                            // too small a watch to spare anyone
+  const order=line.map((_,i)=>i);
+  for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0, tmp=order[i]; order[i]=order[j]; order[j]=tmp; }
+  const roamers=new Set(order.slice(0,roamN));
+  line.forEach((p,i)=>{
+    // The brace is staggered per guard, so the order to stand down travels down the
+    // line the same way the order to break it did.
+    p.evt="dragonStandDown"; p.evtSeed=Math.random()*6.28;
+    p.evtRoam=roamers.has(i);
+    p.evtT=p.evtRoam?12:8.5;                        // long enough to walk it, never so long they freeze
+    p.evtBrace=1.6+Math.random()*0.9;               // ~1.6–2.5s still and braced before anyone turns
+    p.evtRally=null; p.evtFace=undefined;           // resolved once, on the first frame they actually move
+  });
   for(const p of FOLK){
-    if(p.evt==="dragonLine"){
-      p.evt="dragonStandDown"; p.evtT=6.5; p.evtSeed=Math.random()*6.28;
-    } else if(p.evt==="dragonFear"){
+    if(p.evt==="dragonFear"){
       p.evt="dragonReturn"; p.evtT=7.5; p.evtSeed=Math.random()*6.28;
       p.evtGaze=Math.random()<0.4;      // a few stand and look before going back to it
+      // M3.6: the watch already holds braced for ~1.9s before it stands down, but the
+      // townsfolk used to turn for home on the frame the body landed. Half a second to
+      // a second of standing where they stopped, uneven across the crowd, so the square
+      // starts refilling after the moment rather than through it.
+      p.evtWait=0.5+Math.random()*0.5;
     }
   }
 }
@@ -7804,7 +7907,20 @@ function updateCamera(dt){
   const tl=new THREE.Vector3().copy(king.position).addScaledVector(f,ahead).setY(king.position.y+1);   // aim at the monarch so he stays framed
   if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie")&&G.dragon){
     const dragonLook=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+1.0,G.dragon.position.z);
-    tl.lerp(dragonLook,.55);
+    // M3.6: through the fight the frame splits the difference between the monarch
+    // and the dragon. On defeat the fallen body is the subject, so it commits.
+    tl.lerp(dragonLook, G.state==="dragonDie"?.72:.55);
+  }
+  // M3.6: and it does not leave the moment the body does. The weight bleeds out
+  // over DDIE.HOLD instead of cutting, so the return to the follow rig is a drift.
+  if(G.deathHold>0){
+    G.deathHold=Math.max(0,G.deathHold-dt);
+    // a new dragon inside the hold window owns the frame — never pull back to the
+    // last one's mark against the live anchor above
+    if(G.dragonMark&&!G.dragon){
+      const w=Math.min(1,G.deathHold/DDIE.HOLD)*.55;
+      tl.lerp(new THREE.Vector3(G.dragonMark.x,G.dragonMark.y+.6,G.dragonMark.z), w);
+    }
   }
 
   // free-look: only while idle; travelling eases the view back to the follow angle
@@ -8143,29 +8259,51 @@ function animate(){
           }
         } else if(e==="dragonStandDown"){                  // it's over: the watch holds, then relaxes
           // they do not trust that it left — they keep the line for a beat before
-          // lowering the spear and walking back to their post
-          const hold=Math.max(0,p.evtT-4.6);               // ~1.9s of still, braced watching
-          if(hold>0){
+          // lowering the spear and walking back to their post. The beat is staggered
+          // per guard, so the line comes apart in ones and twos rather than at once.
+          if(p.evtBrace>0){
+            p.evtBrace-=dt;
             if(G.dragonMark) m.rotation.y=Math.atan2(G.dragonMark.x-m.position.x, G.dragonMark.z-m.position.z);
             m.rotation.x=-.10+Math.sin(t*.8+sd)*.02;       // braced, breathing
             m.position.y=0; m.rotation.z=0;
           } else {
-            const dxs=p.home.x-m.position.x, dzs=p.home.z-m.position.z, ds=Math.hypot(dxs,dzs);
+            const rp=watchRallyPoint(p,m);
+            const dxs=rp.x-m.position.x, dzs=rp.z-m.position.z, ds=Math.hypot(dxs,dzs);
             if(ds>0.12){
-              const sp=Math.min(1.6,.5+ds*.5)*dt;          // an unhurried walk back, not a run
+              // roamers drift, the rest walk back with purpose — neither ever runs
+              const sp=Math.min(p.evtRoam?.55:1.6, (p.evtRoam?.2:.5)+ds*.5)*dt;
               m.position.x+=dxs/ds*sp; m.position.z+=dzs/ds*sp;
               m.rotation.y=Math.atan2(dxs,dzs);
-              m.position.y=Math.abs(Math.sin(t*5+sd))*.05;
+              m.position.y=Math.abs(Math.sin(t*(p.evtRoam?3.4:5)+sd))*(p.evtRoam?.035:.05);
             } else {
-              m.rotation.y=p.facing!==undefined?p.facing:m.rotation.y;
-              m.position.y=0;
+              // Arrived. Face out — a posted guard keeps its post's heading, anyone
+              // else turns away from the castle at centre, which is down the roads in.
+              // A little off each seed so no two stand exactly parallel.
+              if(p.evtFace===undefined){
+                p.evtFace=((p.facing!==undefined&&!p.evtRoam)?p.facing
+                          :Math.atan2(m.position.x,m.position.z))+Math.sin(sd*2.7)*.26;
+              }
+              let da=p.evtFace-m.rotation.y;               // eased round, never snapped
+              while(da>Math.PI)da-=6.283185307; while(da<-Math.PI)da+=6.283185307;
+              m.rotation.y+=da*Math.min(1,dt*3.4);
+              // last hand's breadth eased, then planted exactly — setting it outright
+              // put a tenth of a unit of travel on a single frame
+              const ax=rp.x-m.position.x, az=rp.z-m.position.z;
+              if(Math.abs(ax)<.01&&Math.abs(az)<.01){ m.position.x=rp.x; m.position.z=rp.z; }
+              else { const ak=Math.min(1,dt*9); m.position.x+=ax*ak; m.position.z+=az*ak; }
+              m.position.y=Math.abs(Math.sin(t*.6+p.phase))*.012;
+              m.rotation.x+=((-.03+Math.sin(sd*1.7)*.05)-m.rotation.x)*Math.min(1,dt*3);
             }
-            m.rotation.x*=.9;                              // stance eases out of the brace
+            if(m.rotation.x<-.09) m.rotation.x*=.9;        // stance eases out of the brace
           }
         } else if(e==="dragonReturn"){                     // the square refills, slowly and unevenly
           // some stop where they stopped running and look back at where it was,
           // and the stragglers are what make the rest of it read
-          const gaze=p.evtGaze&&p.evtT>4.4;
+          // M3.6: the held beat before anyone moves. Everyone turns to look at where
+          // it fell first — the crowd registers it before it disperses. Same pose the
+          // gazers hold, so the two read as one behaviour with different lengths.
+          if(p.evtWait>0) p.evtWait-=dt;
+          const gaze=p.evtWait>0||(p.evtGaze&&p.evtT>4.4);
           if(gaze&&G.dragonMark){
             m.rotation.y=Math.atan2(G.dragonMark.x-m.position.x, G.dragonMark.z-m.position.z);
             m.position.y=0; m.rotation.x=.04*Math.sin(t*.7+sd);
@@ -8296,9 +8434,21 @@ function animate(){
       }
       m.rotation.x*=0.85; if(m.scale.y!==1) m.scale.y+=(1-m.scale.y)*0.2;
       if(p.role==="post"){                                   // guards stand watch, small shift of weight
-        m.position.copy(p.home);
-        m.position.y=Math.abs(Math.sin(t*.6+p.phase))*0.012;
-        m.rotation.y=p.facing + Math.sin(t*.35+p.phase)*0.10;
+        // Walked back, not copied. Standing at the post this costs nothing, but a guard
+        // whose stand-down expires while still out used to be teleported onto it. Speed
+        // capped rather than eased proportionally: an exponential ease covers a third of
+        // a unit on its first frame from far out, which reads as a dart, not a walk.
+        const hx=p.home.x-m.position.x, hz=p.home.z-m.position.z, hd=Math.hypot(hx,hz);
+        if(hd>.02){
+          const sp=Math.min(1.4,.4+hd*.5)*dt;
+          m.position.x+=hx/hd*sp; m.position.z+=hz/hd*sp;
+          m.rotation.y=Math.atan2(hx,hz);                    // facing the way he is walking
+          m.position.y=Math.abs(Math.sin(t*5+p.phase))*.05;
+        } else {
+          m.position.x=p.home.x; m.position.z=p.home.z;
+          m.position.y=Math.abs(Math.sin(t*.6+p.phase))*0.012;
+          m.rotation.y=(p.facing!==undefined?p.facing:0) + Math.sin(t*.35+p.phase)*0.10;
+        }
       } else if(p.role==="till"){                             // farmers work the rows, stooping to hoe
         const sw=Math.sin(t*1.1+p.phase);
         m.position.x=p.hub.x+sw*p.radius;
