@@ -4418,6 +4418,15 @@ const DRAGON_BREEDS=[
   {n:"Rose Drake",     body:0xc44f7a, dark:0x8a2f52, eye:0xffd0e0, glow:0xff5c9c, horn:true,  spikes:true },
 ];
 function dragonBreed(n){ return DRAGON_BREEDS[n%DRAGON_BREEDS.length]; }
+/* M6: scale and standoff. The dragon used to stand 5.5 units out at 1.55x, which put
+   it close enough that the camera had to frame it and the army in the same near
+   plane — the army crowded it and nothing read as big. Pushing it out half again as
+   far and more than doubling it trades that for actual distance: the same screen
+   height, but with the field in front of it and the formation clearly nearer. Both
+   numbers are named because the scale had `||1.55` fallbacks in six places. */
+const DRAGON_BATTLE_SCALE=3.1;            // was 1.55 — 2.0x, the largest that frames cleanly
+const DRAGON_STANDOFF=8.25;               // was 5.5
+const WING_SPAN=1.40;                     // span multiplier on the existing wing cones
 function dragonBattlePlacement(){
   const forward=new THREE.Vector3(Math.sin(king.rotation.y),0,Math.cos(king.rotation.y));
   if(forward.lengthSq()<0.01){
@@ -4425,7 +4434,7 @@ function dragonBattlePlacement(){
   }
   if(forward.lengthSq()<0.01) forward.set(0,0,1);
   forward.normalize();
-  const pos=king.position.clone().addScaledVector(forward,5.5);
+  const pos=king.position.clone().addScaledVector(forward,DRAGON_STANDOFF);
   pos.y=Math.max(standPos(S.pos).y, surfaceUnder(pos.x,pos.z))+.08;
   return {pos, forward};
 }
@@ -4434,7 +4443,7 @@ function setDragonBattlePose(d,placement){
   d.position.copy(placement.pos);
   d.lookAt(king.position.x,d.position.y+.45,king.position.z);
   d.userData.baseBattlePos=placement.pos.clone();
-  d.userData.battleScale=1.55;
+  d.userData.battleScale=DRAGON_BATTLE_SCALE;
   d.scale.setScalar(d.userData.battleScale);
 }
 function animateDragonBattle(d,F,t,dt){
@@ -4442,7 +4451,7 @@ function animateDragonBattle(d,F,t,dt){
   const base=d.userData.baseBattlePos||d.position;
   const recoil=F.recoil||0;
   const shake=F.shake||0;
-  const battleScale=d.userData.battleScale||1.55;
+  const battleScale=d.userData.battleScale||DRAGON_BATTLE_SCALE;
   F.recoil=Math.max(0,recoil-dt*4.5);
   F.shake=Math.max(0,shake-dt*6.5);
   d.scale.setScalar(battleScale);
@@ -4463,10 +4472,19 @@ function animateDragonBattle(d,F,t,dt){
     d.userData.mats.dark.emissive.setHex(gl); d.userData.mats.dark.emissiveIntensity=flash*.35;
   }
   F.flash=Math.max(0,flash-dt*5.5);
+  // M6: the eyes breathe. A slow swell with a faster, shallower flicker riding on it,
+  // so it never reads as a clean sine — plus a hard spike on a strike, which makes the
+  // hit land in the face as well as the hide. One material, two sinusoids.
+  if(d.userData.eyeMat){
+    const swell=.86+Math.sin(t*1.9)*.22+Math.sin(t*6.3+1.7)*.07;
+    d.userData.eyeMat.emissiveIntensity=Math.max(.35,swell*1.35+flash*1.5);
+  }
   // Wing base + lagged tip for visible joint bend during flap
-  const wbBattle=heavyWingBeat(t,0.9);
-  const wbTipB=heavyWingBeat(t-0.22,0.9);
-  const baseFlap=wbBattle*0.10, tipFlap=wbTipB*0.065;
+  // M6: slowed from 0.9 to 0.62 and swung further. Same curve, same asymmetry — a
+  // bigger animal simply cannot beat as fast, and the longer stroke is what sells it.
+  const wbBattle=heavyWingBeat(t,0.62);
+  const wbTipB=heavyWingBeat(t-0.30,0.62);
+  const baseFlap=wbBattle*0.15, tipFlap=wbTipB*0.10;
   const wingAdj=Math.max(0,Math.sin(t*.55))*.18+recoil*.22;
   if(d.userData.wingL){
     d.userData.wingL.rotation.z=-1.35+baseFlap+wingAdj;
@@ -4503,7 +4521,7 @@ function animateDragonTakeoff(dt,t){
   const climbT=Math.max(0,G.dragonT-pause);
   const k=Math.min(1,climbT/1.15);
   const ease=k*k*(3-2*k);
-  const battleScale=d.userData.battleScale||1.55;
+  const battleScale=d.userData.battleScale||DRAGON_BATTLE_SCALE;
   d.scale.setScalar(battleScale);
   d.position.set(base.x,base.y+ease*2.45+Math.sin(t*3)*.06,base.z-ease*.42);
   d.rotation.x=-.05-ease*.35;
@@ -4546,7 +4564,7 @@ function animateDragonDefeat(dt,t){
   const et=G.dragonT;
   const b=G.dieBeat||(G.dieBeat={});
   const base=d.userData.baseBattlePos||d.position.clone();
-  d.scale.setScalar(d.userData.battleScale||1.55);
+  d.scale.setScalar(d.userData.battleScale||DRAGON_BATTLE_SCALE);
 
   if(!b.hitch){                       // the stop — motion holds and the score cuts out
     b.hitch=true;
@@ -4619,8 +4637,13 @@ function makeDragon(breedIdx){
   const bd=dragonBreed(breedIdx||0);
   const d=new THREE.Group();
   d.userData.breed=bd;
-  const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.55,metalness:.05});
-  const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.65,metalness:.05});
+  // M6: flatShading is the whole of the "body detail" pass. Every facet of the existing
+  // spheres and cones now catches light on its own normal instead of being smoothed
+  // across, which at this poly count reads as plated scales. No new geometry, no
+  // texture, no shader — one flag on materials that already existed, and it pushes the
+  // low-poly look further rather than fighting it.
+  const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.55,metalness:.05,flatShading:true});
+  const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.65,metalness:.05,flatShading:true});
   d.userData.mats={body,dark};      // M3: kept so a strike can pulse the hide breed-tinted
   const bodyM=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),body);
   bodyM.scale.set(1,.85,1.35); bodyM.position.y=.8; bodyM.castShadow=true; d.add(bodyM); d.userData.body=bodyM;
@@ -4630,31 +4653,58 @@ function makeDragon(breedIdx){
   head.scale.set(1,.85,1.3); head.position.set(0,1.75,.85); head.castShadow=true; d.add(head); d.userData.head=head;
   const snout=new THREE.Mesh(new THREE.ConeGeometry(.16,.4,8),dark);
   snout.rotation.x=Math.PI/2; snout.position.set(0,1.7,1.25); d.add(snout);
-  const eyeM=new THREE.MeshStandardMaterial({color:bd.eye,emissive:bd.glow,emissiveIntensity:.6});
-  const e1=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),eyeM); e1.position.set(-.14,1.85,1.0); d.add(e1);
-  const e2=e1.clone(); e2.position.x=.14; d.add(e2);
+  // M6: the eyes are the presence read at this distance, so they run hot and are kept
+  // on userData so the battle loop can breathe them. Emissive already existed; the
+  // size, the intensity and the pulse are new. Breed glow is deliberately preserved
+  // rather than forced orange — half the roster is already warm and the Frost Wyrm's
+  // cold eye is the point of it.
+  const eyeM=new THREE.MeshStandardMaterial({color:bd.eye,emissive:bd.glow,emissiveIntensity:1.35});
+  d.userData.eyeMat=eyeM;
+  const e1=new THREE.Mesh(new THREE.SphereGeometry(.085,8,8),eyeM); e1.position.set(-.15,1.85,1.02); d.add(e1);
+  const e2=e1.clone(); e2.position.x=.15; d.add(e2);
+  // M6: a heavy brow over each eye — two cones, dark, angled in. Cheap, and it stops
+  // the glow reading as two floating dots by giving it something to sit under.
+  for(const sg of[-1,1]){
+    const br=new THREE.Mesh(new THREE.ConeGeometry(.11,.20,4),dark);
+    br.position.set(sg*.17,1.96,.99); br.rotation.set(1.5,0,sg*-.45); d.add(br);
+  }
   for(const sg of[-1,1]){
     const key=sg<0?"wingL":"wingR";
     // Wing base group — animation drives rotation.z each frame; initial rest position set here
     const wBase=new THREE.Group();
     wBase.position.set(sg*.85,1.35,.1); wBase.rotation.y=sg*.3; wBase.rotation.z=sg*1.35;
+    // M6: wider, not thicker. Same two cones — scaled long on the span axis and
+    // squashed hard on thickness, which both extends the wingspan and takes the
+    // pyramid out of it: what was a spike is now a flat blade of membrane.
     const wBM=new THREE.Mesh(new THREE.ConeGeometry(.68,1.0,4),dark);
-    wBM.position.y=.50; wBM.castShadow=true; wBase.add(wBM);
+    wBM.scale.set(1.12,WING_SPAN,.40);
+    wBM.position.y=.50*WING_SPAN; wBM.castShadow=true; wBase.add(wBM);
     // Wing tip — child of base at outer end; lags slightly behind for visible joint bend
-    const wTip=new THREE.Group(); wTip.position.y=1.0;
+    const wTip=new THREE.Group(); wTip.position.y=1.0*WING_SPAN;
     const wTM=new THREE.Mesh(new THREE.ConeGeometry(.36,.62,4),dark);
-    wTM.position.y=.31; wTM.castShadow=true; wTip.add(wTM);
+    wTM.scale.set(1.12,WING_SPAN,.40);
+    wTM.position.y=.31*WING_SPAN; wTM.castShadow=true; wTip.add(wTM);
     wBase.add(wTip);
     d.add(wBase);
     d.userData[key]=wBase; d.userData[key+"Tip"]=wTip;
   }
   const tail=new THREE.Mesh(new THREE.ConeGeometry(.22,1.4,8),body);
   tail.rotation.x=1.9; tail.position.set(0,.6,-1.05); d.add(tail); d.userData.tail=tail;
-  if(bd.horn){                                     // a pair of curling horns for some breeds
-    const hornM=new THREE.MeshStandardMaterial({color:0xe7e0cf,roughness:.5});
+  // M6: every breed now carries a swept pair, in the body's own dark tone so they read
+  // as horn rather than ornament. Uneven on purpose — the left sits a little longer and
+  // steeper than the right, which is what stops a silhouette looking moulded.
+  for(const sg of[-1,1]){
+    const long=sg<0?1.18:1.0;
+    const h=new THREE.Mesh(new THREE.ConeGeometry(.085,.62,5),dark);
+    h.position.set(sg*.19,2.02,.72);
+    h.rotation.set(-.62-(sg<0?.10:0),0,sg*.46);
+    h.scale.set(1,long,1); h.castShadow=true; d.add(h);
+  }
+  if(bd.horn){                                     // a second, paler pair for some breeds
+    const hornM=new THREE.MeshStandardMaterial({color:0xe7e0cf,roughness:.5,flatShading:true});
     for(const sg of[-1,1]){
-      const h=new THREE.Mesh(new THREE.ConeGeometry(.05,.34,6),hornM);
-      h.position.set(sg*.13,2.02,.78); h.rotation.set(-.5,0,sg*.35); h.castShadow=true; d.add(h);
+      const h=new THREE.Mesh(new THREE.ConeGeometry(.05,.40,6),hornM);
+      h.position.set(sg*.10,2.00,.84); h.rotation.set(-.42,0,sg*.20); h.castShadow=true; d.add(h);
     }
   }
   if(bd.spikes){                                   // a ridge of back spikes for others
@@ -4723,7 +4773,8 @@ function heavyWingBeat(t,rate){
 /* ── entrance visual helpers ─────────────────────────────────────────── */
 function spawnDragonShadow(from,to){
   // M2: larger ellipse beyond dragon footprint; higher opacity for strong omen read
-  const _es=new THREE.Shape(); _es.absellipse(0,0,3.8,2.2,0,Math.PI*2,false,0);
+  // M6: the omen shadow is cast by the same, now much larger, animal
+  const _es=new THREE.Shape(); _es.absellipse(0,0,5.6,3.2,0,Math.PI*2,false,0);
   const g=new THREE.ShapeGeometry(_es,16);
   const m=new THREE.MeshBasicMaterial({color:0x000000,opacity:.28,transparent:true,depthWrite:false});
   const s=new THREE.Mesh(g,m); s.rotation.x=-Math.PI/2;
@@ -4732,10 +4783,12 @@ function spawnDragonShadow(from,to){
   scene.add(s); return s;
 }
 function spawnDustRing(pos){
+  // M6: the ring is thrown by a body more than twice the size it was, so it starts
+  // proportionally wider. Same one mesh and same fade — only the initial radius moves.
   const g=new THREE.TorusGeometry(.5,.3,4,14);
   const m=new THREE.MeshBasicMaterial({color:0xd4b483,opacity:.50,transparent:true,depthWrite:false});
   const r=new THREE.Mesh(g,m); r.rotation.x=-Math.PI/2;
-  r.position.set(pos.x,.12,pos.z); r.userData.life=1.0;
+  r.position.set(pos.x,.12,pos.z); r.userData.life=1.0; r.userData.s0=1.9;
   scene.add(r);
   if(!G.entranceDust) G.entranceDust=[];
   G.entranceDust.push(r);
@@ -4745,7 +4798,7 @@ function tickEntranceDust(dt){
   for(let i=G.entranceDust.length-1;i>=0;i--){
     const r=G.entranceDust[i];
     r.userData.life-=dt*.70;
-    const s=1+(1-r.userData.life)*4.5;
+    const s=(r.userData.s0||1)*(1+(1-r.userData.life)*4.5);
     r.scale.set(s,1,s);
     r.material.opacity=r.userData.life*.36;
     if(r.userData.life<=0){ scene.remove(r); disposeGroup(r); G.entranceDust.splice(i,1); }
@@ -4791,7 +4844,7 @@ const GUARD_REFORM=1.2;           // slot must drift this far before a planted g
 const GUARD_RING_MAX=5.5;
 function battleTarget(){
   if(!G.dragon) return null;
-  const s=G.dragon.userData.battleScale||1.55;
+  const s=G.dragon.userData.battleScale||DRAGON_BATTLE_SCALE;
   return new THREE.Vector3(G.dragon.position.x, G.dragon.position.y+1.15*s, G.dragon.position.z);
 }
 /* Where a bow can answer from. The castle wall and gate towers are the best
@@ -5375,6 +5428,35 @@ function spawnScorch(at){
   s.position.set(at.x,.045,at.z); s.renderOrder=2;
   scene.add(s);
   G.scorch={mesh:s, life:1, peak:.30};
+}
+/* M6: grounding. A single soft ellipse under the feet, darkest at the centre, that
+   fades in as it plants and out as it leaves. It is not a particle system and not a
+   second shadow pass — it is the same flat ShapeGeometry the scorch and the entrance
+   shadow already use, one mesh, reused for the life of the encounter.
+
+   Self-managing on purpose: it keys off G.dragon rather than being created and torn
+   down at the call sites, so no exit path — victory, escape, or a turn ending mid
+   encounter — can leave it stranded in the scene. */
+function tickDragonGround(dt){
+  const want = G.dragon && (G.state==="encounter"||G.state==="dragonDie"||G.state==="dragonTakeoff");
+  if(want && !G.dragonGround){
+    const sh=new THREE.Shape(); sh.absellipse(0,0,1.30,0.98,0,Math.PI*2,false,0);
+    const m=new THREE.MeshBasicMaterial({color:0x1a1408,opacity:0,transparent:true,depthWrite:false});
+    const g=new THREE.Mesh(new THREE.ShapeGeometry(sh,16),m);
+    g.rotation.x=-Math.PI/2; g.renderOrder=1;
+    scene.add(g);
+    G.dragonGround={mesh:g, k:0};
+  }
+  const gr=G.dragonGround; if(!gr) return;
+  gr.k=Math.max(0,Math.min(1,gr.k+(want?dt*1.6:-dt*2.2)));
+  if(!want && gr.k<=0){ scene.remove(gr.mesh); disposeGroup(gr.mesh); G.dragonGround=null; return; }
+  if(G.dragon){
+    const s=G.dragon.userData.battleScale||DRAGON_BATTLE_SCALE;
+    gr.mesh.position.set(G.dragon.position.x, surfaceUnder(G.dragon.position.x,G.dragon.position.z)+.035, G.dragon.position.z);
+    // breathes with the weight shift so the contact never looks decalled on
+    gr.mesh.scale.setScalar(s*(1+Math.sin(clock.elapsedTime*.31)*.012));
+  }
+  gr.mesh.material.opacity=gr.k*.34;
 }
 function tickScorch(dt){
   if(!G.scorch) return;
@@ -7886,14 +7968,26 @@ function updateCamera(dt){
   // M3: a touch wider through the fight so the guard line and the nearest bows sit
   // in frame with the dragon. Lens, not distance — the low angle survives intact.
   // Eased, so the lens never snaps when combat starts or ends.
-  _battleLens += (((G.state==="encounter"&&G.fight)?5:0)-_battleLens)*Math.min(1,dt*3.2);
+  // M6: wider again through the fight. The dragon now stands half again as far out at
+  // twice the size, so the lens has to hold both it and the formation in front of the
+  // player — and a wide lens on a low camera is what exaggerates height.
+  //
+  // camera.fov is the VERTICAL angle, so a tall thin phone gets far less horizontal
+  // room for the same number. Without this term a portrait screen cropped the wings
+  // by well over half. Scales in only as the viewport narrows; landscape is untouched.
+  const _portrait=Math.min(1,Math.max(0,(0.80-camera.aspect)/0.34));
+  const _wantLens=(G.state==="encounter"&&G.fight)?(9+12*_portrait):0;
+  _battleLens += (_wantLens-_battleLens)*Math.min(1,dt*3.2);
   const wantFov = G.map ? 55 : 55 + 14*_walkCam + _battleLens;
   if(Math.abs(camera.fov-wantFov)>0.05){ camera.fov=wantFov; camera.updateProjectionMatrix(); }
   if(G.state==="chest"){ dist=6.2;height=3.5;ahead=2.6;side=1.3; }                       // gentle diagonal
   if(G.state==="encounter"||G.state==="raid"||G.state==="fight"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie"){
     dist=6.8;height=2.8;ahead=2.8;side=3.1;                                              // M2: lower height (was 3.7) for continuity with low-angle landing camera
   }
-  if(G.state==="encounter"&&G.fight){ dist=7.3;height=3.0;ahead=2.6; }                   // M3: hold the battlefield, barely further back
+  // M6: dropped from 3.0 to 2.0 and pulled in slightly. Looking up at the thing is the
+  // single cheapest way to make it read as tall, and the extra standoff means the rig
+  // no longer needs the distance it used to.
+  if(G.state==="encounter"&&G.fight){ dist=6.9;height=2.0;ahead=2.6; }
   if(G.state==="boot"||G.state==="auth"){ dist=11;height=8;ahead=0;side=0; }
   // M3: through a dragon encounter the rig is anchored on the dragon rather than on
   // the monarch's heading. The king's facing eases back toward neutral once he stops
@@ -7906,7 +8000,14 @@ function updateCamera(dt){
   const tp=new THREE.Vector3().copy(king.position).addScaledVector(f,-dist).addScaledVector(r,side).setY(king.position.y+height);
   const tl=new THREE.Vector3().copy(king.position).addScaledVector(f,ahead).setY(king.position.y+1);   // aim at the monarch so he stays framed
   if((G.state==="encounter"||G.state==="dragonTakeoff"||G.state==="dragonFlee"||G.state==="dragonDie")&&G.dragon){
-    const dragonLook=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+1.0,G.dragon.position.z);
+    // M6: the aim height now scales with the animal. A fixed +1.0 was chest height at
+    // 1.55x and ankle height at 3.5x, which would have tilted the frame down off the
+    // head exactly as the head became the thing worth looking at. Body centre, ~0.8
+    // model units up, is the anchor — and on defeat it drops back to the ground where
+    // the body actually is.
+    const dsc=G.dragon.userData.battleScale||DRAGON_BATTLE_SCALE;
+    const aimY=G.state==="dragonDie" ? 0.5 : 1.68*dsc;
+    const dragonLook=new THREE.Vector3(G.dragon.position.x,G.dragon.position.y+aimY,G.dragon.position.z);
     // M3.6: through the fight the frame splits the difference between the monarch
     // and the dragon. On defeat the fallen body is the subject, so it commits.
     tl.lerp(dragonLook, G.state==="dragonDie"?.72:.55);
@@ -8003,7 +8104,7 @@ function animate(){
     G.dragonT+=dt;
     G.dragon.position.y+=dt*4.5;
     G.dragon.rotation.y+=dt*2;
-    const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||1.55;
+    const start=G.dragon.userData.flyStartScale||G.dragon.userData.battleScale||DRAGON_BATTLE_SCALE;
     const s=Math.max(.22,start*(1-G.dragonT*.55));
     G.dragon.scale.set(s,s,s);
     if(G.dragonT>1.8){
@@ -8531,6 +8632,7 @@ function animate(){
   // throws rings too and the entrance tick has long stopped running by then —
   // they were being left in the scene forever.
   tickEntranceDust(dt);
+  tickDragonGround(dt);                         // the weight it puts on the ground while it stands
   tickScorch(dt); tickDeathMotes(dt);           // the mark it left, and the last of it lifting away
   if(WILD.length) tickWildlife(dt, clock.elapsedTime);
 
