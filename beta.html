@@ -4470,6 +4470,9 @@ function animateDragonBattle(d,F,t,dt){
     const gl=(d.userData.breed&&d.userData.breed.glow)||0xffb060;
     d.userData.mats.body.emissive.setHex(gl); d.userData.mats.body.emissiveIntensity=flash*.55;
     d.userData.mats.dark.emissive.setHex(gl); d.userData.mats.dark.emissiveIntensity=flash*.35;
+    // M6.1: the head is its own material now, so it has to be lit by a strike too or
+    // the face stays cold while the rest of the hide flares
+    if(d.userData.mats.head){ d.userData.mats.head.emissive.setHex(gl); d.userData.mats.head.emissiveIntensity=flash*.50; }
   }
   F.flash=Math.max(0,flash-dt*5.5);
   // M6: the eyes breathe. A slow swell with a faster, shallower flicker riding on it,
@@ -4482,17 +4485,25 @@ function animateDragonBattle(d,F,t,dt){
   // Wing base + lagged tip for visible joint bend during flap
   // M6: slowed from 0.9 to 0.62 and swung further. Same curve, same asymmetry — a
   // bigger animal simply cannot beat as fast, and the longer stroke is what sells it.
-  const wbBattle=heavyWingBeat(t,0.62);
-  const wbTipB=heavyWingBeat(t-0.30,0.62);
-  const baseFlap=wbBattle*0.15, tipFlap=wbTipB*0.10;
+  // M6.1: the two wings were exact mirrors of one frame of maths, which is precisely
+  // what read as rigid — no animal beats both sides in perfect lockstep. The right runs
+  // a twelfth of a second behind the left and swings fractionally shallower, and each
+  // side gets its own slow waver on the other axis. Same curve, same cost, no longer a
+  // mechanism.
+  const wbL=heavyWingBeat(t,0.62),        wbLT=heavyWingBeat(t-0.30,0.62);
+  const wbR=heavyWingBeat(t-0.085,0.62),  wbRT=heavyWingBeat(t-0.385,0.62);
+  const flapL=wbL*0.15,  tipL=wbLT*0.10;
+  const flapR=wbR*0.138, tipR=wbRT*0.092;
   const wingAdj=Math.max(0,Math.sin(t*.55))*.18+recoil*.22;
   if(d.userData.wingL){
-    d.userData.wingL.rotation.z=-1.35+baseFlap+wingAdj;
-    if(d.userData.wingLTip) d.userData.wingLTip.rotation.z=tipFlap-baseFlap;
+    d.userData.wingL.rotation.z=-1.35+flapL+wingAdj;
+    d.userData.wingL.rotation.x=Math.sin(t*.43)*.055;          // the membrane luffing, not the bone
+    if(d.userData.wingLTip) d.userData.wingLTip.rotation.z=tipL-flapL;
   }
   if(d.userData.wingR){
-    d.userData.wingR.rotation.z= 1.35-baseFlap-wingAdj;
-    if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=baseFlap-tipFlap;
+    d.userData.wingR.rotation.z= 1.35-flapR-wingAdj;
+    d.userData.wingR.rotation.x=Math.sin(t*.37+1.9)*.055;
+    if(d.userData.wingRTip) d.userData.wingRTip.rotation.z=flapR-tipR;
   }
   // M3: tail lags body ~400ms (increased from 300ms for more fluid trail)
   const tailT=t-0.40;
@@ -4644,15 +4655,23 @@ function makeDragon(breedIdx){
   // low-poly look further rather than fighting it.
   const body=new THREE.MeshStandardMaterial({color:bd.body,roughness:.55,metalness:.05,flatShading:true});
   const dark=new THREE.MeshStandardMaterial({color:bd.dark,roughness:.65,metalness:.05,flatShading:true});
-  d.userData.mats={body,dark};      // M3: kept so a strike can pulse the hide breed-tinted
+  // M6.1: the head sits between body and dark — a fifth of the way toward the breed's
+  // own shadow tone rather than an invented colour, so it separates the face from the
+  // mass behind it without reading as a different animal. Derived, not authored.
+  const headC=new THREE.Color(bd.body).lerp(new THREE.Color(bd.dark),.42);
+  const headMat=new THREE.MeshStandardMaterial({color:headC,roughness:.58,metalness:.05,flatShading:true});
+  d.userData.mats={body,dark,head:headMat};   // M3: kept so a strike can pulse the hide breed-tinted
   const bodyM=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),body);
   bodyM.scale.set(1,.85,1.35); bodyM.position.y=.8; bodyM.castShadow=true; d.add(bodyM); d.userData.body=bodyM;
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,.8,8),body);
-  neck.position.set(0,1.35,.55); neck.rotation.x=-.5; d.add(neck); d.userData.neck=neck;
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.32,10,10),body);
-  head.scale.set(1,.85,1.3); head.position.set(0,1.75,.85); head.castShadow=true; d.add(head); d.userData.head=head;
-  const snout=new THREE.Mesh(new THREE.ConeGeometry(.16,.4,8),dark);
-  snout.rotation.x=Math.PI/2; snout.position.set(0,1.7,1.25); d.add(snout);
+  // M6.1: the neck carries the head out over its own feet. Longer, thicker at the root
+  // and pitched further forward — the whole point is that the head leads the silhouette
+  // instead of sitting on top of the mass, which is what makes it read as stalking.
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24,.34,1.02,8),body);
+  neck.position.set(0,1.38,.66); neck.rotation.x=-.62; d.add(neck); d.userData.neck=neck;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.385,10,10),headMat);
+  head.scale.set(1,.85,1.3); head.position.set(0,1.84,1.12); head.castShadow=true; d.add(head); d.userData.head=head;
+  const snout=new THREE.Mesh(new THREE.ConeGeometry(.175,.44,8),dark);
+  snout.rotation.x=Math.PI/2; snout.position.set(0,1.78,1.60); d.add(snout);
   // M6: the eyes are the presence read at this distance, so they run hot and are kept
   // on userData so the battle loop can breathe them. Emissive already existed; the
   // size, the intensity and the pulse are new. Breed glow is deliberately preserved
@@ -4660,13 +4679,16 @@ function makeDragon(breedIdx){
   // cold eye is the point of it.
   const eyeM=new THREE.MeshStandardMaterial({color:bd.eye,emissive:bd.glow,emissiveIntensity:1.35});
   d.userData.eyeMat=eyeM;
-  const e1=new THREE.Mesh(new THREE.SphereGeometry(.085,8,8),eyeM); e1.position.set(-.15,1.85,1.02); d.add(e1);
-  const e2=e1.clone(); e2.position.x=.15; d.add(e2);
+  // M6.1: all of the face rides forward with the head — the eyes, the brows and both
+  // sets of horns below. They are siblings of the head rather than children of it, so
+  // every one of these has to be moved by hand or the face comes apart.
+  const e1=new THREE.Mesh(new THREE.SphereGeometry(.095,8,8),eyeM); e1.position.set(-.165,1.94,1.30); d.add(e1);
+  const e2=e1.clone(); e2.position.x=.165; d.add(e2);
   // M6: a heavy brow over each eye — two cones, dark, angled in. Cheap, and it stops
   // the glow reading as two floating dots by giving it something to sit under.
   for(const sg of[-1,1]){
-    const br=new THREE.Mesh(new THREE.ConeGeometry(.11,.20,4),dark);
-    br.position.set(sg*.17,1.96,.99); br.rotation.set(1.5,0,sg*-.45); d.add(br);
+    const br=new THREE.Mesh(new THREE.ConeGeometry(.125,.22,4),dark);
+    br.position.set(sg*.185,2.06,1.27); br.rotation.set(1.5,0,sg*-.45); d.add(br);
   }
   for(const sg of[-1,1]){
     const key=sg<0?"wingL":"wingR";
@@ -4676,14 +4698,17 @@ function makeDragon(breedIdx){
     // M6: wider, not thicker. Same two cones — scaled long on the span axis and
     // squashed hard on thickness, which both extends the wingspan and takes the
     // pyramid out of it: what was a spike is now a flat blade of membrane.
-    const wBM=new THREE.Mesh(new THREE.ConeGeometry(.68,1.0,4),dark);
+    // M6.1: six radial segments instead of four. A 4-sided cone is a pyramid and reads
+    // as one from every angle; six breaks the hard ridge into two shallower ones for
+    // four extra triangles per mesh. Still low-poly, just no longer a spike.
+    const wBM=new THREE.Mesh(new THREE.ConeGeometry(.68,1.0,6),dark);
     wBM.scale.set(1.12,WING_SPAN,.40);
-    wBM.position.y=.50*WING_SPAN; wBM.castShadow=true; wBase.add(wBM);
+    wBM.position.y=.50*WING_SPAN; wBM.rotation.y=Math.PI/6; wBM.castShadow=true; wBase.add(wBM);
     // Wing tip — child of base at outer end; lags slightly behind for visible joint bend
     const wTip=new THREE.Group(); wTip.position.y=1.0*WING_SPAN;
-    const wTM=new THREE.Mesh(new THREE.ConeGeometry(.36,.62,4),dark);
+    const wTM=new THREE.Mesh(new THREE.ConeGeometry(.36,.62,6),dark);
     wTM.scale.set(1.12,WING_SPAN,.40);
-    wTM.position.y=.31*WING_SPAN; wTM.castShadow=true; wTip.add(wTM);
+    wTM.position.y=.31*WING_SPAN; wTM.rotation.y=Math.PI/6; wTM.castShadow=true; wTip.add(wTM);
     wBase.add(wTip);
     d.add(wBase);
     d.userData[key]=wBase; d.userData[key+"Tip"]=wTip;
@@ -4695,16 +4720,16 @@ function makeDragon(breedIdx){
   // steeper than the right, which is what stops a silhouette looking moulded.
   for(const sg of[-1,1]){
     const long=sg<0?1.18:1.0;
-    const h=new THREE.Mesh(new THREE.ConeGeometry(.085,.62,5),dark);
-    h.position.set(sg*.19,2.02,.72);
+    const h=new THREE.Mesh(new THREE.ConeGeometry(.095,.70,5),dark);
+    h.position.set(sg*.205,2.11,.99);
     h.rotation.set(-.62-(sg<0?.10:0),0,sg*.46);
     h.scale.set(1,long,1); h.castShadow=true; d.add(h);
   }
   if(bd.horn){                                     // a second, paler pair for some breeds
     const hornM=new THREE.MeshStandardMaterial({color:0xe7e0cf,roughness:.5,flatShading:true});
     for(const sg of[-1,1]){
-      const h=new THREE.Mesh(new THREE.ConeGeometry(.05,.40,6),hornM);
-      h.position.set(sg*.10,2.00,.84); h.rotation.set(-.42,0,sg*.20); h.castShadow=true; d.add(h);
+      const h=new THREE.Mesh(new THREE.ConeGeometry(.055,.44,6),hornM);
+      h.position.set(sg*.11,2.09,1.11); h.rotation.set(-.42,0,sg*.20); h.castShadow=true; d.add(h);
     }
   }
   if(bd.spikes){                                   // a ridge of back spikes for others
