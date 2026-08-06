@@ -8720,19 +8720,39 @@ function devNote(text){
 }
 const DEV_DRAGON_STATES=["dragonEntrance","encounter","dragonDie","dragonTakeoff","dragonFlee"];
 function devDragonBusy(){ return DEV_DRAGON_STATES.indexOf(G.state)>=0; }
-/* the full encounter, entrance cinematic and all — never a bare spawn */
+/* The full encounter, entrance cinematic and all — never a bare spawn.
+
+   Deliberately unconditional. This used to refuse unless the board was perfectly
+   idle, which meant a half-finished turn, an open card, a reward toast or a dragon
+   still standing all made the button do nothing — and the only complaint was nine
+   pixels of grey text inside a panel that had already closed itself. For a testing
+   tool that is worse than no button at all. It now clears whatever is in flight and
+   starts a clean encounter every time.
+
+   The teardown uses the game's own exit paths rather than hand-set state, so it
+   cannot leave an orphaned dragon, a live muster or a stranded battlefield behind. */
 function spawnDragonEncounter(scale){
-  if(devDragonBusy()){ devNote("A dragon is already in play."); return false; }
-  if(G.state!=="idle"||G.intro||G.map||G.create){
-    devNote("Not idle — finish the turn first (state: "+G.state+")."); return false;
-  }
+  if(G.state==="auth"||G.create){ devNote("Not in game yet."); return false; }
+  // a dragon still on the field goes first, by the same route the game removes it
+  if(G.dragon){ scene.remove(G.dragon); disposeGroup(G.dragon); G.dragon=null; }
+  G.fight=null; G.dieBeat=null; G.dieReward=null; G.deathHold=0;
+  cleanupEntrance();
+  clearBattlefield();                       // also clears the muster; startDragon rebuilds it
+  // anything covering the board is dismissed, except the two screens that own the session
+  document.querySelectorAll(".ov.show").forEach(o=>{
+    if(o.id!=="authOv"&&o.id!=="createOv") o.classList.remove("show");
+  });
+  ["dragonHP","dragonNoSoldiers","tapHint","frenzy"].forEach(id=>{ const e=$(id); if(e) e.classList.remove("show"); });
+  G.map=false; G.intro=false;
+  G.state="idle";                            // a clean slate for the entrance to start from
   startDragonEntrance(typeof scale==="number"&&scale>0?scale:1);
   devNote("Entrance running — the watch forms on the trumpet.");
+  msg("🛠️ Dragon incoming",1000);            // loud enough to see without opening the panel
   return true;
 }
 /* real guards on the field, not just a bigger number on the pill */
 function addTestSoldiers(n){
-  const want=Math.max(1,Math.min(20,(typeof n==="number"&&n>0)?Math.floor(n):6));
+  const want=Math.max(1,Math.min(50,(typeof n==="number"&&n>0)?Math.floor(n):25));
   S.soldiers+=want; refresh();
   let placed=0;
   for(let i=0;i<want&&FOLK.length<DEV_FOLK_CAP;i++){
@@ -8787,8 +8807,8 @@ function forceDragonNearDeath(){
     panel.classList.toggle("open");
     if(panel.classList.contains("open")) devNote("");
   });
-  $("devSpawnDragon").addEventListener("click",()=>{ if(spawnDragonEncounter(1)) close(); });
-  $("devAddSoldiers").addEventListener("click",()=>addTestSoldiers(6));
+  $("devSpawnDragon").addEventListener("click",()=>{ spawnDragonEncounter(1); close(); });
+  $("devAddSoldiers").addEventListener("click",()=>addTestSoldiers(25));
   $("devClearUnits").addEventListener("click",()=>clearUnits());
   $("devNearDeath").addEventListener("click",()=>forceDragonNearDeath());
 })();
