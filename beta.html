@@ -6850,8 +6850,22 @@ function land(){
       sChest(); logEvent("⭐","Bonus Rolls","+"+extra+" 🎲"+tag); msg("⭐ +"+extra+" rolls!"+tag); endTurn(); break;
     }
     case "recruit": {
-      const n=3+S.tier*2; S.soldiers+=n;
-      sBuild(); logEvent("🛡️","Recruits","+"+n+" ⚔️"); msg("🛡️ +"+n+" soldiers"); endTurn(); break;
+      /* M8: was 3+tier*2 — three soldiers at Camp, eleven at the top tier, against a
+         dragon that spends thirty to forty in a single five-second window. The tile
+         could not fund the fight it exists to fund, and two recruit tiles sit on the
+         same board as two dragon tiles, so income and outgo were a full order of
+         magnitude apart.
+
+         Rebased to a hundred. The tier progression that was already here is kept
+         (just widened), and the roll multiplier this tile used to ignore is applied
+         exactly as the Bonus tile applies it — so recruitment now scales through the
+         board's existing systems instead of a private formula of its own. No new
+         multiplier, and S.soldiers stays the one authoritative army count. */
+      const n=Math.round((100+S.tier*40)*m);
+      S.soldiers+=n; refresh();
+      sBuild();
+      rewardToast("⚔️","Recruits","+"+n.toLocaleString()+" Soldiers"+tag,"big");
+      endTurn(); break;
     }
     case "sprint": {
       const hop=1+((Math.random()*3)|0);
