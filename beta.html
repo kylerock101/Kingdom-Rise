@@ -6603,6 +6603,24 @@ function clampRates(){
   S.taxRate=Math.max(0,Math.min(60,Math.round(S.taxRate)));
   S.crime  =Math.max(0,Math.min(90,Math.round(S.crime)));
 }
+/* M8: crime as a drag on recruitment.
+
+   Bracketed rather than continuous, so the player feels a threshold being crossed
+   rather than a number quietly sliding. Lives here with the other crime helpers and
+   takes the rate as an argument because crime is slated to bite into further kingdom
+   systems later — this is meant to be the shared table, not a recruit-tile detail.
+
+   Reads S.crime by default: the one authoritative crime value, no second variable.
+   Note clampRates() caps crime at 90, so the 81-100 bracket is reachable in play but
+   a literal 100 only ever arrives from a direct test. */
+function crimeRecruitmentModifier(crime){
+  const c=Math.max(0,Math.min(100, (crime===undefined||crime===null)?S.crime:crime));
+  if(c<=20) return 1.00;                 //   0-20 → full strength
+  if(c<=40) return 0.90;                 //  21-40
+  if(c<=60) return 0.75;                 //  41-60
+  if(c<=80) return 0.60;                 //  61-80
+  return 0.50;                           //  81-100 → half the muster reaches you
+}
 function collectTaxes(){
   clampRates();
   coach("taxes","🏁 Taxes Collected","Every lap of the board you collect taxes — a share of your building costs. Raise the rate for more gold, but crime rises too, and thieves skim what you gather.","realmPill");
@@ -6874,10 +6892,19 @@ function land(){
          exactly as the Bonus tile applies it — so recruitment now scales through the
          board's existing systems instead of a private formula of its own. No new
          multiplier, and S.soldiers stays the one authoritative army count. */
-      const n=Math.round((100+S.tier*40)*m);
+      /* M8: crime skims the muster. The normal value is computed first and in full,
+         then the crime bracket is applied on top — so tier and multiplier are never
+         diminished at source, and the modifier is the last word rather than a term
+         tangled into the formula. Start reinforcements deliberately do not go through
+         this: a lap's levy is a fixed headcount, a recruiting drive is not. */
+      const base=Math.round((100+S.tier*40)*m);
+      const mod=crimeRecruitmentModifier(S.crime);
+      const n=Math.round(base*mod);
+      const lost=Math.round((1-mod)*100);
       S.soldiers+=n; refresh();
       sBuild();
-      rewardToast("⚔️","Recruits","+"+n.toLocaleString()+" Soldiers"+tag,"big");
+      rewardToast("⚔️","Recruits","+"+n.toLocaleString()+" Soldiers"+tag
+        +(lost>0?"  ·  "+lost+"% lost to crime":""),"big");
       endTurn(); break;
     }
     case "sprint": {
