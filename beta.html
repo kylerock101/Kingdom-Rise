@@ -6592,6 +6592,11 @@ function stepNext(){
 /* ================= CROWN, TAXES & CRIME =================
    Taxes are collected each lap as a % of the current build cost.
    Crime is a rate too: it steals that % of every tax collection. Decrees steer both dials. */
+/* M8: reinforcements that arrive with each completed lap. Flat by design — the tax
+   take below scales with the roll multiplier, the tier and the crime rate, but a levy
+   of men is a headcount rather than a bet, so this is deliberately immune to every
+   reward multiplier in the game. */
+const START_REINFORCEMENTS=100;
 function taxAmount(){ return Math.round(buildCost() * (S.taxRate/100) * S.multi); }
 function crimeLoss(){ return Math.round(buildCost() * (S.crime/100)); }
 function clampRates(){
@@ -6607,10 +6612,18 @@ function collectTaxes(){
   gain(net);
   const taxLine=goldLine();
   addToVault(net*VAULT_SHARE);      // a share is stored where raiders could reach it
+  // M8: the lap's reinforcements. Attached to this function rather than to a second
+  // lap detector of its own, so it inherits the single G.gatePass crossing flag —
+  // which land() clears before calling here — and therefore cannot double-pay.
+  S.soldiers+=START_REINFORCEMENTS;
   // crime cools a little each lap when you're not stoking it
   S.crime=Math.max(0,S.crime-1); clampRates(); refresh();
+  // Both rewards ride one toast. A second toast would overwrite this one instantly —
+  // there is a single #rtoast element — so sharing the line is the smallest change
+  // that lets the player see the gold and the men in the same beat.
   rewardToast("🏁","Taxes Collected",
-    taxLine+"  ·  tax "+S.taxRate+"%"+(skim>0?"  ·  crime "+Math.round(skim/gross*100)+"% stolen":""), "big");
+    taxLine+"  ·  ⚔️ +"+START_REINFORCEMENTS+" Reinforcements"
+    +"  ·  tax "+S.taxRate+"%"+(skim>0?"  ·  crime "+Math.round(skim/gross*100)+"% stolen":""), "big");
 }
 const DECREES=[
   /* ---- TAXES & LEVIES ---- */
